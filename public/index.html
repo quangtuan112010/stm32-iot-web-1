@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Giám sát & Điều khiển STM32H7</title>
+    <title>Hệ thống Giám sát Mảng số & Điều khiển STM32H7</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="bg-slate-900 text-gray-100 min-h-screen p-4 md:p-6 font-sans">
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="max-w-6xl mx-auto space-y-6">
         
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-5 rounded-xl border border-slate-700 shadow gap-4">
+        <header class="flex justify-between items-center bg-slate-800 p-5 rounded-xl border border-slate-700 shadow">
             <div>
-                <h1 class="text-2xl font-bold text-blue-400">STM32H7A3ZI-Q Telemetry Cloud</h1>
+                <h1 class="text-2xl font-bold text-blue-400">STM32H7A3ZI-Q Array Telemetry</h1>
                 <p class="text-sm text-gray-400">Chu kỳ cập nhật: 5 giây/lần | SIM7680C 4G LTE</p>
             </div>
             <div class="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
@@ -23,123 +22,150 @@
             </div>
         </header>
 
-        <!-- Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                <p class="text-sm text-gray-400 font-medium">Dữ liệu thô tức thời (Uplink)</p>
-                <div class="text-4xl font-extrabold text-blue-400 mt-3" id="current-val">--</div>
-                <p class="text-xs text-gray-500 mt-2" id="last-update">Chờ tín hiệu từ MCU...</p>
+        <!-- Khối hiển thị mảng số nhận từ Module -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-200">Mảng số nhận được từ STM32 (Uplink)</h2>
+                <span id="last-update" class="text-xs text-emerald-400 font-mono">Chờ dữ liệu...</span>
+            </div>
+            
+            <!-- Danh sách từng phần tử trong mảng -->
+            <div id="array-container" class="flex flex-wrap gap-3 min-h-[60px] p-4 bg-slate-900/80 rounded-lg border border-slate-700 items-center">
+                <span class="text-gray-500 italic text-sm">Chưa có dữ liệu mảng...</span>
             </div>
 
-            <div class="md:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700">
-                <p class="text-sm text-gray-400 font-medium">Cập nhật giá trị điều khiển xuống STM32 (Downlink)</p>
-                <div class="flex flex-wrap items-center gap-4 mt-3">
-                    <input type="number" id="control-input" class="bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white w-44 text-lg font-bold focus:outline-none focus:border-blue-500" placeholder="Nhập giá trị...">
-                    <button onclick="sendControl()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-lg transition duration-200 shadow">
-                        Gửi lệnh xuống STM32
-                    </button>
-                    <span id="control-status" class="text-sm text-emerald-400 font-medium"></span>
-                </div>
+            <!-- Chuỗi thô nguyên bản -->
+            <p class="text-xs text-gray-400">
+                Chuỗi Raw: <span id="raw-payload" class="font-mono text-emerald-400">--</span>
+            </p>
+        </div>
+
+        <!-- Khối nhập số điều khiển gửi xuống STM32 -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-3">
+            <h2 class="text-lg font-bold text-gray-200">Cập nhật giá trị gửi xuống STM32 (Downlink)</h2>
+            <p class="text-xs text-gray-400">Nhập số trực tiếp bằng bàn phím (hỗ trợ cả số thập phân dạng 12.5 hoặc 12,5)</p>
+            
+            <div class="flex flex-wrap items-center gap-4 pt-2">
+                <input 
+                    type="text" 
+                    id="control-input" 
+                    inputmode="decimal"
+                    class="bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white w-64 text-lg font-bold focus:outline-none focus:border-blue-500" 
+                    placeholder="VD: 25.45 hoặc 25,45"
+                >
+                <button onclick="sendControl()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2.5 rounded-lg transition duration-200 shadow">
+                    Gửi giá trị xuống STM32
+                </button>
+                <span id="control-status" class="text-sm font-medium"></span>
             </div>
         </div>
 
-        <!-- Live Chart -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-            <h2 class="text-lg font-bold text-gray-200 mb-4">Đồ thị biến thiên thời gian thực</h2>
-            <div class="h-64">
-                <canvas id="liveChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Raw Data Table -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-200">Nhật ký dữ liệu thô (PostgreSQL Database Logs)</h2>
-                <button onclick="fetchHistory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-gray-300 transition">Làm mới bảng</button>
+        <!-- Bảng lịch sử lưu trữ (Giờ Việt Nam) -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-200">Nhật ký dữ liệu thô (PostgreSQL Database - Giờ Việt Nam)</h2>
+                <button onclick="fetchHistory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-gray-300">Tải lại bảng</button>
             </div>
             <div class="overflow-x-auto max-h-80 overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-sm text-gray-300">
                     <thead class="bg-slate-900 text-gray-400 uppercase text-xs sticky top-0">
                         <tr>
-                            <th class="py-3 px-4">Thời gian</th>
+                            <th class="py-3 px-4">Thời gian (Việt Nam GMT+7)</th>
                             <th class="py-3 px-4">Mã thiết bị</th>
-                            <th class="py-3 px-4">Giá trị số</th>
-                            <th class="py-3 px-4">Chuỗi Payload gốc</th>
+                            <th class="py-3 px-4">Chuỗi Mảng / Payload gốc</th>
                         </tr>
                     </thead>
                     <tbody id="raw-table-body" class="divide-y divide-slate-700 bg-slate-800/50"></tbody>
                 </table>
             </div>
         </div>
+
     </div>
 
     <script>
         const socket = io();
-        const ctx = document.getElementById('liveChart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Sensor Data',
-                    data: [],
-                    borderColor: '#38bdf8',
-                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { grid: { color: '#334155' } },
-                    y: { grid: { color: '#334155' } }
-                }
-            }
-        });
 
+        // Hàm chuyển đổi thời gian sang chuẩn Giờ Việt Nam (GMT+7)
+        function formatVNTime(dateInput) {
+            const d = dateInput ? new Date(dateInput) : new Date();
+            return d.toLocaleString('vi-VN', {
+                timeZone: 'Asia/Ho_Chi_Minh',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        // 1. Nhận và hiển thị mảng số Realtime
         socket.on('new_telemetry', (data) => {
-            document.getElementById('current-val').innerText = data.sensor_value;
-            document.getElementById('last-update').innerText = `Cập nhật lúc: ${data.timestamp}`;
+            const vnTime = formatVNTime(data.created_at);
+            document.getElementById('last-update').innerText = `Cập nhật lúc: ${vnTime}`;
+            document.getElementById('raw-payload').innerText = data.raw_payload;
 
-            if (chart.data.labels.length > 20) {
-                chart.data.labels.shift();
-                chart.data.datasets[0].data.shift();
+            const container = document.getElementById('array-container');
+            container.innerHTML = '';
+
+            if (Array.isArray(data.array_data) && data.array_data.length > 0) {
+                data.array_data.forEach((val, idx) => {
+                    const badge = document.createElement('div');
+                    badge.className = "flex flex-col items-center bg-slate-800 border border-blue-500/50 px-4 py-2 rounded-lg shadow";
+                    badge.innerHTML = `
+                        <span class="text-[10px] text-gray-400 font-mono">Index [${idx}]</span>
+                        <span class="text-xl font-bold text-blue-400 font-mono">${val}</span>
+                    `;
+                    container.appendChild(badge);
+                });
+            } else {
+                container.innerHTML = `<span class="font-mono text-emerald-400 text-lg">${data.raw_payload}</span>`;
             }
-            chart.data.labels.push(data.timestamp);
-            chart.data.datasets[0].data.push(data.sensor_value);
-            chart.update();
 
+            // Đẩy dòng mới vào bảng log
             const tbody = document.getElementById('raw-table-body');
             const row = `<tr>
-                <td class="py-2.5 px-4 text-gray-400 font-mono text-xs">${data.timestamp}</td>
+                <td class="py-2.5 px-4 text-emerald-300 font-mono text-xs">${vnTime}</td>
                 <td class="py-2.5 px-4 font-mono text-blue-300">STM32H7A3_01</td>
-                <td class="py-2.5 px-4 font-bold text-white">${data.sensor_value}</td>
-                <td class="py-2.5 px-4 font-mono text-xs text-emerald-400">${data.raw_payload}</td>
+                <td class="py-2.5 px-4 font-mono text-xs text-gray-200">${data.raw_payload}</td>
             </tr>`;
             tbody.insertAdjacentHTML('afterbegin', row);
         });
 
+        // 2. Gửi giá trị số thập phân xuống STM32 (chấp nhận cả dấu . và ,)
         function sendControl() {
-            const val = document.getElementById('control-input').value;
-            if (val === '') return alert('Vui lòng nhập giá trị!');
-            socket.emit('send_control', parseInt(val));
-            document.getElementById('control-status').innerText = `Đã phát lệnh: ${val}`;
-            setTimeout(() => document.getElementById('control-status').innerText = '', 3000);
+            let inputVal = document.getElementById('control-input').value.trim();
+            const statusEl = document.getElementById('control-status');
+
+            if (!inputVal) {
+                alert('Vui lòng nhập giá trị số!');
+                return;
+            }
+
+            inputVal = inputVal.replace(',', '.');
+            const num = parseFloat(inputVal);
+            if (isNaN(num)) {
+                alert('Giá trị nhập vào không phải là số hợp lệ!');
+                return;
+            }
+
+            socket.emit('send_control', inputVal);
+            statusEl.className = "text-sm font-medium text-emerald-400";
+            statusEl.innerText = `Đã phát lệnh: ${inputVal}`;
+            setTimeout(() => statusEl.innerText = '', 3000);
         }
 
+        // 3. Tải toàn bộ lịch sử từ Database và hiển thị chuẩn Giờ Việt Nam
         async function fetchHistory() {
             const res = await fetch('/api/logs');
             const logs = await res.json();
             const tbody = document.getElementById('raw-table-body');
             tbody.innerHTML = logs.map(item => `
                 <tr>
-                    <td class="py-2.5 px-4 text-gray-400 font-mono text-xs">${new Date(item.created_at).toLocaleTimeString()}</td>
+                    <td class="py-2.5 px-4 text-emerald-300 font-mono text-xs">${formatVNTime(item.created_at)}</td>
                     <td class="py-2.5 px-4 font-mono text-blue-300">${item.device_id}</td>
-                    <td class="py-2.5 px-4 font-bold text-white">${item.sensor_value}</td>
-                    <td class="py-2.5 px-4 font-mono text-xs text-emerald-400">${item.raw_payload}</td>
+                    <td class="py-2.5 px-4 font-mono text-xs text-gray-200">${item.raw_payload}</td>
                 </tr>
             `).join('');
         }
