@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chặn lưu Cache trình duyệt -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
     <title>STM32H7A3ZI-Q Telemetry Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -25,16 +30,14 @@
 
         <!-- Khối hiển thị tức thời & Điều khiển -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <!-- Uplink Display -->
             <div class="bg-[#152238] p-6 rounded-xl border border-slate-700 shadow flex flex-col justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Dữ liệu thô tức thời (Uplink)</h2>
                     <div id="latest-val" class="text-5xl font-extrabold text-blue-400 my-3 font-mono">--</div>
                 </div>
-                <div id="last-update" class="text-xs text-gray-400 font-mono">Cập nhật lúc: Chờ dữ liệu...</div>
+                <div id="last-update" class="text-xs text-emerald-400 font-mono">Cập nhật lúc: Chờ dữ liệu...</div>
             </div>
 
-            <!-- Downlink Control -->
             <div class="bg-[#152238] p-6 rounded-xl border border-slate-700 shadow flex flex-col justify-between space-y-4">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Cập nhật giá trị điều khiển xuống STM32 (Downlink)</h2>
@@ -92,23 +95,24 @@
     <script>
         const socket = io();
 
-        // Chuyển chuỗi UTC từ Supabase sang chuẩn Giờ VN 24H
-        function formatDBTime(dbDateStr) {
-            if (!dbDateStr) return '--';
-            const d = new Date(dbDateStr.includes('Z') ? dbDateStr : dbDateStr + 'Z');
-            return d.toLocaleString('vi-VN', {
+        // Hàm ép chuyển đổi trực tiếp sang 24h chuẩn Việt Nam (HH:mm:ss DD/MM/YYYY)
+        function toVietnamTime(dateInput) {
+            const d = dateInput ? new Date(dateInput) : new Date();
+            return d.toLocaleString('en-GB', {
                 timeZone: 'Asia/Ho_Chi_Minh',
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
+                hour12: false
+            }).replace(',', '');
+        }
+
+        // Lấy riêng giờ 24h (HH:mm:ss) cho đồ thị
+        function toShortVNTime(dateInput) {
+            const d = dateInput ? new Date(dateInput) : new Date();
+            return d.toLocaleTimeString('en-GB', {
+                timeZone: 'Asia/Ho_Chi_Minh',
+                hour12: false
             });
         }
 
-        // Khởi tạo Chart.js
         const ctx = document.getElementById('telemetryChart').getContext('2d');
         const telemetryChart = new Chart(ctx, {
             type: 'line',
@@ -145,13 +149,14 @@
             }
         });
 
-        // 1. Nhận dữ liệu Realtime
         socket.on('new_telemetry', (data) => {
-            document.getElementById('latest-val').innerText = data.sensor_value;
-            document.getElementById('last-update').innerText = `Cập nhật lúc: ${data.time_vn}`;
+            const timeVN = data.time_vn || toVietnamTime();
+            const shortTime = data.time_short || toShortVNTime();
 
-            // Cập nhật trục X đồ thị với giờ ngắn
-            telemetryChart.data.labels.push(data.time_short);
+            document.getElementById('latest-val').innerText = data.sensor_value;
+            document.getElementById('last-update').innerText = `Cập nhật lúc: ${timeVN}`;
+
+            telemetryChart.data.labels.push(shortTime);
             telemetryChart.data.datasets[0].data.push(data.sensor_value);
             if (telemetryChart.data.labels.length > 15) {
                 telemetryChart.data.labels.shift();
@@ -159,10 +164,9 @@
             }
             telemetryChart.update();
 
-            // Thêm bản ghi mới vào đầu bảng
             const tbody = document.getElementById('raw-table-body');
             const row = `<tr>
-                <td class="py-2.5 px-4 text-emerald-400">${data.time_vn}</td>
+                <td class="py-2.5 px-4 text-emerald-400">${timeVN}</td>
                 <td class="py-2.5 px-4 text-blue-300">STM32H7A3_01</td>
                 <td class="py-2.5 px-4 text-white font-bold">${data.sensor_value}</td>
                 <td class="py-2.5 px-4 text-emerald-300">${data.raw_payload}</td>
@@ -170,7 +174,6 @@
             tbody.insertAdjacentHTML('afterbegin', row);
         });
 
-        // 2. Gửi lệnh điều khiển
         function sendControl() {
             let inputVal = document.getElementById('control-input').value.trim().replace(',', '.');
             const statusEl = document.getElementById('control-status');
@@ -186,7 +189,6 @@
             setTimeout(() => statusEl.innerText = '', 3000);
         }
 
-        // 3. Tải lịch sử Database
         async function fetchHistory() {
             try {
                 const res = await fetch('/api/logs');
@@ -195,7 +197,7 @@
 
                 tbody.innerHTML = logs.map(item => `
                     <tr>
-                        <td class="py-2.5 px-4 text-emerald-400">${formatDBTime(item.created_at)}</td>
+                        <td class="py-2.5 px-4 text-emerald-400">${toVietnamTime(item.created_at)}</td>
                         <td class="py-2.5 px-4 text-blue-300">${item.device_id}</td>
                         <td class="py-2.5 px-4 text-white font-bold">${item.sensor_value}</td>
                         <td class="py-2.5 px-4 text-emerald-300">${item.raw_payload}</td>
