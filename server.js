@@ -24,7 +24,7 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. Khởi tạo kết nối MQTT Broker
+// 2. Kết nối MQTT Broker
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -36,18 +36,28 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// 3. Nhận dữ liệu chu kỳ 5s từ SIM7680C gửi lên
+// 3. Nhận dữ liệu từ SIM7680C gửi lên
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
-        const sensorVal = parseFloat(rawStr) || 0;
+        let arrayData = [];
+
+        try {
+            if (rawStr.startsWith('[') && rawStr.endsWith(']')) {
+                arrayData = JSON.parse(rawStr);
+            } else {
+                arrayData = rawStr.split(',').map(item => item.trim()).filter(Boolean);
+            }
+        } catch (e) {
+            arrayData = [rawStr];
+        }
 
         console.log(`[MQTT] Nhan du lieu: ${rawStr}`);
 
-        // Lưu bản ghi vào PostgreSQL Database
+        // Lưu bản ghi vào PostgreSQL Database (Supabase)
         const { data, error } = await supabase
             .from('telemetry_logs')
-            .insert([{ device_id: 'STM32H7A3_01', sensor_value: sensorVal, raw_payload: rawStr }]);
+            .insert([{ device_id: 'STM32H7A3_01', sensor_value: parseFloat(arrayData[0]) || 0, raw_payload: rawStr }]);
 
         if (error) {
             console.error('[SUPABASE ERROR] Khong the luu vao DB:', error.message);
@@ -55,10 +65,10 @@ mqttClient.on('message', async (topic, message) => {
             console.log('[SUPABASE SUCCESS] Da luu thanh cong vao telemetry_logs');
         }
 
-        // Phát Realtime lên giao diện Web
+        // Bắn dữ liệu Realtime lên Web kèm mốc ISO thời gian
         io.emit('new_telemetry', {
-            timestamp: new Date().toLocaleTimeString(),
-            sensor_value: sensorVal,
+            created_at: new Date().toISOString(),
+            array_data: arrayData,
             raw_payload: rawStr
         });
     }
@@ -85,7 +95,7 @@ io.on('connection', (socket) => {
 
         await supabase
             .from('device_controls')
-            .update({ target_value: parseInt(newVal) || 0, updated_at: new Date() })
+            .update({ target_value: parseInt(newVal) || 0, updated_at: new Date().toISOString() })
             .eq('device_id', 'STM32H7A3_01');
 
         io.emit('control_updated', newVal);
