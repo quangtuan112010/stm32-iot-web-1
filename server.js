@@ -9,7 +9,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 1. Biến môi trường
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -24,7 +23,20 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. Kết nối MQTT HiveMQ Cloud
+// Hàm tạo chuỗi ngày giờ Việt Nam chuẩn 24h
+function getVietnamTimeString() {
+    return new Date().toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -36,41 +48,34 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// 3. Nhận dữ liệu Uplink từ STM32 / SIM7680C
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
         const sensorVal = parseFloat(rawStr) || 0;
+        const timeVN = getVietnamTimeString();
 
-        console.log(`[MQTT] Nhan du lieu: ${rawStr}`);
+        console.log(`[MQTT] [${timeVN}] Nhan du lieu: ${rawStr}`);
 
-        // Lưu vào Supabase (để created_at tự gán mặc định giờ VN theo bảng đã tạo)
-        const { data, error } = await supabase
+        // 1. Lưu vào Database Supabase
+        const { error } = await supabase
             .from('telemetry_logs')
-            .insert([{ device_id: 'STM32H7A3_01', sensor_value: sensorVal, raw_payload: rawStr }])
-            .select();
-
-        let recordedTime = new Date().toISOString();
-        if (data && data[0] && data[0].created_at) {
-            recordedTime = data[0].created_at;
-        }
+            .insert([{ device_id: 'STM32H7A3_01', sensor_value: sensorVal, raw_payload: rawStr }]);
 
         if (error) {
             console.error('[SUPABASE ERROR]:', error.message);
-        } else {
-            console.log('[SUPABASE SUCCESS] Da ghi vao DB:', recordedTime);
         }
 
-        // Bắn Socket.IO Realtime sang giao diện Web
+        // 2. Gửi chuỗi giờ Việt Nam định dạng sẵn về Web
         io.emit('new_telemetry', {
-            created_at: recordedTime,
+            time_vn: timeVN,
+            time_short: timeVN.split(' ')[0], // HH:mm:ss cho đồ thị
             sensor_value: sensorVal,
             raw_payload: rawStr
         });
     }
 });
 
-// 4. API lấy 100 bản ghi lịch sử
+// API trả về 100 bản ghi
 app.get('/api/logs', async (req, res) => {
     const { data, error } = await supabase
         .from('telemetry_logs')
@@ -83,7 +88,6 @@ app.get('/api/logs', async (req, res) => {
     res.json(data || []);
 });
 
-// 5. Gửi Downlink xuống STM32
 io.on('connection', (socket) => {
     socket.on('send_control', async (newVal) => {
         console.log(`[DOWNLINK] Phat lenh xuong STM32: ${newVal}`);
