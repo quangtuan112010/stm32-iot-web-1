@@ -38,7 +38,7 @@
             <div class="bg-[#152238] p-6 rounded-xl border border-slate-700 shadow flex flex-col justify-between space-y-4">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Cập nhật giá trị điều khiển xuống STM32 (Downlink)</h2>
-                    <p class="text-xs text-gray-400 mt-1">Nhập số nguyên hoặc số thập phân (chấp nhận cả dấu . và ,)</p>
+                    <p class="text-xs text-gray-400 mt-1">Nhập số nguyên hoặc số thập phân (VD: 25.45)</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
                     <input 
@@ -58,7 +58,7 @@
 
         <!-- Đồ thị biến thiên thời gian thực -->
         <div class="bg-[#152238] p-6 rounded-xl border border-slate-700 shadow space-y-3">
-            <h2 class="text-base font-bold text-gray-200">Đồ thị biến thiên thời gian thực</h2>
+            <h2 class="text-base font-bold text-gray-200">Đồ thị biến thiên thời gian thực (Giờ Việt Nam)</h2>
             <div class="relative h-64 md:h-72 w-full">
                 <canvas id="telemetryChart"></canvas>
             </div>
@@ -67,7 +67,7 @@
         <!-- Bảng nhật ký Database -->
         <div class="bg-[#152238] p-6 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex justify-between items-center">
-                <h2 class="text-base font-bold text-gray-200">Nhật ký dữ liệu thô (PostgreSQL Database Logs)</h2>
+                <h2 class="text-base font-bold text-gray-200">Nhật ký dữ liệu thô (PostgreSQL Database Logs - Giờ VN)</h2>
                 <button onclick="fetchHistory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3.5 py-1.5 rounded-lg text-gray-200 transition">
                     Làm mới bảng
                 </button>
@@ -92,35 +92,20 @@
     <script>
         const socket = io();
 
-        // Định dạng thời gian Việt Nam 24H chuẩn: HH:mm:ss DD/MM/YYYY
-        function formatVNTime(input) {
-            let d;
-            if (!input) {
-                d = new Date();
-            } else if (typeof input === 'string' && input.includes(' ')) {
-                // Xử lý chuỗi timestamp không múi giờ từ PostgreSQL: "2026-08-24 00:14:08"
-                d = new Date(input.replace(' ', 'T'));
-            } else {
-                d = new Date(input);
-            }
-
-            if (isNaN(d.getTime())) return input;
-
-            const pad = (n) => n.toString().padStart(2, '0');
-            const hours = pad(d.getHours());
-            const minutes = pad(d.getMinutes());
-            const seconds = pad(d.getSeconds());
-            const day = pad(d.getDate());
-            const month = pad(d.getMonth() + 1);
-            const year = d.getFullYear();
-
-            return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
-        }
-
-        // Lấy giờ 24h rút gọn cho trục X đồ thị: HH:mm:ss
-        function getShortTime(input) {
-            const full = formatVNTime(input);
-            return full.split(' ')[0] || full;
+        // Chuyển chuỗi UTC từ Supabase sang chuẩn Giờ VN 24H
+        function formatDBTime(dbDateStr) {
+            if (!dbDateStr) return '--';
+            const d = new Date(dbDateStr.includes('Z') ? dbDateStr : dbDateStr + 'Z');
+            return d.toLocaleString('vi-VN', {
+                timeZone: 'Asia/Ho_Chi_Minh',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
         }
 
         // Khởi tạo Chart.js
@@ -160,16 +145,13 @@
             }
         });
 
-        // 1. Nhận dữ liệu Realtime từ Socket
+        // 1. Nhận dữ liệu Realtime
         socket.on('new_telemetry', (data) => {
-            const timeVN = formatVNTime(data.created_at);
-            const shortTime = getShortTime(data.created_at);
-
             document.getElementById('latest-val').innerText = data.sensor_value;
-            document.getElementById('last-update').innerText = `Cập nhật lúc: ${timeVN}`;
+            document.getElementById('last-update').innerText = `Cập nhật lúc: ${data.time_vn}`;
 
-            // Cập nhật đồ thị (giữ tối đa 15 điểm)
-            telemetryChart.data.labels.push(shortTime);
+            // Cập nhật trục X đồ thị với giờ ngắn
+            telemetryChart.data.labels.push(data.time_short);
             telemetryChart.data.datasets[0].data.push(data.sensor_value);
             if (telemetryChart.data.labels.length > 15) {
                 telemetryChart.data.labels.shift();
@@ -177,10 +159,10 @@
             }
             telemetryChart.update();
 
-            // Thêm dòng mới vào đầu bảng
+            // Thêm bản ghi mới vào đầu bảng
             const tbody = document.getElementById('raw-table-body');
             const row = `<tr>
-                <td class="py-2.5 px-4 text-emerald-400">${timeVN}</td>
+                <td class="py-2.5 px-4 text-emerald-400">${data.time_vn}</td>
                 <td class="py-2.5 px-4 text-blue-300">STM32H7A3_01</td>
                 <td class="py-2.5 px-4 text-white font-bold">${data.sensor_value}</td>
                 <td class="py-2.5 px-4 text-emerald-300">${data.raw_payload}</td>
@@ -188,29 +170,23 @@
             tbody.insertAdjacentHTML('afterbegin', row);
         });
 
-        // 2. Gửi lệnh điều khiển xuống STM32
+        // 2. Gửi lệnh điều khiển
         function sendControl() {
-            let inputVal = document.getElementById('control-input').value.trim();
+            let inputVal = document.getElementById('control-input').value.trim().replace(',', '.');
             const statusEl = document.getElementById('control-status');
 
-            if (!inputVal) {
-                alert('Vui lòng nhập giá trị!');
-                return;
-            }
-
-            inputVal = inputVal.replace(',', '.');
-            if (isNaN(parseFloat(inputVal))) {
-                alert('Giá trị nhập vào không hợp lệ!');
+            if (!inputVal || isNaN(parseFloat(inputVal))) {
+                alert('Vui lòng nhập số hợp lệ!');
                 return;
             }
 
             socket.emit('send_control', inputVal);
             statusEl.className = "text-xs font-semibold text-emerald-400";
-            statusEl.innerText = `Đã phát: ${inputVal}`;
+            statusEl.innerText = `Đã gửi: ${inputVal}`;
             setTimeout(() => statusEl.innerText = '', 3000);
         }
 
-        // 3. Tải lịch sử dữ liệu từ Database
+        // 3. Tải lịch sử Database
         async function fetchHistory() {
             try {
                 const res = await fetch('/api/logs');
@@ -219,7 +195,7 @@
 
                 tbody.innerHTML = logs.map(item => `
                     <tr>
-                        <td class="py-2.5 px-4 text-emerald-400">${formatVNTime(item.created_at)}</td>
+                        <td class="py-2.5 px-4 text-emerald-400">${formatDBTime(item.created_at)}</td>
                         <td class="py-2.5 px-4 text-blue-300">${item.device_id}</td>
                         <td class="py-2.5 px-4 text-white font-bold">${item.sensor_value}</td>
                         <td class="py-2.5 px-4 text-emerald-300">${item.raw_payload}</td>
