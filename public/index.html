@@ -33,9 +33,9 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Nạp độ kiềm Float32 -->
+                <!-- Nạp độ kiềm Float32 (Hỗ trợ số âm như -1) -->
                 <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <input type="text" id="alk-input" placeholder="VD: 120.50" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-36 focus:outline-none focus:border-blue-500">
+                    <input type="text" id="alk-input" placeholder="VD: 120.50 hoặc -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-36 focus:outline-none focus:border-blue-500">
                     <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">Nạp Độ Kiềm (Float32)</button>
                 </div>
                 <!-- Xóa Flash -->
@@ -171,11 +171,13 @@
             let rawVal = document.getElementById('alk-input').value.trim().replace(',', '.');
             let alkFloat = parseFloat(rawVal);
 
-            if (isNaN(alkFloat) || alkFloat <= 0) {
-                alert('Vui lòng nhập độ kiềm hợp lệ (VD: 120.50)!');
+            // Cho phép số âm (cụ thể là -1) hoặc số dương > 0
+            if (isNaN(alkFloat) || (alkFloat < 0 && alkFloat !== -1)) {
+                alert('Vui lòng nhập độ kiềm hợp lệ (VD: 120.50 hoặc -1 để reset hệ thống)!');
                 return;
             }
 
+            // Gửi lệnh chuẩn Float32 qua MQTT Downlink (VD: ALK,-1.00 hoặc ALK,120.50)
             const cmd = `ALK,${alkFloat.toFixed(2)}`;
             socket.emit('send_control', cmd);
             document.getElementById('alk-input').value = '';
