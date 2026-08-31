@@ -22,25 +22,25 @@
             </div>
         </header>
 
-        <!-- Bảng điều khiển Downlink (Web -> STM32) -->
+        <!-- Khối điều khiển Downlink -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Downlink Commands)</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Cập nhật độ kiềm -->
+                <!-- Nạp độ kiềm Float32 -->
                 <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <input type="text" id="alk-input" placeholder="VD: 120.50" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-36 focus:outline-none focus:border-blue-500">
-                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">Nạp Độ Kiềm (ALK)</button>
+                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">Nạp Độ Kiềm (Float32)</button>
                 </div>
-                <!-- Xóa trắng Flash -->
+                <!-- Xóa Flash -->
                 <div class="flex items-center justify-between bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <span class="text-xs text-gray-400">Xóa bộ đệm lịch sử học máy</span>
+                    <span class="text-xs text-gray-400">Xóa bộ đệm lịch sử học máy PINN</span>
                     <button onclick="sendWipe()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">WIPE FLASH</button>
                 </div>
             </div>
             <div id="control-feedback" class="text-xs font-semibold text-emerald-400"></div>
         </div>
 
-        <!-- Khối hiển thị thông số Realtime (Cards) -->
+        <!-- Khối hiển thị thông số cảm biến chính -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
                 <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
@@ -60,7 +60,7 @@
             </div>
         </div>
 
-        <!-- Khối thông số quản trị sinh thái & rủi ro -->
+        <!-- Khối thông số trạng thái & cờ thuật toán -->
         <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Độ kiềm (alk)</div>
@@ -88,7 +88,7 @@
             </div>
         </div>
 
-        <!-- Bảng nhật ký dữ liệu (Database Logs) -->
+        <!-- Bảng nhật ký cơ sở dữ liệu -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-base font-bold text-gray-200">Nhật ký dữ liệu thời gian thực (Database Logs)</h2>
@@ -121,7 +121,7 @@
     <script>
         const socket = io();
 
-        // 1. Nhận dữ liệu Realtime từ Socket
+        // Cập nhật Realtime khi có gói tin mới
         socket.on('new_telemetry', (packet) => {
             const d = packet.data;
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
@@ -149,12 +149,17 @@
         });
 
         function sendAlkalinity() {
-            const val = document.getElementById('alk-input').value.trim();
-            if (!val || isNaN(val)) {
-                alert('Vui lòng nhập giá trị số hợp lệ!');
+            let rawVal = document.getElementById('alk-input').value.trim().replace(',', '.');
+            let alkFloat = parseFloat(rawVal);
+
+            if (isNaN(alkFloat) || alkFloat <= 0) {
+                alert('Vui lòng nhập độ kiềm hợp lệ (VD: 120.50)!');
                 return;
             }
-            socket.emit('send_control', `ALK,${val}`);
+
+            // Gửi lệnh chuẩn Float32
+            const cmd = `ALK,${alkFloat.toFixed(2)}`;
+            socket.emit('send_control', cmd);
             document.getElementById('alk-input').value = '';
         }
 
@@ -172,7 +177,7 @@
                 <td class="py-2 px-3 text-teal-400">${Number(d.S).toFixed(2)}</td>
                 <td class="py-2 px-3 text-emerald-400">${Number(d.pH).toFixed(2)}</td>
                 <td class="py-2 px-3 text-cyan-400">${Number(d.DO).toFixed(2)}</td>
-                <td class="py-2 px-3 text-white">${Number(d.alk).toFixed(2)}</td>
+                <td class="py-2 px-3 text-white font-bold">${Number(d.alk).toFixed(2)}</td>
                 <td class="py-2 px-3 text-amber-400">${Number(d.btri).toFixed(1)}</td>
                 <td class="py-2 px-3 ${d.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${d.fan}</td>
                 <td class="py-2 px-3 text-rose-400">0x${Number(d.il).toString(16).toUpperCase()}</td>
@@ -194,7 +199,7 @@
                         <td class="py-2 px-3 text-teal-400">${Number(item.S).toFixed(2)}</td>
                         <td class="py-2 px-3 text-emerald-400">${Number(item.pH).toFixed(2)}</td>
                         <td class="py-2 px-3 text-cyan-400">${Number(item.DO).toFixed(2)}</td>
-                        <td class="py-2 px-3 text-white">${Number(item.alk).toFixed(2)}</td>
+                        <td class="py-2 px-3 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
                         <td class="py-2 px-3 text-amber-400">${Number(item.btri).toFixed(1)}</td>
                         <td class="py-2 px-3 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
                         <td class="py-2 px-3 text-rose-400">0x${Number(item.il).toString(16).toUpperCase()}</td>
