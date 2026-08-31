@@ -23,7 +23,6 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Hàm tạo chuỗi ngày giờ Việt Nam chuẩn 24h
 function getVietnamTimeString() {
     return new Date().toLocaleString('vi-VN', {
         timeZone: 'Asia/Ho_Chi_Minh',
@@ -48,40 +47,51 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
+// Nhận chuỗi JSON từ STM32 / Arduino
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
-        const sensorVal = parseFloat(rawStr) || 0;
         const timeVN = getVietnamTimeString();
+        let jsonData = {};
 
-        console.log(`[MQTT] [${timeVN}] Nhan du lieu: ${rawStr}`);
+        try {
+            jsonData = JSON.parse(rawStr);
+        } catch (e) {
+            jsonData = { raw: rawStr };
+        }
 
-        // 1. Lưu vào Database Supabase
+        console.log(`[MQTT] [${timeVN}] Nhan JSON:`, jsonData);
+
+        // Lưu trực tiếp các trường vào Database
         const { error } = await supabase
             .from('telemetry_logs')
-            .insert([{ device_id: 'STM32H7A3_01', sensor_value: sensorVal, raw_payload: rawStr }]);
+            .insert([{
+                do: jsonData.do || 0,
+                ph: jsonData.ph || 0,
+                t: jsonData.t || 0,
+                salinity: jsonData.salinity || 0,
+                kiem: jsonData.kiem || 0
+            }]);
 
         if (error) {
             console.error('[SUPABASE ERROR]:', error.message);
         }
 
-        // 2. Gửi chuỗi giờ Việt Nam định dạng sẵn về Web
+        // Bắn dữ liệu chuẩn JSON sang Web qua Socket.io
         io.emit('new_telemetry', {
             time_vn: timeVN,
-            time_short: timeVN.split(' ')[0], // HH:mm:ss cho đồ thị
-            sensor_value: sensorVal,
-            raw_payload: rawStr
+            data: jsonData
         });
     }
 });
 
-// API trả về 100 bản ghi
+// API trả về lịch sử dưới dạng mảng JSON thuần túy
 app.get('/api/logs', async (req, res) => {
     const { data, error } = await supabase
         .from('telemetry_logs')
-        .select('*')
+        .select('do, ph, t, salinity, kiem, created_at')
         .order('id', { ascending: false })
-        .limit(100);
+        .limit(50);
     if (error) {
         return res.status(500).json({ error: error.message });
     }
@@ -96,7 +106,7 @@ io.on('connection', (socket) => {
         await supabase
             .from('device_controls')
             .update({ target_value: parseInt(newVal) || 0 })
-            .eq('device_id', 'STM32H7A3_01');
+            .eq('id', 1);
 
         io.emit('control_updated', newVal);
     });
