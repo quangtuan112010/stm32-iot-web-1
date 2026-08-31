@@ -22,9 +22,16 @@
             </div>
         </header>
 
-        <!-- Khối điều khiển Downlink -->
+        <!-- Khối điều khiển Downlink có bảo mật mật khẩu -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
-            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Downlink Commands)</h2>
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Yêu cầu mật khẩu bảo mật)</h2>
+            
+            <!-- Ô nhập mật khẩu chung cho các lệnh điều khiển -->
+            <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                <span class="text-xs text-gray-400 font-medium">Mật khẩu hệ thống:</span>
+                <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Nạp độ kiềm Float32 -->
                 <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -120,6 +127,7 @@
 
     <script>
         const socket = io();
+        const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
 
         // Cập nhật Realtime khi có gói tin mới
         socket.on('new_telemetry', (packet) => {
@@ -148,7 +156,18 @@
             setTimeout(() => fb.innerText = '', 4000);
         });
 
+        function verifyPassword() {
+            const inputPass = document.getElementById('ctrl-password').value;
+            if (inputPass !== CORRECT_PASSWORD) {
+                alert('Mật khẩu bảo mật không chính xác! Vui lòng thử lại.');
+                return false;
+            }
+            return true;
+        }
+
         function sendAlkalinity() {
+            if (!verifyPassword()) return;
+
             let rawVal = document.getElementById('alk-input').value.trim().replace(',', '.');
             let alkFloat = parseFloat(rawVal);
 
@@ -157,13 +176,14 @@
                 return;
             }
 
-            // Gửi lệnh chuẩn Float32
             const cmd = `ALK,${alkFloat.toFixed(2)}`;
             socket.emit('send_control', cmd);
             document.getElementById('alk-input').value = '';
         }
 
         function sendWipe() {
+            if (!verifyPassword()) return;
+
             if (confirm('Bạn có chắc chắn muốn xóa trắng lịch sử Flash trên thiết bị?')) {
                 socket.emit('send_control', 'WIPE');
             }
