@@ -31,7 +31,7 @@
             </div>
         </header>
 
-        <!-- Bảng điều khiển Downlink có bảo mật mật khẩu -->
+        <!-- Bảng điều khiển Downlink -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Yêu cầu mật khẩu)</h2>
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -108,7 +108,7 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ (DỄ CHẠM & TƯƠNG TÁC) ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ (ĐẦY ĐỦ ĐƠN VỊ THỜI GIAN) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
@@ -116,14 +116,16 @@
                     <p class="text-xs text-gray-400" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
                 </div>
                 
-                <!-- Bộ chọn khoảng thời gian -->
+                <!-- Bộ nút chọn nhanh & Bộ chọn tùy biến đầy đủ Tháng, Năm -->
                 <div class="flex flex-wrap items-center gap-2">
                     <button onclick="setChartPreset(30, 'minute', '30 phút', this)" class="chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
                     <button onclick="setChartPreset(5, 'hour', '5 giờ', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
                     <button onclick="setChartPreset(1, 'day', '1 ngày', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Ngày</button>
                     <button onclick="setChartPreset(1, 'week', '1 tuần', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tuần</button>
                     <button onclick="setChartPreset(1, 'month', '1 tháng', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
+                    <button onclick="setChartPreset(1, 'year', '1 năm', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Năm</button>
                     
+                    <!-- Nhập số lượng + chọn đơn vị Phút / Giờ / Ngày / Tuần / Tháng / Năm -->
                     <div class="flex items-center gap-1 bg-[#0b1329] p-1 rounded-lg border border-slate-700">
                         <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none">
                         <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white focus:outline-none">
@@ -131,6 +133,8 @@
                             <option value="hour">Giờ</option>
                             <option value="day">Ngày</option>
                             <option value="week">Tuần</option>
+                            <option value="month">Tháng</option>
+                            <option value="year">Năm</option>
                         </select>
                         <button onclick="applyCustomChart()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1 rounded transition">Xem</button>
                     </div>
@@ -203,7 +207,7 @@
                             <th class="py-2.5 px-2">CS</th>
                         </tr>
                     </thead>
-                    <tbody id="db-table-body" class="divide-y divide-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
+                    <tbody id="db-table-body" class="divide-y border-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
                 </table>
             </div>
 
@@ -227,7 +231,6 @@
         let currentLimit = 1000;
         let totalPages = 1;
 
-        // Cấu hình Chart.js siêu nhạy khi chạm/lướt ngón tay
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
@@ -250,20 +253,20 @@
                             borderWidth: 2, 
                             tension: 0.25, 
                             fill: true,
-                            pointRadius: 0,              // Ẩn chấm tròn mặc định để đường mượt mà
-                            pointHoverRadius: 6,         // Phóng to chấm tròn khi chạm vào
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
                             pointHoverBackgroundColor: cfg.color,
                             pointHoverBorderColor: '#ffffff',
                             pointHoverBorderWidth: 2,
-                            pointHitRadius: 35           // Vùng bắt chạm siêu rộng (chạm lướt qua là bắt ngay)
+                            pointHitRadius: 35
                         }] 
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         interaction: {
-                            mode: 'index',              // Bắt trúng mốc dọc bất kể ngón tay chạm cao hay thấp
-                            intersect: false            // Không cần chạm trúng điểm pixel
+                            mode: 'index',
+                            intersect: false
                         },
                         scales: {
                             x: { 
@@ -305,7 +308,18 @@
                 const res = await fetch(`/api/chart-data?value=${currentChartVal}&unit=${currentChartUnit}`);
                 const data = await res.json();
                 
-                const labels = data.map(d => new Date(d.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+                // Tự động điều chỉnh định dạng nhãn theo dải thời gian
+                const isLongRange = ['day', 'week', 'month', 'year'].includes(currentChartUnit);
+                const labels = data.map(d => {
+                    const date = new Date(d.created_at);
+                    if (currentChartUnit === 'month' || currentChartUnit === 'year') {
+                        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    } else if (isLongRange) {
+                        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    } else {
+                        return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    }
+                });
                 
                 charts['chartT'].data.labels = labels;
                 charts['chartT'].data.datasets[0].data = data.map(d => d.T);
