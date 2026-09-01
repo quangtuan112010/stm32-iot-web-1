@@ -37,7 +37,7 @@ function getVietnamTimeString() {
     });
 }
 
-// Kết nối MQTT Broker qua TLS
+// Kết nối MQTT Broker qua TLS (Port 8883)
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -49,7 +49,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin JSON Uplink
+// Nhận gói tin JSON Uplink từ STM32 / Arduino
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -94,7 +94,7 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ (Bao trùm toàn bộ dải thời gian đến tận hiện tại)
+// 1. API lấy dữ liệu biểu đồ (Vượt qua giới hạn 1000 dòng của Supabase để lấy trọn vẹn 12h, 1 ngày, 1 tuần)
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { value = 30, unit = 'minute' } = req.query;
@@ -112,15 +112,37 @@ app.get('/api/chart-data', async (req, res) => {
         const pad = (n) => String(n).padStart(2, '0');
         const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
 
-        // Lấy dữ liệu từ mới nhất trở về trước (lên tới 4000 điểm) để đảm bảo có thời điểm hiện tại
-        const { data, error } = await supabase
-            .from('telemetry_logs')
-            .select('T, S, pH, DO, created_at')
-            .gte('created_at', cutoffStr)
-            .order('id', { ascending: false })
-            .limit(4000);
+        // Đọc song song nhiều phân vùng (mỗi phân vùng 1000 dòng) để lấy tới 10.000 dòng
+        const CHUNK_SIZE = 1000;
+        const MAX_CHUNKS = 10; // Tối đa 10.000 bản ghi (~28 tiếng)
+        const fetchPromises = [];
 
-        if (error || !data || data.length === 0) {
+        for (let i = 0; i < MAX_CHUNKS; i++) {
+            const from = i * CHUNK_SIZE;
+            const to = from + CHUNK_SIZE - 1;
+            fetchPromises.push(
+                supabase
+                    .from('telemetry_logs')
+                    .select('T, S, pH, DO, created_at')
+                    .gte('created_at', cutoffStr)
+                    .order('id', { ascending: false })
+                    .range(from, to)
+            );
+        }
+
+        const results = await Promise.all(fetchPromises);
+        let allData = [];
+
+        for (const r of results) {
+            if (r.data && r.data.length > 0) {
+                allData = allData.concat(r.data);
+                if (r.data.length < CHUNK_SIZE) break; // Đã lấy hết dữ liệu trong khoảng thời gian
+            } else {
+                break;
+            }
+        }
+
+        if (allData.length === 0) {
             const fallback = await supabase
                 .from('telemetry_logs')
                 .select('T, S, pH, DO, created_at')
@@ -129,15 +151,15 @@ app.get('/api/chart-data', async (req, res) => {
             return res.json(fallback.data ? fallback.data.reverse() : []);
         }
 
-        // Lấy mẫu đều để giữ biểu đồ mượt mà (khoảng 300 điểm trải dài từ quá khứ đến hiện tại)
-        let sampled = data;
+        // Lấy mẫu đều khoảng 300 điểm trải dài trên toàn bộ 12 giờ
+        let sampled = allData;
         const maxPoints = 300;
-        if (data.length > maxPoints) {
-            const step = Math.ceil(data.length / maxPoints);
-            sampled = data.filter((_, idx) => idx % step === 0);
+        if (allData.length > maxPoints) {
+            const step = Math.ceil(allData.length / maxPoints);
+            sampled = allData.filter((_, idx) => idx % step === 0);
         }
 
-        // Đảo ngược lại theo thứ tự thời gian từ trái sang phải (đến tận hiện tại)
+        // Đảo ngược lại theo thứ tự thời gian từ quá khứ đến hiện tại
         res.json(sampled.reverse());
     } catch (err) {
         res.status(500).json({ error: err.message });
