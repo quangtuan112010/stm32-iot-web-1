@@ -179,8 +179,9 @@
                         </select>
                     </div>
 
-                    <button onclick="exportFilteredCSV()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-600">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <!-- Nút mở cửa sổ Tải CSV -->
+                    <button onclick="openCsvModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-emerald-600 shadow">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Tải CSV (Excel)
                     </button>
                 </div>
@@ -237,6 +238,69 @@
 
     </div>
 
+    <!-- ================= MODAL TÙY CHỌN TẢI CSV ================= -->
+    <div id="csv-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Tùy Chọn Tải File CSV (Excel)
+                </h3>
+                <button onclick="closeCsvModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-3.5 text-xs">
+                <!-- Lựa chọn 1: Tải tất cả -->
+                <label class="flex items-start gap-3 p-3 bg-[#0b1329] border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
+                    <input type="radio" name="export_type" value="all" checked class="mt-0.5 text-emerald-500 focus:ring-0">
+                    <div>
+                        <div class="font-bold text-gray-100">1. Tải tất cả dữ liệu (Toàn bộ Database)</div>
+                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ lịch sử đo từ trước đến nay.</div>
+                    </div>
+                </label>
+
+                <!-- Lựa chọn 2: Tải theo số lượng bản ghi gần nhất -->
+                <label class="flex items-start gap-3 p-3 bg-[#0b1329] border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
+                    <input type="radio" name="export_type" value="limit" class="mt-0.5 text-emerald-500 focus:ring-0">
+                    <div class="w-full">
+                        <div class="font-bold text-gray-100">2. Tải theo số lượng bản ghi gần nhất</div>
+                        <div class="mt-2 flex items-center gap-2">
+                            <span>Số dòng:</span>
+                            <input type="number" id="csv-limit-val" value="1000" min="10" max="50000" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs w-28 focus:outline-none focus:border-emerald-500">
+                            <span class="text-gray-400">(VD: 500, 1000, 5000)</span>
+                        </div>
+                    </div>
+                </label>
+
+                <!-- Lựa chọn 3: Tải theo khoảng thời gian -->
+                <label class="flex items-start gap-3 p-3 bg-[#0b1329] border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
+                    <input type="radio" name="export_type" value="range" class="mt-0.5 text-emerald-500 focus:ring-0">
+                    <div class="w-full space-y-2">
+                        <div class="font-bold text-gray-100">3. Tải theo mốc thời gian tùy chọn</div>
+                        <div class="grid grid-cols-1 gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 text-gray-400">Từ:</span>
+                                <input type="datetime-local" id="csv-from-time" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs w-full focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 text-gray-400">Đến:</span>
+                                <input type="datetime-local" id="csv-to-time" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs w-full focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-700">
+                <button onclick="closeCsvModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs rounded text-gray-200 transition">Hủy</button>
+                <button onclick="confirmExportCsv()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white rounded transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Tải Xuống Ngay
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
@@ -248,7 +312,6 @@
         let currentLimit = 1000;
         let totalPages = 1;
 
-        // Biến lưu trạng thái tìm kiếm thời gian
         let filterFromTime = '';
         let filterToTime = '';
 
@@ -332,9 +395,7 @@
                 const isLongRange = ['day', 'week', 'month', 'year'].includes(currentChartUnit);
                 const labels = data.map(d => {
                     const date = new Date(d.created_at);
-                    if (currentChartUnit === 'month' || currentChartUnit === 'year') {
-                        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    } else if (isLongRange) {
+                    if (currentChartUnit === 'month' || currentChartUnit === 'year' || isLongRange) {
                         return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                     } else {
                         return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -383,7 +444,6 @@
             setChartPreset(val, unit, `${val} ${unitText}`, null);
         }
 
-        // Tải dữ liệu phân trang có tích hợp lọc thời gian
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -394,7 +454,7 @@
                 const result = await res.json();
                 
                 totalPages = result.totalPages || 1;
-                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi ${filterFromTime || filterToTime ? '(Đang lọc theo thời gian)' : ''}`;
+                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi ${filterFromTime || filterToTime ? '(Đang lọc)' : ''}`;
                 document.getElementById('page-indicator').innerText = `Trang ${result.page} / ${totalPages}`;
                 
                 document.getElementById('btn-prev').disabled = (currentPage <= 1);
@@ -429,13 +489,12 @@
             }
         }
 
-        // Xử lý nút Tìm kiếm theo ngày giờ
         function applyDateFilter() {
             const fromVal = document.getElementById('filter-from').value;
             const toVal = document.getElementById('filter-to').value;
 
             if (!fromVal && !toVal) {
-                alert('Vui lòng chọn ít nhất một mốc thời gian (Từ hoặc Đến)!');
+                alert('Vui lòng chọn ít nhất một mốc thời gian!');
                 return;
             }
 
@@ -445,7 +504,6 @@
             fetchPagedLogs();
         }
 
-        // Xử lý nút Xóa lọc
         function resetDateFilter() {
             document.getElementById('filter-from').value = '';
             document.getElementById('filter-to').value = '';
@@ -455,12 +513,36 @@
             fetchPagedLogs();
         }
 
-        // Tải file CSV có áp dụng bộ lọc thời gian nếu có
-        function exportFilteredCSV() {
-            let url = '/api/export-csv?';
-            if (filterFromTime) url += `&from_time=${encodeURIComponent(filterFromTime)}`;
-            if (filterToTime) url += `&to_time=${encodeURIComponent(filterToTime)}`;
-            window.open(url, '_blank');
+        // ================= XỬ LÝ MODAL TẢI CSV =================
+        function openCsvModal() {
+            document.getElementById('csv-modal').classList.remove('hidden');
+        }
+
+        function closeCsvModal() {
+            document.getElementById('csv-modal').classList.add('hidden');
+        }
+
+        function confirmExportCsv() {
+            const selectedType = document.querySelector('input[name="export_type"]:checked').value;
+            let exportUrl = '/api/export-csv?mode=' + selectedType;
+
+            if (selectedType === 'limit') {
+                const limitVal = parseInt(document.getElementById('csv-limit-val').value) || 1000;
+                exportUrl += `&limit=${limitVal}`;
+            } else if (selectedType === 'range') {
+                const fromVal = document.getElementById('csv-from-time').value;
+                const toVal = document.getElementById('csv-to-time').value;
+
+                if (!fromVal && !toVal) {
+                    alert('Vui lòng chọn ít nhất một mốc thời gian (Từ hoặc Đến)!');
+                    return;
+                }
+                if (fromVal) exportUrl += `&from_time=${encodeURIComponent(fromVal.replace('T', ' ') + ':00')}`;
+                if (toVal) exportUrl += `&to_time=${encodeURIComponent(toVal.replace('T', ' ') + ':59')}`;
+            }
+
+            closeCsvModal();
+            window.open(exportUrl, '_blank');
         }
 
         function prevPage() { if (currentPage > 1) { currentPage--; fetchPagedLogs(); } }
@@ -513,7 +595,6 @@
 
             document.getElementById('val-cs').innerText = d.cs;
 
-            // Nếu đang xem trang 1 và không bật bộ lọc thì mới tự động chèn dòng mới
             if (currentPage === 1 && !filterFromTime && !filterToTime) {
                 fetchPagedLogs();
             }
