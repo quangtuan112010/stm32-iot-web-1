@@ -8,7 +8,7 @@
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="bg-[#0b1329] text-gray-100 p-4 md:p-6 font-sans">
-    <div class="max-w-6xl mx-auto space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- Header -->
         <header class="flex justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md">
@@ -26,14 +26,13 @@
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Yêu cầu mật khẩu bảo mật)</h2>
             
-            <!-- Ô nhập mật khẩu chung cho các lệnh điều khiển -->
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                 <span class="text-xs text-gray-400 font-medium">Mật khẩu hệ thống:</span>
                 <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Nạp độ kiềm Float32 (Hỗ trợ số âm như -1) -->
+                <!-- Nạp độ kiềm Float32 (Hỗ trợ số âm -1) -->
                 <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <input type="text" id="alk-input" placeholder="VD: 120.50 hoặc -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-36 focus:outline-none focus:border-blue-500">
                     <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">Nạp Độ Kiềm (Float32)</button>
@@ -47,7 +46,7 @@
             <div id="control-feedback" class="text-xs font-semibold text-emerald-400"></div>
         </div>
 
-        <!-- Khối hiển thị thông số cảm biến chính -->
+        <!-- Khối 4 cảm biến vật lý chính -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
                 <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
@@ -67,55 +66,65 @@
             </div>
         </div>
 
-        <!-- Khối thông số trạng thái & cờ thuật toán -->
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <!-- Khối 8 thông số trạng thái, rủi ro, cờ bảo vệ & AI (Đầy đủ 12 trường) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Độ kiềm (alk)</div>
-                <div id="val-alk" class="text-lg font-bold text-white mt-1 font-mono">--</div>
+                <div id="val-alk" class="text-base font-bold text-white mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Rủi ro (btri)</div>
-                <div id="val-btri" class="text-lg font-bold text-amber-400 mt-1 font-mono">--</div>
+                <div id="val-btri" class="text-base font-bold text-amber-400 mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Quạt sục khí (fan)</div>
-                <div id="val-fan" class="text-lg font-bold mt-1 font-mono">--</div>
+                <div class="text-[11px] text-gray-400">Quạt (fan)</div>
+                <div id="val-fan" class="text-base font-bold mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Khóa liên động (il)</div>
-                <div id="val-il" class="text-lg font-bold text-rose-400 mt-1 font-mono">--</div>
+                <div id="val-il" class="text-base font-bold text-rose-400 mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Miền sinh thái (dom)</div>
-                <div id="val-dom" class="text-lg font-bold text-purple-400 mt-1 font-mono">--</div>
+                <div id="val-dom" class="text-base font-bold text-purple-400 mt-1 font-mono">--</div>
+            </div>
+            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
+                <div class="text-[11px] text-gray-400">Sinh tồn (surv)</div>
+                <div id="val-surv" class="text-base font-bold mt-1 font-mono">--</div>
+            </div>
+            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
+                <div class="text-[11px] text-gray-400">Thích nghi (adapt)</div>
+                <div id="val-adapt" class="text-base font-bold text-indigo-400 mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Khởi động lạnh (cs)</div>
-                <div id="val-cs" class="text-lg font-bold text-blue-300 mt-1 font-mono">--</div>
+                <div id="val-cs" class="text-base font-bold text-blue-300 mt-1 font-mono">--</div>
             </div>
         </div>
 
-        <!-- Bảng nhật ký cơ sở dữ liệu -->
+        <!-- Bảng nhật ký cơ sở dữ liệu hiển thị toàn bộ 12 trường -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex justify-between items-center">
-                <h2 class="text-base font-bold text-gray-200">Nhật ký dữ liệu thời gian thực (Database Logs)</h2>
+                <h2 class="text-base font-bold text-gray-200">Nhật ký dữ liệu thời gian thực (12 Trường chuẩn đặc tả)</h2>
                 <button onclick="fetchHistory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3.5 py-1.5 rounded-lg text-gray-200 transition">Làm mới bảng</button>
             </div>
             <div class="overflow-x-auto max-h-80 overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
                         <tr>
-                            <th class="py-3 px-3">Thời gian (VN)</th>
-                            <th class="py-3 px-3">T (°C)</th>
-                            <th class="py-3 px-3">S (‰)</th>
-                            <th class="py-3 px-3">pH</th>
-                            <th class="py-3 px-3">DO</th>
-                            <th class="py-3 px-3">Alk</th>
-                            <th class="py-3 px-3">Btri</th>
-                            <th class="py-3 px-3">Fan</th>
-                            <th class="py-3 px-3">IL</th>
-                            <th class="py-3 px-3">DOM</th>
-                            <th class="py-3 px-3">CS</th>
+                            <th class="py-3 px-2">Thời gian (VN)</th>
+                            <th class="py-3 px-2">T (°C)</th>
+                            <th class="py-3 px-2">S (‰)</th>
+                            <th class="py-3 px-2">pH</th>
+                            <th class="py-3 px-2">DO</th>
+                            <th class="py-3 px-2">Alk</th>
+                            <th class="py-3 px-2">Btri</th>
+                            <th class="py-3 px-2">Fan</th>
+                            <th class="py-3 px-2">IL</th>
+                            <th class="py-3 px-2">DOM</th>
+                            <th class="py-3 px-2">Surv</th>
+                            <th class="py-3 px-2">Adapt</th>
+                            <th class="py-3 px-2">CS</th>
                         </tr>
                     </thead>
                     <tbody id="log-table-body" class="divide-y divide-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
@@ -129,7 +138,6 @@
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
 
-        // Cập nhật Realtime khi có gói tin mới
         socket.on('new_telemetry', (packet) => {
             const d = packet.data;
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
@@ -141,10 +149,19 @@
             
             const fanEl = document.getElementById('val-fan');
             fanEl.innerText = d.fan == 1 ? "ON" : "OFF";
-            fanEl.className = `text-lg font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
+            fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
 
             document.getElementById('val-il').innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
             document.getElementById('val-dom').innerText = `0x${Number(d.dom).toString(16).toUpperCase()}`;
+            
+            const survEl = document.getElementById('val-surv');
+            survEl.innerText = d.surv == 1 ? "ON" : "OFF";
+            survEl.className = `text-base font-bold mt-1 font-mono ${d.surv == 1 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`;
+
+            const adaptEl = document.getElementById('val-adapt');
+            adaptEl.innerText = d.adapt_acc == 1 ? "NEW" : "0";
+            adaptEl.className = `text-base font-bold mt-1 font-mono ${d.adapt_acc == 1 ? 'text-emerald-400' : 'text-gray-400'}`;
+
             document.getElementById('val-cs').innerText = d.cs;
 
             prependTableRow(packet.time_vn, d);
@@ -171,13 +188,11 @@
             let rawVal = document.getElementById('alk-input').value.trim().replace(',', '.');
             let alkFloat = parseFloat(rawVal);
 
-            // Cho phép số âm (cụ thể là -1) hoặc số dương > 0
             if (isNaN(alkFloat) || (alkFloat < 0 && alkFloat !== -1)) {
                 alert('Vui lòng nhập độ kiềm hợp lệ (VD: 120.50 hoặc -1 để reset hệ thống)!');
                 return;
             }
 
-            // Gửi lệnh chuẩn Float32 qua MQTT Downlink (VD: ALK,-1.00 hoặc ALK,120.50)
             const cmd = `ALK,${alkFloat.toFixed(2)}`;
             socket.emit('send_control', cmd);
             document.getElementById('alk-input').value = '';
@@ -194,17 +209,19 @@
         function prependTableRow(timeStr, d) {
             const tbody = document.getElementById('log-table-body');
             const row = `<tr>
-                <td class="py-2 px-3 text-emerald-400">${timeStr}</td>
-                <td class="py-2 px-3 text-blue-400">${Number(d.T).toFixed(2)}</td>
-                <td class="py-2 px-3 text-teal-400">${Number(d.S).toFixed(2)}</td>
-                <td class="py-2 px-3 text-emerald-400">${Number(d.pH).toFixed(2)}</td>
-                <td class="py-2 px-3 text-cyan-400">${Number(d.DO).toFixed(2)}</td>
-                <td class="py-2 px-3 text-white font-bold">${Number(d.alk).toFixed(2)}</td>
-                <td class="py-2 px-3 text-amber-400">${Number(d.btri).toFixed(1)}</td>
-                <td class="py-2 px-3 ${d.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${d.fan}</td>
-                <td class="py-2 px-3 text-rose-400">0x${Number(d.il).toString(16).toUpperCase()}</td>
-                <td class="py-2 px-3 text-purple-400">0x${Number(d.dom).toString(16).toUpperCase()}</td>
-                <td class="py-2 px-3 text-blue-300">${d.cs}</td>
+                <td class="py-2 px-2 text-emerald-400">${timeStr}</td>
+                <td class="py-2 px-2 text-blue-400">${Number(d.T).toFixed(2)}</td>
+                <td class="py-2 px-2 text-teal-400">${Number(d.S).toFixed(2)}</td>
+                <td class="py-2 px-2 text-emerald-400">${Number(d.pH).toFixed(2)}</td>
+                <td class="py-2 px-2 text-cyan-400">${Number(d.DO).toFixed(2)}</td>
+                <td class="py-2 px-2 text-white font-bold">${Number(d.alk).toFixed(2)}</td>
+                <td class="py-2 px-2 text-amber-400">${Number(d.btri).toFixed(1)}</td>
+                <td class="py-2 px-2 ${d.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${d.fan}</td>
+                <td class="py-2 px-2 text-rose-400">0x${Number(d.il).toString(16).toUpperCase()}</td>
+                <td class="py-2 px-2 text-purple-400">0x${Number(d.dom).toString(16).toUpperCase()}</td>
+                <td class="py-2 px-2 ${d.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${d.surv}</td>
+                <td class="py-2 px-2 ${d.adapt_acc == 1 ? 'text-indigo-400 font-bold' : 'text-gray-400'}">${d.adapt_acc}</td>
+                <td class="py-2 px-2 text-blue-300">${d.cs}</td>
             </tr>`;
             tbody.insertAdjacentHTML('afterbegin', row);
         }
@@ -216,17 +233,19 @@
                 const tbody = document.getElementById('log-table-body');
                 tbody.innerHTML = logs.map(item => `
                     <tr>
-                        <td class="py-2 px-3 text-emerald-400">${new Date(item.created_at).toLocaleString('vi-VN', {timeZone: 'Asia/Ho_Chi_Minh'})}</td>
-                        <td class="py-2 px-3 text-blue-400">${Number(item.T).toFixed(2)}</td>
-                        <td class="py-2 px-3 text-teal-400">${Number(item.S).toFixed(2)}</td>
-                        <td class="py-2 px-3 text-emerald-400">${Number(item.pH).toFixed(2)}</td>
-                        <td class="py-2 px-3 text-cyan-400">${Number(item.DO).toFixed(2)}</td>
-                        <td class="py-2 px-3 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
-                        <td class="py-2 px-3 text-amber-400">${Number(item.btri).toFixed(1)}</td>
-                        <td class="py-2 px-3 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
-                        <td class="py-2 px-3 text-rose-400">0x${Number(item.il).toString(16).toUpperCase()}</td>
-                        <td class="py-2 px-3 text-purple-400">0x${Number(item.dom).toString(16).toUpperCase()}</td>
-                        <td class="py-2 px-3 text-blue-300">${item.cs}</td>
+                        <td class="py-2 px-2 text-emerald-400">${new Date(item.created_at).toLocaleString('vi-VN', {timeZone: 'Asia/Ho_Chi_Minh'})}</td>
+                        <td class="py-2 px-2 text-blue-400">${Number(item.T).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-teal-400">${Number(item.S).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-emerald-400">${Number(item.pH).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-cyan-400">${Number(item.DO).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-amber-400">${Number(item.btri).toFixed(1)}</td>
+                        <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
+                        <td class="py-2 px-2 text-rose-400">0x${Number(item.il).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 text-purple-400">0x${Number(item.dom).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
+                        <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-indigo-400 font-bold' : 'text-gray-400'}">${item.adapt_acc}</td>
+                        <td class="py-2 px-2 text-blue-300">${item.cs}</td>
                     </tr>
                 `).join('');
             } catch (err) {
