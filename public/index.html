@@ -3,41 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giám sát Ao Cá Rô Phi - STM32H7 IoT</title>
+    <title>Giám sát Ao Cá Rô Phi - STM32H7 IoT Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-[#0b1329] text-gray-100 p-4 md:p-6 font-sans">
+<body class="bg-[#0b1329] text-gray-100 p-3 md:p-6 font-sans">
     <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- Header -->
-        <header class="flex justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md">
+        <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
-                <h1 class="text-xl md:text-2xl font-bold text-blue-400">Giám Sát Chất Lượng Nước Ao Cá Rô Phi</h1>
+                <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
                 <p class="text-xs md:text-sm text-gray-400">Chu kỳ cập nhật: 10 giây/lần | MQTT TLS 4G LTE</p>
             </div>
-            <div class="flex items-center space-x-2 bg-[#0b1329] px-3.5 py-1.5 rounded-lg border border-slate-700">
-                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span class="text-xs md:text-sm text-emerald-400 font-medium">System Online</span>
+            <div class="flex items-center space-x-3">
+                <span id="live-indicator" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
+                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span>System Online</span>
+                </span>
+                <button onclick="refreshAllData()" id="btn-refresh-all" class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-white px-3.5 py-1.5 rounded-lg transition border border-slate-600">
+                    <svg id="refresh-spinner" class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span id="refresh-text">Làm mới tất cả</span>
+                </button>
             </div>
         </header>
 
-        <!-- Khối điều khiển Downlink có bảo mật mật khẩu -->
+        <!-- Bảng điều khiển Downlink có bảo mật mật khẩu -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
-            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Yêu cầu mật khẩu bảo mật)</h2>
-            
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị (Yêu cầu mật khẩu)</h2>
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                 <span class="text-xs text-gray-400 font-medium">Mật khẩu hệ thống:</span>
-                <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
+                <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-1.5 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Nạp độ kiềm Float32 (Hỗ trợ số âm -1) -->
                 <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <input type="text" id="alk-input" placeholder="VD: 120.50 hoặc -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-36 focus:outline-none focus:border-blue-500">
+                    <input type="text" id="alk-input" placeholder="VD: 120.50 hoặc -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-40 focus:outline-none focus:border-blue-500">
                     <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">Nạp Độ Kiềm (Float32)</button>
                 </div>
-                <!-- Xóa Flash -->
                 <div class="flex items-center justify-between bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <span class="text-xs text-gray-400">Xóa bộ đệm lịch sử học máy PINN</span>
                     <button onclick="sendWipe()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">WIPE FLASH</button>
@@ -46,15 +52,15 @@
             <div id="control-feedback" class="text-xs font-semibold text-emerald-400"></div>
         </div>
 
-        <!-- Khối 4 cảm biến vật lý chính -->
+        <!-- 4 Thẻ cảm biến chính -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
                 <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
-                <div id="val-t" class="text-3xl font-extrabold text-blue-400 mt-2 font-mono">-- °C</div>
+                <div id="val-t" class="text-3xl font-extrabold text-orange-400 mt-2 font-mono">-- °C</div>
             </div>
             <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
                 <div class="text-xs text-gray-400 font-medium">Độ mặn (S)</div>
-                <div id="val-s" class="text-3xl font-extrabold text-teal-400 mt-2 font-mono">-- ‰</div>
+                <div id="val-s" class="text-3xl font-extrabold text-cyan-400 mt-2 font-mono">-- ‰</div>
             </div>
             <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
                 <div class="text-xs text-gray-400 font-medium">Độ pH</div>
@@ -62,11 +68,11 @@
             </div>
             <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
                 <div class="text-xs text-gray-400 font-medium">Oxy hòa tan (DO)</div>
-                <div id="val-do" class="text-3xl font-extrabold text-cyan-400 mt-2 font-mono">-- mg/L</div>
+                <div id="val-do" class="text-3xl font-extrabold text-blue-400 mt-2 font-mono">-- mg/L</div>
             </div>
         </div>
 
-        <!-- Khối 8 thông số trạng thái, rủi ro, cờ bảo vệ & AI (Đầy đủ 12 trường) -->
+        <!-- 8 Thẻ trạng thái & AI -->
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
                 <div class="text-[11px] text-gray-400">Độ kiềm (alk)</div>
@@ -81,11 +87,11 @@
                 <div id="val-fan" class="text-base font-bold mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Khóa liên động (il)</div>
+                <div class="text-[11px] text-gray-400">Khóa (il)</div>
                 <div id="val-il" class="text-base font-bold text-rose-400 mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Miền sinh thái (dom)</div>
+                <div class="text-[11px] text-gray-400">Sinh thái (dom)</div>
                 <div id="val-dom" class="text-base font-bold text-purple-400 mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
@@ -97,38 +103,120 @@
                 <div id="val-adapt" class="text-base font-bold text-indigo-400 mt-1 font-mono">--</div>
             </div>
             <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Khởi động lạnh (cs)</div>
+                <div class="text-[11px] text-gray-400">Khởi động (cs)</div>
                 <div id="val-cs" class="text-base font-bold text-blue-300 mt-1 font-mono">--</div>
             </div>
         </div>
 
-        <!-- Bảng nhật ký cơ sở dữ liệu hiển thị toàn bộ 12 trường -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ TRỰC QUAN ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
-            <div class="flex justify-between items-center">
-                <h2 class="text-base font-bold text-gray-200">Nhật ký dữ liệu thời gian thực (12 Trường chuẩn đặc tả)</h2>
-                <button onclick="fetchHistory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3.5 py-1.5 rounded-lg text-gray-200 transition">Làm mới bảng</button>
+            <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
+                <div>
+                    <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước Theo Thời Gian</h2>
+                    <p class="text-xs text-gray-400" id="chart-time-label">Khoảng thời gian: 30 phút gần nhất</p>
+                </div>
+                
+                <!-- Bộ chọn khoảng thời gian -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Presets -->
+                    <button onclick="setChartPreset(30, 'minute', '30 phút')" class="btn-preset bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
+                    <button onclick="setChartPreset(5, 'hour', '5 giờ')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
+                    <button onclick="setChartPreset(1, 'day', '1 ngày')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Ngày</button>
+                    <button onclick="setChartPreset(1, 'week', '1 tuần')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tuần</button>
+                    <button onclick="setChartPreset(1, 'month', '1 tháng')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
+                    
+                    <!-- Tùy chọn linh hoạt -->
+                    <div class="flex items-center gap-1 bg-[#0b1329] p-1 rounded-lg border border-slate-700">
+                        <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none">
+                        <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white focus:outline-none">
+                            <option value="minute">Phút</option>
+                            <option value="hour">Giờ</option>
+                            <option value="day">Ngày</option>
+                            <option value="week">Tuần</option>
+                        </select>
+                        <button onclick="applyCustomChart()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1 rounded transition">Xem</button>
+                    </div>
+                </div>
             </div>
-            <div class="overflow-x-auto max-h-80 overflow-y-auto border border-slate-700 rounded-lg">
+
+            <!-- Grid 4 Biểu đồ chuyên sâu -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <h3 class="text-xs font-bold text-orange-400 mb-2">1. Nhiệt Độ Nước (°C)</h3>
+                    <div class="h-48"><canvas id="chartT"></canvas></div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <h3 class="text-xs font-bold text-cyan-400 mb-2">2. Độ Mặn S (‰)</h3>
+                    <div class="h-48"><canvas id="chartS"></canvas></div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <h3 class="text-xs font-bold text-emerald-400 mb-2">3. Độ pH Nước</h3>
+                    <div class="h-48"><canvas id="chartPH"></canvas></div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <h3 class="text-xs font-bold text-blue-400 mb-2">4. Oxy Hòa Tan DO (mg/L)</h3>
+                    <div class="h-48"><canvas id="chartDO"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TRÌNH DUYỆT DATABASE TOÀN DIỆN ================= -->
+        <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-3">
+                <div>
+                    <h2 class="text-base font-bold text-gray-200">Trình Duyệt Toàn Bộ Cơ Sở Dữ Liệu (Database Explorer)</h2>
+                    <p class="text-xs text-gray-400" id="db-total-count">Đang tải số lượng bản ghi...</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Chọn số dòng -->
+                    <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                        <span>Hiện:</span>
+                        <select id="db-limit" onchange="changeLimit()" class="bg-[#0b1329] border border-slate-700 text-white rounded px-2 py-1 focus:outline-none">
+                            <option value="25">25 dòng</option>
+                            <option value="50" selected>50 dòng</option>
+                            <option value="100">100 dòng</option>
+                            <option value="200">200 dòng</option>
+                        </select>
+                    </div>
+
+                    <!-- Nút xuất file CSV (Excel) -->
+                    <a href="/api/export-csv" target="_blank" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-600">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Tải File Excel (CSV)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Bảng dữ liệu có scroll -->
+            <div class="overflow-x-auto max-h-96 overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
                         <tr>
-                            <th class="py-3 px-2">Thời gian (VN)</th>
-                            <th class="py-3 px-2">T (°C)</th>
-                            <th class="py-3 px-2">S (‰)</th>
-                            <th class="py-3 px-2">pH</th>
-                            <th class="py-3 px-2">DO</th>
-                            <th class="py-3 px-2">Alk</th>
-                            <th class="py-3 px-2">Btri</th>
-                            <th class="py-3 px-2">Fan</th>
-                            <th class="py-3 px-2">IL</th>
-                            <th class="py-3 px-2">DOM</th>
-                            <th class="py-3 px-2">Surv</th>
-                            <th class="py-3 px-2">Adapt</th>
-                            <th class="py-3 px-2">CS</th>
+                            <th class="py-2.5 px-2">ID</th>
+                            <th class="py-2.5 px-2">Thời gian (VN)</th>
+                            <th class="py-2.5 px-2">T (°C)</th>
+                            <th class="py-2.5 px-2">S (‰)</th>
+                            <th class="py-2.5 px-2">pH</th>
+                            <th class="py-2.5 px-2">DO</th>
+                            <th class="py-2.5 px-2">Alk</th>
+                            <th class="py-2.5 px-2">Btri</th>
+                            <th class="py-2.5 px-2">Fan</th>
+                            <th class="py-2.5 px-2">IL</th>
+                            <th class="py-2.5 px-2">DOM</th>
+                            <th class="py-2.5 px-2">Surv</th>
+                            <th class="py-2.5 px-2">Adapt</th>
+                            <th class="py-2.5 px-2">CS</th>
                         </tr>
                     </thead>
-                    <tbody id="log-table-body" class="divide-y divide-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
+                    <tbody id="db-table-body" class="divide-y divide-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
                 </table>
+            </div>
+
+            <!-- Điều hướng phân trang (Pagination) -->
+            <div class="flex justify-between items-center pt-2">
+                <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded text-white transition">← Trang trước</button>
+                <span id="page-indicator" class="text-xs text-gray-300 font-mono">Trang 1 / 1</span>
+                <button onclick="nextPage()" id="btn-next" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded text-white transition">Trang sau →</button>
             </div>
         </div>
 
@@ -138,6 +226,146 @@
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
 
+        // Biến quản lý biểu đồ & phân trang
+        let charts = {};
+        let currentChartVal = 30;
+        let currentChartUnit = 'minute';
+        let currentPage = 1;
+        let currentLimit = 50;
+        let totalPages = 1;
+
+        // 1. Khởi tạo 4 biểu đồ Chart.js
+        function initCharts() {
+            const chartConfigs = [
+                { id: 'chartT', label: 'Nhiệt độ T (°C)', color: '#f97316' },
+                { id: 'chartS', label: 'Độ mặn S (‰)', color: '#06b6d4' },
+                { id: 'chartPH', label: 'Độ pH', color: '#10b981' },
+                { id: 'chartDO', label: 'Oxy hòa tan DO (mg/L)', color: '#3b82f6' }
+            ];
+
+            chartConfigs.forEach(cfg => {
+                const ctx = document.getElementById(cfg.id).getContext('2d');
+                charts[cfg.id] = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: [], datasets: [{ label: cfg.label, data: [], borderColor: cfg.color, backgroundColor: cfg.color + '20', borderWidth: 2, tension: 0.25, fill: true, pointRadius: 1 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+                            y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            });
+        }
+
+        // 2. Tải dữ liệu biểu đồ từ Server
+        async function fetchChartData() {
+            try {
+                const res = await fetch(`/api/chart-data?value=${currentChartVal}&unit=${currentChartUnit}`);
+                const data = await res.json();
+                
+                const labels = data.map(d => new Date(d.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+                
+                charts['chartT'].data.labels = labels;
+                charts['chartT'].data.datasets[0].data = data.map(d => d.T);
+                charts['chartT'].update();
+
+                charts['chartS'].data.labels = labels;
+                charts['chartS'].data.datasets[0].data = data.map(d => d.S);
+                charts['chartS'].update();
+
+                charts['chartPH'].data.labels = labels;
+                charts['chartPH'].data.datasets[0].data = data.map(d => d.pH);
+                charts['chartPH'].update();
+
+                charts['chartDO'].data.labels = labels;
+                charts['chartDO'].data.datasets[0].data = data.map(d => d.DO);
+                charts['chartDO'].update();
+            } catch (err) {
+                console.error("Lỗi chart:", err);
+            }
+        }
+
+        function setChartPreset(val, unit, labelStr) {
+            currentChartVal = val;
+            currentChartUnit = unit;
+            document.getElementById('chart-time-label').innerText = `Khoảng thời gian: ${labelStr} gần nhất`;
+            fetchChartData();
+        }
+
+        function applyCustomChart() {
+            const val = document.getElementById('custom-val').value;
+            const unit = document.getElementById('custom-unit').value;
+            const unitText = document.getElementById('custom-unit').options[document.getElementById('custom-unit').selectedIndex].text;
+            setChartPreset(val, unit, `${val} ${unitText}`);
+        }
+
+        // 3. Tải dữ liệu phân trang Database
+        async function fetchPagedLogs() {
+            try {
+                const res = await fetch(`/api/logs-paged?page=${currentPage}&limit=${currentLimit}`);
+                const result = await res.json();
+                
+                totalPages = result.totalPages || 1;
+                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi đã lưu`;
+                document.getElementById('page-indicator').innerText = `Trang ${result.page} / ${totalPages}`;
+                
+                document.getElementById('btn-prev').disabled = (currentPage <= 1);
+                document.getElementById('btn-next').disabled = (currentPage >= totalPages);
+
+                const tbody = document.getElementById('db-table-body');
+                tbody.innerHTML = result.data.map(item => `
+                    <tr>
+                        <td class="py-2 px-2 text-gray-400">${item.id}</td>
+                        <td class="py-2 px-2 text-emerald-400">${new Date(item.created_at).toLocaleString('vi-VN', {timeZone: 'Asia/Ho_Chi_Minh'})}</td>
+                        <td class="py-2 px-2 text-orange-400 font-bold">${Number(item.T).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-cyan-400 font-bold">${Number(item.S).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-emerald-400 font-bold">${Number(item.pH).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-blue-400 font-bold">${Number(item.DO).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
+                        <td class="py-2 px-2 text-amber-400">${Number(item.btri).toFixed(1)}</td>
+                        <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
+                        <td class="py-2 px-2 text-rose-400">0x${Number(item.il).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 text-purple-400">0x${Number(item.dom).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
+                        <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-indigo-400 font-bold' : 'text-gray-400'}">${item.adapt_acc}</td>
+                        <td class="py-2 px-2 text-blue-300">${item.cs}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Lỗi paged logs:", err);
+            }
+        }
+
+        function prevPage() { if (currentPage > 1) { currentPage--; fetchPagedLogs(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; fetchPagedLogs(); } }
+        function changeLimit() {
+            currentLimit = parseInt(document.getElementById('db-limit').value);
+            currentPage = 1;
+            fetchPagedLogs();
+        }
+
+        // 4. Hiệu ứng làm mới tất cả với dấu hiệu trực quan
+        async function refreshAllData() {
+            const spinner = document.getElementById('refresh-spinner');
+            const txt = document.getElementById('refresh-text');
+            
+            spinner.classList.add('animate-spin');
+            txt.innerText = 'Đang làm mới...';
+
+            await Promise.all([fetchChartData(), fetchPagedLogs()]);
+
+            setTimeout(() => {
+                spinner.classList.remove('animate-spin');
+                const nowTime = new Date().toLocaleTimeString('vi-VN');
+                txt.innerText = `Đã cập nhật (${nowTime})`;
+            }, 500);
+        }
+
+        // 5. Lắng nghe dữ liệu Realtime
         socket.on('new_telemetry', (packet) => {
             const d = packet.data;
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
@@ -156,7 +384,7 @@
             
             const survEl = document.getElementById('val-surv');
             survEl.innerText = d.surv == 1 ? "ON" : "OFF";
-            survEl.className = `text-base font-bold mt-1 font-mono ${d.surv == 1 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`;
+            survEl.className = `text-base font-bold mt-1 font-mono ${d.surv == 1 ? 'text-rose-400 animate-pulse' : 'text-gray-400'}`;
 
             const adaptEl = document.getElementById('val-adapt');
             adaptEl.innerText = d.adapt_acc == 1 ? "NEW" : "0";
@@ -164,7 +392,10 @@
 
             document.getElementById('val-cs').innerText = d.cs;
 
-            prependTableRow(packet.time_vn, d);
+            // Nếu đang ở trang 1 thì tự động cập nhật lại bảng
+            if (currentPage === 1) {
+                fetchPagedLogs();
+            }
         });
 
         socket.on('control_status', (msg) => {
@@ -173,10 +404,10 @@
             setTimeout(() => fb.innerText = '', 4000);
         });
 
+        // 6. Xử lý Downlink
         function verifyPassword() {
-            const inputPass = document.getElementById('ctrl-password').value;
-            if (inputPass !== CORRECT_PASSWORD) {
-                alert('Mật khẩu bảo mật không chính xác! Vui lòng thử lại.');
+            if (document.getElementById('ctrl-password').value !== CORRECT_PASSWORD) {
+                alert('Mật khẩu bảo mật không chính xác!');
                 return false;
             }
             return true;
@@ -184,76 +415,27 @@
 
         function sendAlkalinity() {
             if (!verifyPassword()) return;
-
             let rawVal = document.getElementById('alk-input').value.trim().replace(',', '.');
             let alkFloat = parseFloat(rawVal);
-
             if (isNaN(alkFloat) || (alkFloat < 0 && alkFloat !== -1)) {
-                alert('Vui lòng nhập độ kiềm hợp lệ (VD: 120.50 hoặc -1 để reset hệ thống)!');
+                alert('Vui lòng nhập độ kiềm hợp lệ (VD: 120.50 hoặc -1)!');
                 return;
             }
-
-            const cmd = `ALK,${alkFloat.toFixed(2)}`;
-            socket.emit('send_control', cmd);
+            socket.emit('send_control', `ALK,${alkFloat.toFixed(2)}`);
             document.getElementById('alk-input').value = '';
         }
 
         function sendWipe() {
             if (!verifyPassword()) return;
-
-            if (confirm('Bạn có chắc chắn muốn xóa trắng lịch sử Flash trên thiết bị?')) {
+            if (confirm('Xác nhận xóa trắng lịch sử Flash trên thiết bị?')) {
                 socket.emit('send_control', 'WIPE');
             }
         }
 
-        function prependTableRow(timeStr, d) {
-            const tbody = document.getElementById('log-table-body');
-            const row = `<tr>
-                <td class="py-2 px-2 text-emerald-400">${timeStr}</td>
-                <td class="py-2 px-2 text-blue-400">${Number(d.T).toFixed(2)}</td>
-                <td class="py-2 px-2 text-teal-400">${Number(d.S).toFixed(2)}</td>
-                <td class="py-2 px-2 text-emerald-400">${Number(d.pH).toFixed(2)}</td>
-                <td class="py-2 px-2 text-cyan-400">${Number(d.DO).toFixed(2)}</td>
-                <td class="py-2 px-2 text-white font-bold">${Number(d.alk).toFixed(2)}</td>
-                <td class="py-2 px-2 text-amber-400">${Number(d.btri).toFixed(1)}</td>
-                <td class="py-2 px-2 ${d.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${d.fan}</td>
-                <td class="py-2 px-2 text-rose-400">0x${Number(d.il).toString(16).toUpperCase()}</td>
-                <td class="py-2 px-2 text-purple-400">0x${Number(d.dom).toString(16).toUpperCase()}</td>
-                <td class="py-2 px-2 ${d.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${d.surv}</td>
-                <td class="py-2 px-2 ${d.adapt_acc == 1 ? 'text-indigo-400 font-bold' : 'text-gray-400'}">${d.adapt_acc}</td>
-                <td class="py-2 px-2 text-blue-300">${d.cs}</td>
-            </tr>`;
-            tbody.insertAdjacentHTML('afterbegin', row);
-        }
-
-        async function fetchHistory() {
-            try {
-                const res = await fetch('/api/logs');
-                const logs = await res.json();
-                const tbody = document.getElementById('log-table-body');
-                tbody.innerHTML = logs.map(item => `
-                    <tr>
-                        <td class="py-2 px-2 text-emerald-400">${new Date(item.created_at).toLocaleString('vi-VN', {timeZone: 'Asia/Ho_Chi_Minh'})}</td>
-                        <td class="py-2 px-2 text-blue-400">${Number(item.T).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-teal-400">${Number(item.S).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-emerald-400">${Number(item.pH).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-cyan-400">${Number(item.DO).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-amber-400">${Number(item.btri).toFixed(1)}</td>
-                        <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
-                        <td class="py-2 px-2 text-rose-400">0x${Number(item.il).toString(16).toUpperCase()}</td>
-                        <td class="py-2 px-2 text-purple-400">0x${Number(item.dom).toString(16).toUpperCase()}</td>
-                        <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
-                        <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-indigo-400 font-bold' : 'text-gray-400'}">${item.adapt_acc}</td>
-                        <td class="py-2 px-2 text-blue-300">${item.cs}</td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        fetchHistory();
+        // Khởi chạy khi tải trang
+        initCharts();
+        fetchChartData();
+        fetchPagedLogs();
     </script>
 </body>
 </html>
