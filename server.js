@@ -94,7 +94,7 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ hỗ trợ đầy đủ: Phút, Giờ, Ngày, Tuần, Tháng, Năm
+// 1. API lấy dữ liệu biểu đồ
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { value = 30, unit = 'minute' } = req.query;
@@ -113,7 +113,6 @@ app.get('/api/chart-data', async (req, res) => {
         const pad = (n) => String(n).padStart(2, '0');
         const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
 
-        // Đọc song song dữ liệu nhiều phân vùng để bao trùm dải thời gian dài
         const CHUNK_SIZE = 1000;
         const MAX_CHUNKS = 10;
         const fetchPromises = [];
@@ -152,7 +151,6 @@ app.get('/api/chart-data', async (req, res) => {
             return res.json(fallback.data ? fallback.data.reverse() : []);
         }
 
-        // Lấy mẫu đều khoảng 300 điểm dữ liệu
         let sampled = allData;
         const maxPoints = 300;
         if (allData.length > maxPoints) {
@@ -166,17 +164,27 @@ app.get('/api/chart-data', async (req, res) => {
     }
 });
 
-// 2. API phân trang xem Database hỗ trợ đến 1000 dòng mỗi trang
+// 2. API phân trang & tìm kiếm lịch sử theo mốc Ngày - Giờ - Tháng - Năm
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = Math.min(parseInt(req.query.limit) || 1000, 1000);
         const from = (page - 1) * limit;
         const to = from + limit - 1;
+        const { from_time, to_time } = req.query;
 
-        const { data, count, error } = await supabase
+        let query = supabase
             .from('telemetry_logs')
-            .select('*', { count: 'exact' })
+            .select('*', { count: 'exact' });
+
+        if (from_time) {
+            query = query.gte('created_at', from_time);
+        }
+        if (to_time) {
+            query = query.lte('created_at', to_time);
+        }
+
+        const { data, count, error } = await query
             .order('id', { ascending: false })
             .range(from, to);
 
@@ -194,12 +202,16 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API xuất toàn bộ dữ liệu ra file CSV
+// 3. API xuất dữ liệu CSV hỗ trợ bộ lọc thời gian
 app.get('/api/export-csv', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('telemetry_logs')
-            .select('*')
+        const { from_time, to_time } = req.query;
+        let query = supabase.from('telemetry_logs').select('*');
+
+        if (from_time) query = query.gte('created_at', from_time);
+        if (to_time) query = query.lte('created_at', to_time);
+
+        const { data, error } = await query
             .order('id', { ascending: false })
             .limit(5000);
 
