@@ -65,7 +65,6 @@ mqttClient.on('message', async (topic, message) => {
 
         console.log(`[MQTT] [${timeVN}] Nhan du lieu:`, data);
 
-        // Lưu vào Supabase đúng chuẩn 12 trường
         const { error } = await supabase
             .from('telemetry_logs')
             .insert([{
@@ -164,7 +163,7 @@ app.get('/api/chart-data', async (req, res) => {
     }
 });
 
-// 2. API phân trang & tìm kiếm lịch sử theo mốc Ngày - Giờ - Tháng - Năm
+// 2. API phân trang & tìm kiếm lịch sử
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -177,12 +176,8 @@ app.get('/api/logs-paged', async (req, res) => {
             .from('telemetry_logs')
             .select('*', { count: 'exact' });
 
-        if (from_time) {
-            query = query.gte('created_at', from_time);
-        }
-        if (to_time) {
-            query = query.lte('created_at', to_time);
-        }
+        if (from_time) query = query.gte('created_at', from_time);
+        if (to_time) query = query.lte('created_at', to_time);
 
         const { data, count, error } = await query
             .order('id', { ascending: false })
@@ -202,32 +197,56 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API xuất dữ liệu CSV hỗ trợ bộ lọc thời gian
+// 3. API xuất file CSV chuyên sâu (Hỗ trợ Tải tất cả, Tải theo số lượng, Tải theo ngày giờ)
 app.get('/api/export-csv', async (req, res) => {
     try {
-        const { from_time, to_time } = req.query;
-        let query = supabase.from('telemetry_logs').select('*');
+        const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
+        const maxRows = mode === 'limit' ? parseInt(limit) || 1000 : 100000;
+        
+        let allData = [];
+        const CHUNK_SIZE = 1000;
+        let fetched = 0;
 
-        if (from_time) query = query.gte('created_at', from_time);
-        if (to_time) query = query.lte('created_at', to_time);
+        // Vòng lặp tải dữ liệu nhiều trang để lấy trọn vẹn số lượng yêu cầu
+        while (fetched < maxRows) {
+            const from = fetched;
+            const to = Math.min(fetched + CHUNK_SIZE - 1, maxRows - 1);
 
-        const { data, error } = await query
-            .order('id', { ascending: false })
-            .limit(5000);
+            let query = supabase
+                .from('telemetry_logs')
+                .select('*')
+                .order('id', { ascending: false })
+                .range(from, to);
 
-        if (error) return res.status(500).send("Lỗi xuất file");
+            if (mode === 'range' || from_time || to_time) {
+                if (from_time) query = query.gte('created_at', from_time);
+                if (to_time) query = query.lte('created_at', to_time);
+            }
+
+            const { data, error } = await query;
+            if (error) {
+                console.error('[CSV EXPORT ERROR]:', error.message);
+                break;
+            }
+            if (!data || data.length === 0) break;
+
+            allData = allData.concat(data);
+            fetched += data.length;
+
+            if (data.length < CHUNK_SIZE) break;
+        }
 
         let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS\n";
-        data.forEach(r => {
+        allData.forEach(r => {
             const timeStr = new Date(r.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
             csv += `${r.id},"${timeStr}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="telemetry_logs.csv"');
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_${Date.now()}.csv"`);
         res.status(200).send('\uFEFF' + csv);
     } catch (err) {
-        res.status(500).send("Lỗi hệ thống");
+        res.status(500).send("Lỗi xuất file: " + err.message);
     }
 });
 
