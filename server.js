@@ -37,7 +37,7 @@ function getVietnamTimeString() {
     });
 }
 
-// Kết nối MQTT Broker qua TLS (Port 8883)
+// Kết nối MQTT Broker qua TLS
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -49,7 +49,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin JSON Uplink từ STM32 / Arduino
+// Nhận gói tin JSON Uplink
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -94,7 +94,7 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ (Vượt qua giới hạn 1000 dòng của Supabase để lấy trọn vẹn 12h, 1 ngày, 1 tuần)
+// 1. API lấy dữ liệu biểu đồ hỗ trợ đầy đủ: Phút, Giờ, Ngày, Tuần, Tháng, Năm
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { value = 30, unit = 'minute' } = req.query;
@@ -108,13 +108,14 @@ app.get('/api/chart-data', async (req, res) => {
         else if (unit === 'day') cutoffVN.setDate(cutoffVN.getDate() - valNum);
         else if (unit === 'week') cutoffVN.setDate(cutoffVN.getDate() - (valNum * 7));
         else if (unit === 'month') cutoffVN.setMonth(cutoffVN.getMonth() - valNum);
+        else if (unit === 'year') cutoffVN.setFullYear(cutoffVN.getFullYear() - valNum);
 
         const pad = (n) => String(n).padStart(2, '0');
         const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
 
-        // Đọc song song nhiều phân vùng (mỗi phân vùng 1000 dòng) để lấy tới 10.000 dòng
+        // Đọc song song dữ liệu nhiều phân vùng để bao trùm dải thời gian dài
         const CHUNK_SIZE = 1000;
-        const MAX_CHUNKS = 10; // Tối đa 10.000 bản ghi (~28 tiếng)
+        const MAX_CHUNKS = 10;
         const fetchPromises = [];
 
         for (let i = 0; i < MAX_CHUNKS; i++) {
@@ -136,7 +137,7 @@ app.get('/api/chart-data', async (req, res) => {
         for (const r of results) {
             if (r.data && r.data.length > 0) {
                 allData = allData.concat(r.data);
-                if (r.data.length < CHUNK_SIZE) break; // Đã lấy hết dữ liệu trong khoảng thời gian
+                if (r.data.length < CHUNK_SIZE) break;
             } else {
                 break;
             }
@@ -151,7 +152,7 @@ app.get('/api/chart-data', async (req, res) => {
             return res.json(fallback.data ? fallback.data.reverse() : []);
         }
 
-        // Lấy mẫu đều khoảng 300 điểm trải dài trên toàn bộ 12 giờ
+        // Lấy mẫu đều khoảng 300 điểm dữ liệu
         let sampled = allData;
         const maxPoints = 300;
         if (allData.length > maxPoints) {
@@ -159,7 +160,6 @@ app.get('/api/chart-data', async (req, res) => {
             sampled = allData.filter((_, idx) => idx % step === 0);
         }
 
-        // Đảo ngược lại theo thứ tự thời gian từ quá khứ đến hiện tại
         res.json(sampled.reverse());
     } catch (err) {
         res.status(500).json({ error: err.message });
