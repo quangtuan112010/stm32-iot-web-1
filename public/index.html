@@ -108,7 +108,7 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ (ĐẦY ĐỦ ĐƠN VỊ THỜI GIAN) ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
@@ -116,7 +116,6 @@
                     <p class="text-xs text-gray-400" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
                 </div>
                 
-                <!-- Bộ nút chọn nhanh & Bộ chọn tùy biến đầy đủ Tháng, Năm -->
                 <div class="flex flex-wrap items-center gap-2">
                     <button onclick="setChartPreset(30, 'minute', '30 phút', this)" class="chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
                     <button onclick="setChartPreset(5, 'hour', '5 giờ', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
@@ -125,7 +124,6 @@
                     <button onclick="setChartPreset(1, 'month', '1 tháng', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
                     <button onclick="setChartPreset(1, 'year', '1 năm', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Năm</button>
                     
-                    <!-- Nhập số lượng + chọn đơn vị Phút / Giờ / Ngày / Tuần / Tháng / Năm -->
                     <div class="flex items-center gap-1 bg-[#0b1329] p-1 rounded-lg border border-slate-700">
                         <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none">
                         <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white focus:outline-none">
@@ -162,16 +160,17 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT DATABASE ================= -->
+        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
                     <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
                     <p class="text-xs text-gray-400" id="db-total-count">Đang tải...</p>
                 </div>
+                
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-1.5 text-xs text-gray-400">
-                        <span>Số dòng hiển thị:</span>
+                        <span>Số dòng:</span>
                         <select id="db-limit" onchange="changeLimit()" class="bg-[#0b1329] border border-slate-700 text-white rounded px-2 py-1 focus:outline-none">
                             <option value="50">50 dòng</option>
                             <option value="100">100 dòng</option>
@@ -180,11 +179,29 @@
                         </select>
                     </div>
 
-                    <a href="/api/export-csv" target="_blank" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-600">
+                    <button onclick="exportFilteredCSV()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-600">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Tải CSV (Excel)
-                    </a>
+                    </button>
                 </div>
+            </div>
+
+            <!-- THANH TÌM KIẾM THEO NGÀY - GIỜ - THÁNG - NĂM -->
+            <div class="flex flex-wrap items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-xs">
+                <span class="text-blue-400 font-semibold flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Tìm kiếm lịch sử:
+                </span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-gray-400">Từ:</span>
+                    <input type="datetime-local" id="filter-from" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-gray-400">Đến:</span>
+                    <input type="datetime-local" id="filter-to" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+                </div>
+                <button onclick="applyDateFilter()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition font-medium">Tìm kiếm</button>
+                <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
@@ -230,6 +247,10 @@
         let currentPage = 1;
         let currentLimit = 1000;
         let totalPages = 1;
+
+        // Biến lưu trạng thái tìm kiếm thời gian
+        let filterFromTime = '';
+        let filterToTime = '';
 
         function initCharts() {
             const chartConfigs = [
@@ -308,7 +329,6 @@
                 const res = await fetch(`/api/chart-data?value=${currentChartVal}&unit=${currentChartUnit}`);
                 const data = await res.json();
                 
-                // Tự động điều chỉnh định dạng nhãn theo dải thời gian
                 const isLongRange = ['day', 'week', 'month', 'year'].includes(currentChartUnit);
                 const labels = data.map(d => {
                     const date = new Date(d.created_at);
@@ -363,19 +383,29 @@
             setChartPreset(val, unit, `${val} ${unitText}`, null);
         }
 
+        // Tải dữ liệu phân trang có tích hợp lọc thời gian
         async function fetchPagedLogs() {
             try {
-                const res = await fetch(`/api/logs-paged?page=${currentPage}&limit=${currentLimit}`);
+                let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
+                if (filterFromTime) url += `&from_time=${encodeURIComponent(filterFromTime)}`;
+                if (filterToTime) url += `&to_time=${encodeURIComponent(filterToTime)}`;
+
+                const res = await fetch(url);
                 const result = await res.json();
                 
                 totalPages = result.totalPages || 1;
-                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi`;
+                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi ${filterFromTime || filterToTime ? '(Đang lọc theo thời gian)' : ''}`;
                 document.getElementById('page-indicator').innerText = `Trang ${result.page} / ${totalPages}`;
                 
                 document.getElementById('btn-prev').disabled = (currentPage <= 1);
                 document.getElementById('btn-next').disabled = (currentPage >= totalPages);
 
                 const tbody = document.getElementById('db-table-body');
+                if (result.data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="14" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
+                    return;
+                }
+
                 tbody.innerHTML = result.data.map(item => `
                     <tr>
                         <td class="py-2 px-2 text-gray-400">${item.id}</td>
@@ -397,6 +427,40 @@
             } catch (err) {
                 console.error("Lỗi paged logs:", err);
             }
+        }
+
+        // Xử lý nút Tìm kiếm theo ngày giờ
+        function applyDateFilter() {
+            const fromVal = document.getElementById('filter-from').value;
+            const toVal = document.getElementById('filter-to').value;
+
+            if (!fromVal && !toVal) {
+                alert('Vui lòng chọn ít nhất một mốc thời gian (Từ hoặc Đến)!');
+                return;
+            }
+
+            filterFromTime = fromVal ? fromVal.replace('T', ' ') + ':00' : '';
+            filterToTime = toVal ? toVal.replace('T', ' ') + ':59' : '';
+            currentPage = 1;
+            fetchPagedLogs();
+        }
+
+        // Xử lý nút Xóa lọc
+        function resetDateFilter() {
+            document.getElementById('filter-from').value = '';
+            document.getElementById('filter-to').value = '';
+            filterFromTime = '';
+            filterToTime = '';
+            currentPage = 1;
+            fetchPagedLogs();
+        }
+
+        // Tải file CSV có áp dụng bộ lọc thời gian nếu có
+        function exportFilteredCSV() {
+            let url = '/api/export-csv?';
+            if (filterFromTime) url += `&from_time=${encodeURIComponent(filterFromTime)}`;
+            if (filterToTime) url += `&to_time=${encodeURIComponent(filterToTime)}`;
+            window.open(url, '_blank');
         }
 
         function prevPage() { if (currentPage > 1) { currentPage--; fetchPagedLogs(); } }
@@ -449,7 +513,8 @@
 
             document.getElementById('val-cs').innerText = d.cs;
 
-            if (currentPage === 1) {
+            // Nếu đang xem trang 1 và không bật bộ lọc thì mới tự động chèn dòng mới
+            if (currentPage === 1 && !filterFromTime && !filterToTime) {
                 fetchPagedLogs();
             }
         });
