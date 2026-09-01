@@ -37,7 +37,7 @@ function getVietnamTimeString() {
     });
 }
 
-// Kết nối MQTT Broker qua TLS
+// Kết nối MQTT Broker qua TLS (Port 8883)
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -49,7 +49,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin JSON Uplink từ vi điều khiển
+// Nhận gói tin JSON Uplink từ STM32 / Arduino
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -65,7 +65,7 @@ mqttClient.on('message', async (topic, message) => {
 
         console.log(`[MQTT] [${timeVN}] Nhan du lieu:`, data);
 
-        // Lưu vào Supabase chuẩn 12 trường
+        // Lưu vào Supabase đúng kiểu dữ liệu
         const { error } = await supabase
             .from('telemetry_logs')
             .insert([{
@@ -94,33 +94,38 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API lấy dữ liệu vẽ đồ thị theo khoảng thời gian tùy chọn
+// 1. API lấy dữ liệu biểu đồ (Đã đồng bộ chuẩn chuỗi giờ Việt Nam để lọc chính xác)
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { value = 30, unit = 'minute' } = req.query;
         const valNum = parseInt(value) || 30;
 
-        let cutoff = new Date();
-        if (unit === 'minute') cutoff.setMinutes(cutoff.getMinutes() - valNum);
-        else if (unit === 'hour') cutoff.setHours(cutoff.getHours() - valNum);
-        else if (unit === 'day') cutoff.setDate(cutoff.getDate() - valNum);
-        else if (unit === 'week') cutoff.setDate(cutoff.getDate() - (valNum * 7));
-        else if (unit === 'month') cutoff.setMonth(cutoff.getMonth() - valNum);
-        else cutoff.setMinutes(cutoff.getMinutes() - 30);
+        // Tính mốc thời gian theo chuẩn múi giờ Việt Nam
+        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+        let cutoffVN = new Date(nowVN.getTime());
 
-        // Lấy dữ liệu từ mốc thời gian đã chọn
+        if (unit === 'minute') cutoffVN.setMinutes(cutoffVN.getMinutes() - valNum);
+        else if (unit === 'hour') cutoffVN.setHours(cutoffVN.getHours() - valNum);
+        else if (unit === 'day') cutoffVN.setDate(cutoffVN.getDate() - valNum);
+        else if (unit === 'week') cutoffVN.setDate(cutoffVN.getDate() - (valNum * 7));
+        else if (unit === 'month') cutoffVN.setMonth(cutoffVN.getMonth() - valNum);
+
+        const pad = (n) => String(n).padStart(2, '0');
+        const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
+
+        // Truy vấn dữ liệu từ mốc thời gian
         const { data, error } = await supabase
             .from('telemetry_logs')
-            .select('T, S, pH, DO, btri, created_at')
-            .gte('created_at', cutoff.toISOString())
+            .select('T, S, pH, DO, created_at')
+            .gte('created_at', cutoffStr)
             .order('id', { ascending: true })
             .limit(1000);
 
         if (error || !data || data.length === 0) {
-            // Dự phòng: lấy 100 bản ghi mới nhất nếu chưa có dữ liệu theo mốc
+            // Nếu khoảng thời gian vừa chọn chưa có dữ liệu, trả về 100 bản ghi gần nhất
             const fallback = await supabase
                 .from('telemetry_logs')
-                .select('T, S, pH, DO, btri, created_at')
+                .select('T, S, pH, DO, created_at')
                 .order('id', { ascending: false })
                 .limit(100);
             return res.json(fallback.data ? fallback.data.reverse() : []);
@@ -132,11 +137,11 @@ app.get('/api/chart-data', async (req, res) => {
     }
 });
 
-// 2. API phân trang xem toàn bộ Database lịch sử mà không cần vào Supabase
+// 2. API phân trang xem Database hỗ trợ đến 1000 dòng mỗi trang
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
+        const limit = Math.min(parseInt(req.query.limit) || 1000, 1000); // Tối đa 1000 dòng
         const from = (page - 1) * limit;
         const to = from + limit - 1;
 
@@ -160,7 +165,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API tải toàn bộ dữ liệu dạng file CSV (Excel)
+// 3. API xuất toàn bộ dữ liệu ra file CSV
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -185,7 +190,7 @@ app.get('/api/export-csv', async (req, res) => {
     }
 });
 
-// Xử lý lệnh Downlink
+// Xử lý Downlink
 io.on('connection', (socket) => {
     socket.on('send_control', async (commandStr) => {
         console.log(`[DOWNLINK] Phat lenh: ${commandStr}`);
