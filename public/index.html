@@ -108,7 +108,7 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ (DỄ CHẠM & TƯƠNG TÁC) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
@@ -116,7 +116,7 @@
                     <p class="text-xs text-gray-400" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
                 </div>
                 
-                <!-- Nút chọn khoảng thời gian -->
+                <!-- Bộ chọn khoảng thời gian -->
                 <div class="flex flex-wrap items-center gap-2">
                     <button onclick="setChartPreset(30, 'minute', '30 phút', this)" class="chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
                     <button onclick="setChartPreset(5, 'hour', '5 giờ', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
@@ -124,7 +124,6 @@
                     <button onclick="setChartPreset(1, 'week', '1 tuần', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tuần</button>
                     <button onclick="setChartPreset(1, 'month', '1 tháng', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
                     
-                    <!-- Nhập tùy ý -->
                     <div class="flex items-center gap-1 bg-[#0b1329] p-1 rounded-lg border border-slate-700">
                         <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none">
                         <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white focus:outline-none">
@@ -159,11 +158,11 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT 1000 DÒNG DATABASE ================= -->
+        <!-- ================= TRÌNH DUYỆT DATABASE ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
-                    <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Tối đa 1000 dòng/trang)</h2>
+                    <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
                     <p class="text-xs text-gray-400" id="db-total-count">Đang tải...</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
@@ -184,7 +183,6 @@
                 </div>
             </div>
 
-            <!-- Bảng dữ liệu cuộn dọc -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
@@ -209,7 +207,6 @@
                 </table>
             </div>
 
-            <!-- Phân trang -->
             <div class="flex justify-between items-center pt-2">
                 <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded text-white transition">← Trang trước</button>
                 <span id="page-indicator" class="text-xs text-gray-300 font-mono">Trang 1 / 1</span>
@@ -227,30 +224,77 @@
         let currentChartVal = 30;
         let currentChartUnit = 'minute';
         let currentPage = 1;
-        let currentLimit = 1000; // Mặc định hiển thị 1000 dòng
+        let currentLimit = 1000;
         let totalPages = 1;
 
+        // Cấu hình Chart.js siêu nhạy khi chạm/lướt ngón tay
         function initCharts() {
             const chartConfigs = [
-                { id: 'chartT', label: 'Nhiệt độ T (°C)', color: '#f97316' },
-                { id: 'chartS', label: 'Độ mặn S (‰)', color: '#06b6d4' },
-                { id: 'chartPH', label: 'Độ pH', color: '#10b981' },
-                { id: 'chartDO', label: 'Oxy hòa tan DO (mg/L)', color: '#3b82f6' }
+                { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
+                { id: 'chartS', label: 'Độ mặn S', unit: '‰', color: '#06b6d4' },
+                { id: 'chartPH', label: 'Độ pH', unit: '', color: '#10b981' },
+                { id: 'chartDO', label: 'Oxy hòa tan DO', unit: 'mg/L', color: '#3b82f6' }
             ];
 
             chartConfigs.forEach(cfg => {
                 const ctx = document.getElementById(cfg.id).getContext('2d');
                 charts[cfg.id] = new Chart(ctx, {
                     type: 'line',
-                    data: { labels: [], datasets: [{ label: cfg.label, data: [], borderColor: cfg.color, backgroundColor: cfg.color + '20', borderWidth: 2, tension: 0.25, fill: true, pointRadius: 1 }] },
+                    data: { 
+                        labels: [], 
+                        datasets: [{ 
+                            label: cfg.label, 
+                            data: [], 
+                            borderColor: cfg.color, 
+                            backgroundColor: cfg.color + '20', 
+                            borderWidth: 2, 
+                            tension: 0.25, 
+                            fill: true,
+                            pointRadius: 0,              // Ẩn chấm tròn mặc định để đường mượt mà
+                            pointHoverRadius: 6,         // Phóng to chấm tròn khi chạm vào
+                            pointHoverBackgroundColor: cfg.color,
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
+                            pointHitRadius: 35           // Vùng bắt chạm siêu rộng (chạm lướt qua là bắt ngay)
+                        }] 
+                    },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                            x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
-                            y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                        interaction: {
+                            mode: 'index',              // Bắt trúng mốc dọc bất kể ngón tay chạm cao hay thấp
+                            intersect: false            // Không cần chạm trúng điểm pixel
                         },
-                        plugins: { legend: { display: false } }
+                        scales: {
+                            x: { 
+                                grid: { color: '#1e293b' }, 
+                                ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } 
+                            },
+                            y: { 
+                                grid: { color: '#1e293b' }, 
+                                ticks: { color: '#94a3b8', font: { size: 10 } } 
+                            }
+                        },
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                enabled: true,
+                                backgroundColor: '#1e293b',
+                                titleColor: '#38bdf8',
+                                bodyColor: '#ffffff',
+                                borderColor: '#475569',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                                titleFont: { size: 12, weight: 'bold' },
+                                bodyFont: { size: 14, weight: 'bold', family: 'monospace' },
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${cfg.label}: ${context.parsed.y} ${cfg.unit}`.trim();
+                                    }
+                                }
+                            }
+                        }
                     }
                 });
             });
@@ -288,7 +332,6 @@
             currentChartUnit = unit;
             document.getElementById('chart-time-label').innerText = `Đang hiển thị: ${labelStr} gần nhất`;
             
-            // Đổi màu nút được bấm
             document.querySelectorAll('.chart-btn').forEach(b => {
                 b.className = 'chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition';
             });
