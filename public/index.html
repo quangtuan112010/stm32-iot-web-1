@@ -108,24 +108,23 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ TRỰC QUAN ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
-                    <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước Theo Thời Gian</h2>
-                    <p class="text-xs text-gray-400" id="chart-time-label">Khoảng thời gian: 30 phút gần nhất</p>
+                    <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước</h2>
+                    <p class="text-xs text-gray-400" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
                 </div>
                 
-                <!-- Bộ chọn khoảng thời gian -->
+                <!-- Nút chọn khoảng thời gian -->
                 <div class="flex flex-wrap items-center gap-2">
-                    <!-- Presets -->
-                    <button onclick="setChartPreset(30, 'minute', '30 phút')" class="btn-preset bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
-                    <button onclick="setChartPreset(5, 'hour', '5 giờ')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
-                    <button onclick="setChartPreset(1, 'day', '1 ngày')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Ngày</button>
-                    <button onclick="setChartPreset(1, 'week', '1 tuần')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tuần</button>
-                    <button onclick="setChartPreset(1, 'month', '1 tháng')" class="btn-preset bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
+                    <button onclick="setChartPreset(30, 'minute', '30 phút', this)" class="chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
+                    <button onclick="setChartPreset(5, 'hour', '5 giờ', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
+                    <button onclick="setChartPreset(1, 'day', '1 ngày', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Ngày</button>
+                    <button onclick="setChartPreset(1, 'week', '1 tuần', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tuần</button>
+                    <button onclick="setChartPreset(1, 'month', '1 tháng', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
                     
-                    <!-- Tùy chọn linh hoạt -->
+                    <!-- Nhập tùy ý -->
                     <div class="flex items-center gap-1 bg-[#0b1329] p-1 rounded-lg border border-slate-700">
                         <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none">
                         <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white focus:outline-none">
@@ -139,7 +138,7 @@
                 </div>
             </div>
 
-            <!-- Grid 4 Biểu đồ chuyên sâu -->
+            <!-- 4 Biểu đồ -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <h3 class="text-xs font-bold text-orange-400 mb-2">1. Nhiệt Độ Nước (°C)</h3>
@@ -160,35 +159,33 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT DATABASE TOÀN DIỆN ================= -->
+        <!-- ================= TRÌNH DUYỆT 1000 DÒNG DATABASE ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
-                    <h2 class="text-base font-bold text-gray-200">Trình Duyệt Toàn Bộ Cơ Sở Dữ Liệu (Database Explorer)</h2>
-                    <p class="text-xs text-gray-400" id="db-total-count">Đang tải số lượng bản ghi...</p>
+                    <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Tối đa 1000 dòng/trang)</h2>
+                    <p class="text-xs text-gray-400" id="db-total-count">Đang tải...</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <!-- Chọn số dòng -->
                     <div class="flex items-center gap-1.5 text-xs text-gray-400">
-                        <span>Hiện:</span>
+                        <span>Số dòng hiển thị:</span>
                         <select id="db-limit" onchange="changeLimit()" class="bg-[#0b1329] border border-slate-700 text-white rounded px-2 py-1 focus:outline-none">
-                            <option value="25">25 dòng</option>
-                            <option value="50" selected>50 dòng</option>
+                            <option value="50">50 dòng</option>
                             <option value="100">100 dòng</option>
-                            <option value="200">200 dòng</option>
+                            <option value="500">500 dòng</option>
+                            <option value="1000" selected>1000 dòng</option>
                         </select>
                     </div>
 
-                    <!-- Nút xuất file CSV (Excel) -->
                     <a href="/api/export-csv" target="_blank" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-600">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Tải File Excel (CSV)
+                        Tải CSV (Excel)
                     </a>
                 </div>
             </div>
 
-            <!-- Bảng dữ liệu có scroll -->
-            <div class="overflow-x-auto max-h-96 overflow-y-auto border border-slate-700 rounded-lg">
+            <!-- Bảng dữ liệu cuộn dọc -->
+            <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
                         <tr>
@@ -212,7 +209,7 @@
                 </table>
             </div>
 
-            <!-- Điều hướng phân trang (Pagination) -->
+            <!-- Phân trang -->
             <div class="flex justify-between items-center pt-2">
                 <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded text-white transition">← Trang trước</button>
                 <span id="page-indicator" class="text-xs text-gray-300 font-mono">Trang 1 / 1</span>
@@ -226,15 +223,13 @@
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
 
-        // Biến quản lý biểu đồ & phân trang
         let charts = {};
         let currentChartVal = 30;
         let currentChartUnit = 'minute';
         let currentPage = 1;
-        let currentLimit = 50;
+        let currentLimit = 1000; // Mặc định hiển thị 1000 dòng
         let totalPages = 1;
 
-        // 1. Khởi tạo 4 biểu đồ Chart.js
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T (°C)', color: '#f97316' },
@@ -261,7 +256,6 @@
             });
         }
 
-        // 2. Tải dữ liệu biểu đồ từ Server
         async function fetchChartData() {
             try {
                 const res = await fetch(`/api/chart-data?value=${currentChartVal}&unit=${currentChartUnit}`);
@@ -289,10 +283,19 @@
             }
         }
 
-        function setChartPreset(val, unit, labelStr) {
+        function setChartPreset(val, unit, labelStr, btnElem) {
             currentChartVal = val;
             currentChartUnit = unit;
-            document.getElementById('chart-time-label').innerText = `Khoảng thời gian: ${labelStr} gần nhất`;
+            document.getElementById('chart-time-label').innerText = `Đang hiển thị: ${labelStr} gần nhất`;
+            
+            // Đổi màu nút được bấm
+            document.querySelectorAll('.chart-btn').forEach(b => {
+                b.className = 'chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition';
+            });
+            if (btnElem) {
+                btnElem.className = 'chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition';
+            }
+
             fetchChartData();
         }
 
@@ -300,17 +303,16 @@
             const val = document.getElementById('custom-val').value;
             const unit = document.getElementById('custom-unit').value;
             const unitText = document.getElementById('custom-unit').options[document.getElementById('custom-unit').selectedIndex].text;
-            setChartPreset(val, unit, `${val} ${unitText}`);
+            setChartPreset(val, unit, `${val} ${unitText}`, null);
         }
 
-        // 3. Tải dữ liệu phân trang Database
         async function fetchPagedLogs() {
             try {
                 const res = await fetch(`/api/logs-paged?page=${currentPage}&limit=${currentLimit}`);
                 const result = await res.json();
                 
                 totalPages = result.totalPages || 1;
-                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi đã lưu`;
+                document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi`;
                 document.getElementById('page-indicator').innerText = `Trang ${result.page} / ${totalPages}`;
                 
                 document.getElementById('btn-prev').disabled = (currentPage <= 1);
@@ -348,7 +350,6 @@
             fetchPagedLogs();
         }
 
-        // 4. Hiệu ứng làm mới tất cả với dấu hiệu trực quan
         async function refreshAllData() {
             const spinner = document.getElementById('refresh-spinner');
             const txt = document.getElementById('refresh-text');
@@ -362,10 +363,9 @@
                 spinner.classList.remove('animate-spin');
                 const nowTime = new Date().toLocaleTimeString('vi-VN');
                 txt.innerText = `Đã cập nhật (${nowTime})`;
-            }, 500);
+            }, 400);
         }
 
-        // 5. Lắng nghe dữ liệu Realtime
         socket.on('new_telemetry', (packet) => {
             const d = packet.data;
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
@@ -392,7 +392,6 @@
 
             document.getElementById('val-cs').innerText = d.cs;
 
-            // Nếu đang ở trang 1 thì tự động cập nhật lại bảng
             if (currentPage === 1) {
                 fetchPagedLogs();
             }
@@ -404,7 +403,6 @@
             setTimeout(() => fb.innerText = '', 4000);
         });
 
-        // 6. Xử lý Downlink
         function verifyPassword() {
             if (document.getElementById('ctrl-password').value !== CORRECT_PASSWORD) {
                 alert('Mật khẩu bảo mật không chính xác!');
@@ -432,7 +430,6 @@
             }
         }
 
-        // Khởi chạy khi tải trang
         initCharts();
         fetchChartData();
         fetchPagedLogs();
