@@ -11,7 +11,7 @@
 <body class="bg-[#0b1329] text-gray-100 p-3 md:p-6 font-sans">
     <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header với 2 Đèn Trạng Thái -->
+        <!-- Header -->
         <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
@@ -31,7 +31,7 @@
             </div>
         </header>
 
-        <!-- BANNER CẢNH BÁO KHI CS = 1 (CS_ANCHOR_PENDING) -->
+        <!-- Banner cảnh báo khi cs = 1 -->
         <div id="banner-cs-pending" class="hidden bg-amber-950/80 border-2 border-amber-500 text-amber-200 p-4 rounded-xl shadow-lg flex items-center justify-between gap-4 animate-pulse">
             <div class="flex items-center gap-3">
                 <span class="text-2xl">⚠️</span>
@@ -65,34 +65,32 @@
             <div id="control-feedback" class="text-xs font-semibold min-h-[16px]"></div>
         </div>
 
-        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI (CÓ THANH THỜI GIAN HOẠT ĐỘNG TINH TẾ) ================= -->
+        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI (ĐỒNG BỘ 100% VỚI DATABASE) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             
-            <!-- THANH THỜI GIAN NHỊP THỞ HOẠT ĐỘNG TINH TẾ (TELEMETRY PULSE BAR) -->
-            <div class="bg-[#0b1329]/90 border border-slate-700/80 rounded-lg p-3 px-4 shadow-inner flex flex-col md:flex-row items-center justify-between gap-3">
+            <!-- THANH ĐỒNG BỘ MỐC GIỜ CHÍNH XÁC TỪ DATABASE (KHÔNG ĐẾM NGƯỢC) -->
+            <div class="bg-[#0b1329]/90 border border-slate-700/80 rounded-lg p-3 px-4 shadow-inner flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5">
-                    <!-- Chấm nhịp thở xanh -->
                     <span class="relative flex h-2.5 w-2.5">
                         <span id="telemetry-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span id="telemetry-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
                     <span class="text-xs font-bold text-gray-200 tracking-wider uppercase">Thông Số Tức Thời</span>
-                    <span class="text-gray-500 text-xs">|</span>
-                    <span id="telemetry-last-packet" class="text-xs font-mono text-cyan-400 font-medium">Mốc nhận: Đang chờ dữ liệu...</span>
+                    <span class="text-gray-600 text-xs">|</span>
+                    <span class="text-xs text-gray-400">Khớp chuẩn Database lịch sử</span>
                 </div>
 
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <!-- Đếm giây trôi qua từng giây một -->
-                    <span id="telemetry-elapsed-text" class="text-xs font-mono text-gray-300 whitespace-nowrap min-w-[130px] text-right">Đang kết nối...</span>
+                <!-- HIỂN THỊ CHÍNH XÁC ID VÀ THỜI GIAN DATABASE GHI NHẬN -->
+                <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+                    <span class="text-gray-400">Bản ghi gần nhất:</span>
+                    <span id="telemetry-db-id" class="text-blue-400 font-bold bg-slate-900 border border-slate-700 px-2 py-0.5 rounded">ID: --</span>
                     
-                    <!-- Thanh tiến trình chu kỳ 10 giây siêu mượt (0% -> 100%) -->
-                    <div class="w-full md:w-36 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/70 relative">
-                        <div id="telemetry-progress" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full w-0 transition-all duration-300 ease-linear"></div>
-                    </div>
+                    <span class="text-gray-400 ml-1">Thời gian DB (VN):</span>
+                    <span id="telemetry-db-time" class="text-emerald-400 font-bold bg-slate-900 border border-slate-700 px-2.5 py-0.5 rounded tracking-wide">--:--:-- --/--/----</span>
                 </div>
             </div>
 
-            <!-- 4 Thẻ cảm biến vật lý chính -->
+            <!-- 4 Thẻ cảm biến chính -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 shadow">
                     <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
@@ -292,7 +290,7 @@
                 </div>
             </div>
 
-            <!-- THANH TÌM KIẾM THEO NGÀY - GIỜ - THÁNG - NĂM -->
+            <!-- Thanh tìm kiếm theo ngày giờ -->
             <div class="flex flex-wrap items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-xs">
                 <span class="text-blue-400 font-semibold flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -335,7 +333,7 @@
                 </table>
             </div>
 
-            <!-- PHÂN TRANG -->
+            <!-- Phân trang -->
             <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-700/60">
                 <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded text-white transition flex items-center gap-1">
                     <span>←</span> Trang trước
@@ -356,7 +354,7 @@
 
     </div>
 
-    <!-- MODAL TÙY CHỌN TẢI CSV -->
+    <!-- Modal tải CSV -->
     <div id="csv-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
@@ -434,7 +432,6 @@
         let filterFromTime = '';
         let filterToTime = '';
         let lastDeviceHeartbeat = 0;
-        let lastTelemetryTimestamp = 0; // Mốc thời gian nhận gói tin tức thời
         let pendingExpectedAlk = null;
 
         function formatDbTime(rawTime) {
@@ -449,7 +446,7 @@
             }
         }
 
-        // ================= GIẢI MÃ CỜ THEO ĐẶC TẢ MỤC 3 =================
+        // Giải mã cờ theo mục 3
         function decodeIL(ilVal) {
             const val = parseInt(ilVal) || 0;
             if (val === 0) return { shortText: "An toàn (0x00)", fullHtml: "<span class='text-emerald-400 font-bold'>An toàn:</span> Không phát hiện sự cố hóa-lý nguy cấp." };
@@ -499,7 +496,7 @@
             setTimeout(() => input.classList.remove('ring-2', 'ring-amber-400'), 2000);
         }
 
-        // ================= GIÁM SÁT KẾT NỐI THIẾT BỊ =================
+        // Giám sát trạng thái máy
         function updateDeviceStatus(isOnline) {
             const badge = document.getElementById('badge-device');
             const dot = document.getElementById('dot-device');
@@ -537,56 +534,31 @@
             if (info.lastDeviceTime) lastDeviceHeartbeat = info.lastDeviceTime;
             updateDeviceStatus(info.isOnline);
 
-            // Nạp ngay gói tin tức thời từ RAM server nếu có (không cần chờ 10s)
             if (info.latestPacket && info.latestPacket.data) {
                 renderTelemetryUI(info.latestPacket);
             }
         });
 
-        // ================= VÒNG LẶP CHẠY THANH TIẾN TRÌNH 10S TINH TẾ (CHẠY MỖI 100MS) =================
-        setInterval(() => {
-            if (!lastTelemetryTimestamp) return;
-
-            const elapsedMs = Date.now() - lastTelemetryTimestamp;
-            const elapsedSec = Math.floor(elapsedMs / 1000);
-            const progressEl = document.getElementById('telemetry-progress');
-            const elapsedTxt = document.getElementById('telemetry-elapsed-text');
-
-            // Tính tỷ lệ % chu kỳ 10 giây (10,000 ms)
-            const percent = Math.min(100, (elapsedMs / 10000) * 100);
-
-            if (elapsedSec <= 10) {
-                progressEl.style.width = `${percent}%`;
-                progressEl.className = "bg-gradient-to-r from-blue-500 to-emerald-400 h-full transition-all duration-100 ease-linear";
-                elapsedTxt.innerHTML = `<span class="text-emerald-400 font-bold">Vừa cập nhật: ${elapsedSec}s trước</span>`;
-            } else if (elapsedSec <= 20) {
-                progressEl.style.width = "100%";
-                progressEl.className = "bg-amber-500 h-full animate-pulse";
-                elapsedTxt.innerHTML = `<span class="text-amber-400">Đang đợi gói mới (${elapsedSec}s)...</span>`;
-            } else {
-                progressEl.style.width = "100%";
-                progressEl.className = "bg-red-500 h-full";
-                elapsedTxt.innerHTML = `<span class="text-red-400 font-bold">Trễ gói tin (${elapsedSec}s)</span>`;
-            }
-        }, 100);
-
-        // ================= HÀM HIỂN THỊ DỮ LIỆU TỨC THỜI =================
+        // Hàm đổ dữ liệu tức thời: Hiển thị đúng ID và giờ Database
         function renderTelemetryUI(packet) {
-            lastTelemetryTimestamp = packet.device_timestamp || Date.now();
-            lastDeviceHeartbeat = lastTelemetryTimestamp;
+            lastDeviceHeartbeat = packet.device_timestamp || Date.now();
             updateDeviceStatus(true);
 
-            // Cập nhật mốc nhận trên thanh nhịp thở
-            document.getElementById('telemetry-last-packet').innerText = `Mốc nhận: ${packet.time_vn}`;
-            
-            // Hiệu ứng nháy sáng chấm xanh khi vừa nhận gói tin mới
+            // Ghi đúng ID và Giờ phút giây từ Database
+            if (packet.db_id && packet.db_id !== '--') {
+                document.getElementById('telemetry-db-id').innerText = `ID: #${packet.db_id}`;
+            }
+            if (packet.db_time) {
+                document.getElementById('telemetry-db-time').innerText = packet.db_time;
+            }
+
+            // Nháy sáng chấm xanh xác nhận có gói mới
             const pingDot = document.getElementById('telemetry-dot');
             pingDot.classList.add('scale-150');
             setTimeout(() => pingDot.classList.remove('scale-150'), 300);
 
             const d = packet.data;
             
-            // 4 Cảm biến chính
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
             document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
             document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
@@ -603,7 +575,7 @@
                 alkStatusTxt.className = "text-[10px] text-emerald-400 mt-0.5";
             }
 
-            // Cơ chế xác nhận 2 chiều Flash
+            // Xác nhận Flash
             if (pendingExpectedAlk !== null) {
                 if (Math.abs(Number(d.alk) - pendingExpectedAlk) < 0.05) {
                     const fb = document.getElementById('control-feedback');
@@ -612,7 +584,7 @@
                 }
             }
 
-            // Rủi ro BTRI
+            // BTRI
             document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
             const btriTxt = document.getElementById('txt-btri-eval');
             if (d.btri >= 75) {
@@ -686,7 +658,6 @@
             document.getElementById('txt-cs-desc').innerText = csDecoded.desc;
             document.getElementById('txt-cs-desc').className = `text-[10px] mt-0.5 font-semibold ${csDecoded.color}`;
 
-            // Banner CS=1
             const bannerCs = document.getElementById('banner-cs-pending');
             if (d.cs === 1) {
                 bannerCs.classList.remove('hidden');
@@ -703,7 +674,7 @@
             renderTelemetryUI(packet);
         });
 
-        // ================= KHỞI TẠO BIỂU ĐỒ =================
+        // Khởi tạo biểu đồ
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
@@ -892,7 +863,7 @@
             }, 300);
         }
 
-        // ================= DỮ LIỆU DATABASE & PHÂN TRANG =================
+        // Dữ liệu Database & Phân trang
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -917,10 +888,20 @@
                     return;
                 }
 
+                // Cập nhật ngay thẻ tức thời theo dòng đầu tiên nếu chưa có dữ liệu từ Socket
+                if (currentPage === 1 && !filterFromTime && !filterToTime && result.data[0]) {
+                    const topRow = result.data[0];
+                    const topRowTime = formatDbTime(topRow.created_at);
+                    if (document.getElementById('telemetry-db-id').innerText === 'ID: --') {
+                        document.getElementById('telemetry-db-id').innerText = `ID: #${topRow.id}`;
+                        document.getElementById('telemetry-db-time').innerText = topRowTime;
+                    }
+                }
+
                 tbody.innerHTML = result.data.map(item => `
                     <tr>
                         <td class="py-2 px-2 text-gray-400">${item.id}</td>
-                        <td class="py-2 px-2 text-emerald-400">${formatDbTime(item.created_at)}</td>
+                        <td class="py-2 px-2 text-emerald-400 font-mono">${formatDbTime(item.created_at)}</td>
                         <td class="py-2 px-2 text-orange-400 font-bold">${Number(item.T).toFixed(2)}</td>
                         <td class="py-2 px-2 text-cyan-400 font-bold">${Number(item.S).toFixed(2)}</td>
                         <td class="py-2 px-2 text-emerald-400 font-bold">${Number(item.pH).toFixed(2)}</td>
@@ -1065,7 +1046,6 @@
             }
         }
 
-        // Khởi động
         initCharts();
         fetchChartData();
         fetchPagedLogs();
