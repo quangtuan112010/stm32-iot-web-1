@@ -11,22 +11,19 @@
 <body class="bg-[#0b1329] text-gray-100 p-3 md:p-6 font-sans">
     <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header với 2 Đèn Trạng Thái Rõ Ràng (Đã xóa nút làm mới tất cả) -->
+        <!-- Header với 2 Đèn Trạng Thái Rõ Ràng -->
         <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
                 <p class="text-xs md:text-sm text-gray-400">Chu kỳ cập nhật: 10 giây/lần | MQTT TLS 4G LTE</p>
             </div>
             
-            <!-- Hai trạng thái: Server Web & Thiết bị STM32 -->
             <div class="flex flex-wrap items-center gap-2.5">
-                <!-- 1. Trạng thái Web Server -->
                 <div id="badge-server" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span>Server Web: Trực tuyến</span>
                 </div>
 
-                <!-- 2. Trạng thái Kết nối Mạch Vi Điều Khiển STM32 -->
                 <div id="badge-device" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-gray-400 transition">
                     <span id="dot-device" class="w-2 h-2 bg-gray-500 rounded-full"></span>
                     <span id="txt-device">Máy STM32: Đang kiểm tra...</span>
@@ -111,44 +108,72 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ (CÓ NÚT LÀM MỚI RIÊNG) ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ: 2 CHẾ ĐỘ (GẦN NHẤT & DẢI RỘNG) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
                     <div class="flex items-center gap-2.5">
                         <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước</h2>
                         
-                        <!-- Nút làm mới riêng cho Biểu đồ -->
+                        <!-- Nút làm mới riêng cho đồ thị -->
                         <button onclick="refreshChartOnly()" id="btn-refresh-chart" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-blue-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-chart" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-chart">Làm mới đồ thị</span>
                         </button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
+                    <p class="text-xs text-emerald-400 font-mono mt-1" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
                 </div>
                 
-                <!-- Bộ chọn khoảng thời gian -->
+                <!-- Tab chuyển đổi giữa 2 chế độ xem đồ thị -->
+                <div class="flex items-center bg-[#0b1329] p-1 rounded-lg border border-slate-700 text-xs">
+                    <button onclick="switchChartMode('recent')" id="tab-mode-recent" class="px-3 py-1.5 rounded-md font-medium transition bg-blue-600 text-white">⏱️ Thời gian gần nhất</button>
+                    <button onclick="switchChartMode('range')" id="tab-mode-range" class="px-3 py-1.5 rounded-md font-medium transition text-gray-400 hover:text-white">📅 Dải rộng tùy chọn</button>
+                </div>
+            </div>
+
+            <!-- THANH ĐIỀU KHIỂN CHẾ ĐỘ 1: THỜI GIAN GẦN NHẤT -->
+            <div id="chart-controls-recent" class="flex flex-wrap items-center justify-between gap-3 bg-[#0b1329]/80 p-3 rounded-lg border border-slate-700">
                 <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs text-gray-400 font-medium mr-1">Chọn nhanh:</span>
                     <button onclick="setChartPreset(30, 'minute', '30 phút', this)" class="chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
                     <button onclick="setChartPreset(5, 'hour', '5 giờ', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
                     <button onclick="setChartPreset(1, 'day', '1 ngày', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Ngày</button>
                     <button onclick="setChartPreset(1, 'week', '1 tuần', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tuần</button>
                     <button onclick="setChartPreset(1, 'month', '1 tháng', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Tháng</button>
                     <button onclick="setChartPreset(1, 'year', '1 năm', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">1 Năm</button>
-                    
-                    <div class="flex items-center gap-1 bg-[#0b1329] p-1 rounded-lg border border-slate-700">
-                        <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none">
-                        <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-xs text-white focus:outline-none">
-                            <option value="minute">Phút</option>
-                            <option value="hour">Giờ</option>
-                            <option value="day">Ngày</option>
-                            <option value="week">Tuần</option>
-                            <option value="month">Tháng</option>
-                            <option value="year">Năm</option>
-                        </select>
-                        <button onclick="applyCustomChart()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1 rounded transition">Xem</button>
-                    </div>
                 </div>
+
+                <div class="flex items-center gap-1.5 text-xs">
+                    <span class="text-gray-400">Tùy biến:</span>
+                    <input type="number" id="custom-val" value="2" min="1" max="100" class="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-1 text-white text-center focus:outline-none">
+                    <select id="custom-unit" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white focus:outline-none">
+                        <option value="minute">Phút</option>
+                        <option value="hour">Giờ</option>
+                        <option value="day">Ngày</option>
+                        <option value="week">Tuần</option>
+                        <option value="month">Tháng</option>
+                        <option value="year">Năm</option>
+                    </select>
+                    <button onclick="applyCustomChart()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded transition font-medium">Xem</button>
+                </div>
+            </div>
+
+            <!-- THANH ĐIỀU KHIỂN CHẾ ĐỘ 2: DẢI RỘNG TÙY CHỌN (TỪ NGÀY/GIỜ -> ĐẾN NGÀY/GIỜ) -->
+            <div id="chart-controls-range" class="hidden flex flex-wrap items-center gap-3 bg-[#0b1329]/80 p-3 rounded-lg border border-slate-700 text-xs">
+                <span class="text-blue-400 font-semibold flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Chọn Dải Rộng Đồ Thị:
+                </span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-gray-400">Từ mốc:</span>
+                    <input type="datetime-local" id="chart-from-time" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-gray-400">Đến mốc:</span>
+                    <input type="datetime-local" id="chart-to-time" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+                </div>
+                <button onclick="applyChartRange()" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1 rounded transition font-medium">Vẽ Dải Đồ Thị</button>
+                <span class="text-gray-400 text-[11px] italic ml-auto">* Dữ liệu trong dải sẽ tự động lấy mẫu mượt mà</span>
             </div>
 
             <!-- 4 Biểu đồ -->
@@ -172,14 +197,13 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE (CÓ NÚT LÀM MỚI RIÊNG) ================= -->
+        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
                     <div class="flex items-center gap-2.5">
                         <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
                         
-                        <!-- Nút làm mới riêng cho Lịch sử Database -->
                         <button onclick="refreshDbOnly()" id="btn-refresh-db" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-emerald-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-db" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-db">Làm mới dữ liệu</span>
@@ -255,7 +279,6 @@
                     <span>←</span> Trang trước
                 </button>
 
-                <!-- Nhập trực tiếp số trang để chuyển nhanh -->
                 <div class="flex items-center gap-1.5 text-xs text-gray-300 font-mono bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700">
                     <span>Trang:</span>
                     <input type="number" id="goto-page-input" min="1" value="1" class="w-16 bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-center text-white text-xs focus:outline-none focus:border-blue-500" onkeydown="if(event.key==='Enter') jumpToPage()">
@@ -336,8 +359,12 @@
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
 
         let charts = {};
+        let currentChartMode = 'recent'; // 'recent' hoặc 'range'
         let currentChartVal = 30;
         let currentChartUnit = 'minute';
+        let chartFromTime = '';
+        let chartToTime = '';
+
         let currentPage = 1;
         let currentLimit = 1000;
         let totalPages = 1;
@@ -375,11 +402,10 @@
             }
         }
 
-        // Kiểm tra watchdog nhịp tim thiết bị mỗi 2 giây
         setInterval(() => {
             if (lastDeviceHeartbeat === 0) return;
             const elapsed = Date.now() - lastDeviceHeartbeat;
-            updateDeviceStatus(elapsed < 25000); // Quá 25s không có gói tin -> Offline
+            updateDeviceStatus(elapsed < 25000);
         }, 2000);
 
         socket.on('connect', () => {
@@ -462,18 +488,27 @@
             });
         }
 
+        // ================= TẢI DỮ LIỆU ĐỒ THỊ THEO 2 CHẾ ĐỘ =================
         async function fetchChartData() {
             try {
-                const res = await fetch(`/api/chart-data?value=${currentChartVal}&unit=${currentChartUnit}`);
+                let url = `/api/chart-data?mode=${currentChartMode}`;
+                if (currentChartMode === 'range') {
+                    if (chartFromTime) url += `&from_time=${encodeURIComponent(chartFromTime)}`;
+                    if (chartToTime) url += `&to_time=${encodeURIComponent(chartToTime)}`;
+                } else {
+                    url += `&value=${currentChartVal}&unit=${currentChartUnit}`;
+                }
+
+                const res = await fetch(url);
                 const data = await res.json();
                 
-                const isLongRange = ['day', 'week', 'month', 'year'].includes(currentChartUnit);
+                const isLongRange = (currentChartMode === 'range') || ['day', 'week', 'month', 'year'].includes(currentChartUnit);
                 const labels = data.map(d => {
                     if (!d.created_at) return '';
                     const clean = d.created_at.replace('T', ' ').split('.')[0];
                     const [dPart, tPart] = clean.split(' ');
                     const [y, m, day] = dPart.split('-');
-                    if (currentChartUnit === 'month' || currentChartUnit === 'year' || isLongRange) {
+                    if (isLongRange) {
                         return `${day}/${m} ${tPart.substring(0, 5)}`;
                     } else {
                         return tPart;
@@ -500,20 +535,27 @@
             }
         }
 
-        // ================= NÚT LÀM MỚI RIÊNG CHO BIỂU ĐỒ =================
-        async function refreshChartOnly() {
-            const spinner = document.getElementById('spinner-chart');
-            const txt = document.getElementById('txt-refresh-chart');
-            spinner.classList.add('animate-spin');
-            txt.innerText = 'Đang tải...';
+        // Chuyển đổi qua lại giữa Tab Gần nhất & Tab Dải rộng
+        function switchChartMode(mode) {
+            currentChartMode = mode;
+            const btnRecent = document.getElementById('tab-mode-recent');
+            const btnRange = document.getElementById('tab-mode-range');
+            const ctrlRecent = document.getElementById('chart-controls-recent');
+            const ctrlRange = document.getElementById('chart-controls-range');
 
-            await fetchChartData();
-
-            setTimeout(() => {
-                spinner.classList.remove('animate-spin');
-                const nowTime = new Date().toLocaleTimeString('vi-VN');
-                txt.innerText = `Đã làm mới (${nowTime})`;
-            }, 300);
+            if (mode === 'recent') {
+                btnRecent.className = "px-3 py-1.5 rounded-md font-medium transition bg-blue-600 text-white";
+                btnRange.className = "px-3 py-1.5 rounded-md font-medium transition text-gray-400 hover:text-white";
+                ctrlRecent.classList.remove('hidden');
+                ctrlRange.classList.add('hidden');
+                document.getElementById('chart-time-label').innerText = `Đang hiển thị: ${currentChartVal} ${currentChartUnit} gần nhất`;
+                fetchChartData();
+            } else {
+                btnRange.className = "px-3 py-1.5 rounded-md font-medium transition bg-blue-600 text-white";
+                btnRecent.className = "px-3 py-1.5 rounded-md font-medium transition text-gray-400 hover:text-white";
+                ctrlRange.classList.remove('hidden');
+                ctrlRecent.classList.add('hidden');
+            }
         }
 
         function setChartPreset(val, unit, labelStr, btnElem) {
@@ -538,6 +580,41 @@
             setChartPreset(val, unit, `${val} ${unitText}`, null);
         }
 
+        function applyChartRange() {
+            const fromVal = document.getElementById('chart-from-time').value;
+            const toVal = document.getElementById('chart-to-time').value;
+
+            if (!fromVal && !toVal) {
+                alert('Vui lòng chọn mốc thời gian Từ hoặc Đến!');
+                return;
+            }
+
+            chartFromTime = fromVal ? fromVal.replace('T', ' ') + ':00' : '';
+            chartToTime = toVal ? toVal.replace('T', ' ') + ':59' : '';
+
+            let label = 'Đang hiển thị dải rộng: ';
+            if (fromVal) label += `Từ ${fromVal.replace('T', ' ')} `;
+            if (toVal) label += `Đến ${toVal.replace('T', ' ')}`;
+            document.getElementById('chart-time-label').innerText = label;
+
+            fetchChartData();
+        }
+
+        async function refreshChartOnly() {
+            const spinner = document.getElementById('spinner-chart');
+            const txt = document.getElementById('txt-refresh-chart');
+            spinner.classList.add('animate-spin');
+            txt.innerText = 'Đang tải...';
+
+            await fetchChartData();
+
+            setTimeout(() => {
+                spinner.classList.remove('animate-spin');
+                const nowTime = new Date().toLocaleTimeString('vi-VN');
+                txt.innerText = `Đã làm mới (${nowTime})`;
+            }, 300);
+        }
+
         // ================= DỮ LIỆU DATABASE & PHÂN TRANG =================
         async function fetchPagedLogs() {
             try {
@@ -551,7 +628,6 @@
                 totalPages = result.totalPages || 1;
                 document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi ${filterFromTime || filterToTime ? '(Đang lọc)' : ''}`;
                 
-                // Cập nhật hiển thị trang
                 document.getElementById('goto-page-input').value = result.page;
                 document.getElementById('page-total-display').innerText = totalPages;
                 
@@ -587,7 +663,6 @@
             }
         }
 
-        // ================= NÚT LÀM MỚI RIÊNG CHO LỊCH SỬ DATABASE =================
         async function refreshDbOnly() {
             const spinner = document.getElementById('spinner-db');
             const txt = document.getElementById('txt-refresh-db');
@@ -603,7 +678,6 @@
             }, 300);
         }
 
-        // Hàm nhảy trang khi nhập số
         function jumpToPage() {
             const inputVal = parseInt(document.getElementById('goto-page-input').value);
             if (isNaN(inputVal) || inputVal < 1) {
@@ -681,7 +755,7 @@
         // ================= NHẬN DỮ LIỆU TELEMETRY REALTIME =================
         socket.on('new_telemetry', (packet) => {
             lastDeviceHeartbeat = Date.now();
-            updateDeviceStatus(true); // Bật xanh trạng thái kết nối máy
+            updateDeviceStatus(true);
 
             const d = packet.data;
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
