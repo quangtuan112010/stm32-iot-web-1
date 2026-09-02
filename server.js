@@ -23,22 +23,8 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Biến lưu trạng thái và gói tin tức thời gần nhất
 let lastDeviceTime = 0;
 let lastTelemetryPacket = null;
-
-function getVietnamTimeString() {
-    return new Date().toLocaleString('vi-VN', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-}
 
 function formatSupabaseTime(rawTime) {
     if (!rawTime) return '';
@@ -63,11 +49,10 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin JSON Uplink từ vi điều khiển
+// Nhận gói tin Uplink từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
-        const timeVN = getVietnamTimeString();
         lastDeviceTime = Date.now();
         let data = {};
 
@@ -78,16 +63,8 @@ mqttClient.on('message', async (topic, message) => {
             return;
         }
 
-        console.log(`[MQTT] [${timeVN}] Nhan du lieu:`, data);
-
-        // Lưu gói tin mới nhất vào RAM server để phục vụ client mở web tức thì
-        lastTelemetryPacket = {
-            time_vn: timeVN,
-            device_timestamp: lastDeviceTime,
-            data: data
-        };
-
-        const { error } = await supabase
+        // Ghi vào Supabase và nhận lại chính xác ID và created_at từ Database
+        const { data: insertedRows, error } = await supabase
             .from('telemetry_logs')
             .insert([{
                 T: parseFloat(data.T) || 0.0,
@@ -102,7 +79,25 @@ mqttClient.on('message', async (topic, message) => {
                 surv: parseInt(data.surv) || 0,
                 adapt_acc: parseInt(data.adapt_acc) || 0,
                 cs: parseInt(data.cs) || 0
-            }]);
+            }])
+            .select();
+
+        let dbId = '--';
+        let dbTimeFormatted = '';
+
+        if (insertedRows && insertedRows.length > 0) {
+            dbId = insertedRows[0].id;
+            dbTimeFormatted = formatSupabaseTime(insertedRows[0].created_at);
+        }
+
+        console.log(`[MQTT] [DB ID #${dbId} - ${dbTimeFormatted}] Nhan du lieu:`, data);
+
+        lastTelemetryPacket = {
+            db_id: dbId,
+            db_time: dbTimeFormatted,
+            device_timestamp: lastDeviceTime,
+            data: data
+        };
 
         if (error) {
             console.error('[SUPABASE ERROR]:', error.message);
@@ -274,9 +269,8 @@ app.get('/api/export-csv', async (req, res) => {
     }
 });
 
-// Xử lý Socket.io & Downlink
+// Xử lý Socket.io
 io.on('connection', (socket) => {
-    // Gửi ngay trạng thái kết nối VÀ gói tin tức thời gần nhất để Web không phải chờ
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
         isOnline: (Date.now() - lastDeviceTime < 25000),
