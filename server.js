@@ -23,7 +23,9 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Biến lưu trạng thái và gói tin tức thời gần nhất
 let lastDeviceTime = 0;
+let lastTelemetryPacket = null;
 
 function getVietnamTimeString() {
     return new Date().toLocaleString('vi-VN', {
@@ -50,7 +52,6 @@ function formatSupabaseTime(rawTime) {
     }
 }
 
-// Kết nối MQTT Broker qua TLS
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -79,6 +80,13 @@ mqttClient.on('message', async (topic, message) => {
 
         console.log(`[MQTT] [${timeVN}] Nhan du lieu:`, data);
 
+        // Lưu gói tin mới nhất vào RAM server để phục vụ client mở web tức thì
+        lastTelemetryPacket = {
+            time_vn: timeVN,
+            device_timestamp: lastDeviceTime,
+            data: data
+        };
+
         const { error } = await supabase
             .from('telemetry_logs')
             .insert([{
@@ -100,28 +108,21 @@ mqttClient.on('message', async (topic, message) => {
             console.error('[SUPABASE ERROR]:', error.message);
         }
 
-        io.emit('new_telemetry', {
-            time_vn: timeVN,
-            device_timestamp: lastDeviceTime,
-            data: data
-        });
+        io.emit('new_telemetry', lastTelemetryPacket);
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ: HỖ TRỢ CẢ THỜI GIAN GẦN NHẤT & DẢI RỘNG TÙY CHỌN
+// 1. API lấy dữ liệu biểu đồ
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
         let queryGte = null;
         let queryLte = null;
 
-        // Chế độ 1: Dải rộng tùy chọn (From -> To)
         if (mode === 'range' || from_time || to_time) {
             if (from_time) queryGte = from_time;
             if (to_time) queryLte = to_time;
-        } 
-        // Chế độ 2: Thời gian gần nhất (Relative)
-        else {
+        } else {
             const valNum = parseInt(value) || 30;
             const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
             let cutoffVN = new Date(nowVN.getTime());
@@ -137,7 +138,6 @@ app.get('/api/chart-data', async (req, res) => {
             queryGte = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
         }
 
-        // Đọc song song dữ liệu để bao quát toàn bộ dải thời gian
         const CHUNK_SIZE = 1000;
         const MAX_CHUNKS = 10;
         const fetchPromises = [];
@@ -178,7 +178,6 @@ app.get('/api/chart-data', async (req, res) => {
             return res.json(fallback.data ? fallback.data.reverse() : []);
         }
 
-        // Lấy mẫu đều ~300 điểm dữ liệu để biểu đồ vẽ nhanh và mượt
         let sampled = allData;
         const maxPoints = 300;
         if (allData.length > maxPoints) {
@@ -277,9 +276,11 @@ app.get('/api/export-csv', async (req, res) => {
 
 // Xử lý Socket.io & Downlink
 io.on('connection', (socket) => {
+    // Gửi ngay trạng thái kết nối VÀ gói tin tức thời gần nhất để Web không phải chờ
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
-        isOnline: (Date.now() - lastDeviceTime < 25000)
+        isOnline: (Date.now() - lastDeviceTime < 25000),
+        latestPacket: lastTelemetryPacket
     });
 
     socket.on('send_control', async (commandStr) => {
