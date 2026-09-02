@@ -23,7 +23,6 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Biến lưu mốc thời gian nhận gói tin thiết bị gần nhất
 let lastDeviceTime = 0;
 
 function getVietnamTimeString() {
@@ -63,12 +62,12 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin JSON Uplink từ STM32 / Arduino
+// Nhận gói tin JSON Uplink từ vi điều khiển
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
         const timeVN = getVietnamTimeString();
-        lastDeviceTime = Date.now(); // Cập nhật nhịp tim thiết bị
+        lastDeviceTime = Date.now();
         let data = {};
 
         try {
@@ -109,25 +108,36 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ
+// 1. API lấy dữ liệu biểu đồ: HỖ TRỢ CẢ THỜI GIAN GẦN NHẤT & DẢI RỘNG TÙY CHỌN
 app.get('/api/chart-data', async (req, res) => {
     try {
-        const { value = 30, unit = 'minute' } = req.query;
-        const valNum = parseInt(value) || 30;
+        const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
+        let queryGte = null;
+        let queryLte = null;
 
-        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-        let cutoffVN = new Date(nowVN.getTime());
+        // Chế độ 1: Dải rộng tùy chọn (From -> To)
+        if (mode === 'range' || from_time || to_time) {
+            if (from_time) queryGte = from_time;
+            if (to_time) queryLte = to_time;
+        } 
+        // Chế độ 2: Thời gian gần nhất (Relative)
+        else {
+            const valNum = parseInt(value) || 30;
+            const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+            let cutoffVN = new Date(nowVN.getTime());
 
-        if (unit === 'minute') cutoffVN.setMinutes(cutoffVN.getMinutes() - valNum);
-        else if (unit === 'hour') cutoffVN.setHours(cutoffVN.getHours() - valNum);
-        else if (unit === 'day') cutoffVN.setDate(cutoffVN.getDate() - valNum);
-        else if (unit === 'week') cutoffVN.setDate(cutoffVN.getDate() - (valNum * 7));
-        else if (unit === 'month') cutoffVN.setMonth(cutoffVN.getMonth() - valNum);
-        else if (unit === 'year') cutoffVN.setFullYear(cutoffVN.getFullYear() - valNum);
+            if (unit === 'minute') cutoffVN.setMinutes(cutoffVN.getMinutes() - valNum);
+            else if (unit === 'hour') cutoffVN.setHours(cutoffVN.getHours() - valNum);
+            else if (unit === 'day') cutoffVN.setDate(cutoffVN.getDate() - valNum);
+            else if (unit === 'week') cutoffVN.setDate(cutoffVN.getDate() - (valNum * 7));
+            else if (unit === 'month') cutoffVN.setMonth(cutoffVN.getMonth() - valNum);
+            else if (unit === 'year') cutoffVN.setFullYear(cutoffVN.getFullYear() - valNum);
 
-        const pad = (n) => String(n).padStart(2, '0');
-        const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
+            const pad = (n) => String(n).padStart(2, '0');
+            queryGte = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
+        }
 
+        // Đọc song song dữ liệu để bao quát toàn bộ dải thời gian
         const CHUNK_SIZE = 1000;
         const MAX_CHUNKS = 10;
         const fetchPromises = [];
@@ -135,14 +145,16 @@ app.get('/api/chart-data', async (req, res) => {
         for (let i = 0; i < MAX_CHUNKS; i++) {
             const from = i * CHUNK_SIZE;
             const to = from + CHUNK_SIZE - 1;
-            fetchPromises.push(
-                supabase
-                    .from('telemetry_logs')
-                    .select('T, S, pH, DO, created_at')
-                    .gte('created_at', cutoffStr)
-                    .order('id', { ascending: false })
-                    .range(from, to)
-            );
+            let q = supabase
+                .from('telemetry_logs')
+                .select('T, S, pH, DO, created_at')
+                .order('id', { ascending: false })
+                .range(from, to);
+
+            if (queryGte) q = q.gte('created_at', queryGte);
+            if (queryLte) q = q.lte('created_at', queryLte);
+
+            fetchPromises.push(q);
         }
 
         const results = await Promise.all(fetchPromises);
@@ -166,6 +178,7 @@ app.get('/api/chart-data', async (req, res) => {
             return res.json(fallback.data ? fallback.data.reverse() : []);
         }
 
+        // Lấy mẫu đều ~300 điểm dữ liệu để biểu đồ vẽ nhanh và mượt
         let sampled = allData;
         const maxPoints = 300;
         if (allData.length > maxPoints) {
@@ -213,7 +226,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API xuất CSV
+// 3. API xuất file CSV
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -262,9 +275,8 @@ app.get('/api/export-csv', async (req, res) => {
     }
 });
 
-// Xử lý Downlink & Socket
+// Xử lý Socket.io & Downlink
 io.on('connection', (socket) => {
-    // Gửi trạng thái thiết bị ngay khi web vừa mở
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
         isOnline: (Date.now() - lastDeviceTime < 25000)
