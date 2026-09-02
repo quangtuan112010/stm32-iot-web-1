@@ -11,23 +11,26 @@
 <body class="bg-[#0b1329] text-gray-100 p-3 md:p-6 font-sans">
     <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header -->
+        <!-- Header với 2 Đèn Trạng Thái Rõ Ràng (Đã xóa nút làm mới tất cả) -->
         <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
                 <p class="text-xs md:text-sm text-gray-400">Chu kỳ cập nhật: 10 giây/lần | MQTT TLS 4G LTE</p>
             </div>
-            <div class="flex items-center space-x-3">
-                <span id="live-indicator" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
-                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span>System Online</span>
-                </span>
-                <button onclick="refreshAllData()" id="btn-refresh-all" class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-white px-3.5 py-1.5 rounded-lg transition border border-slate-600">
-                    <svg id="refresh-spinner" class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    <span id="refresh-text">Làm mới tất cả</span>
-                </button>
+            
+            <!-- Hai trạng thái: Server Web & Thiết bị STM32 -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <!-- 1. Trạng thái Web Server -->
+                <div id="badge-server" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span>Server Web: Trực tuyến</span>
+                </div>
+
+                <!-- 2. Trạng thái Kết nối Mạch Vi Điều Khiển STM32 -->
+                <div id="badge-device" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-gray-400 transition">
+                    <span id="dot-device" class="w-2 h-2 bg-gray-500 rounded-full"></span>
+                    <span id="txt-device">Máy STM32: Đang kiểm tra...</span>
+                </div>
             </div>
         </header>
 
@@ -108,14 +111,23 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ (CÓ NÚT LÀM MỚI RIÊNG) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
-                    <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước</h2>
-                    <p class="text-xs text-gray-400" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
+                    <div class="flex items-center gap-2.5">
+                        <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước</h2>
+                        
+                        <!-- Nút làm mới riêng cho Biểu đồ -->
+                        <button onclick="refreshChartOnly()" id="btn-refresh-chart" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-blue-400 px-2.5 py-1 rounded border border-slate-700 transition">
+                            <svg id="spinner-chart" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            <span id="txt-refresh-chart">Làm mới đồ thị</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1" id="chart-time-label">Đang hiển thị: 30 phút gần nhất</p>
                 </div>
                 
+                <!-- Bộ chọn khoảng thời gian -->
                 <div class="flex flex-wrap items-center gap-2">
                     <button onclick="setChartPreset(30, 'minute', '30 phút', this)" class="chart-btn bg-blue-600 text-white text-xs px-2.5 py-1.5 rounded transition">30 Phút</button>
                     <button onclick="setChartPreset(5, 'hour', '5 giờ', this)" class="chart-btn bg-slate-700 hover:bg-slate-600 text-gray-200 text-xs px-2.5 py-1.5 rounded transition">5 Giờ</button>
@@ -160,12 +172,20 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE ================= -->
+        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE (CÓ NÚT LÀM MỚI RIÊNG) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
-                    <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
-                    <p class="text-xs text-gray-400" id="db-total-count">Đang tải...</p>
+                    <div class="flex items-center gap-2.5">
+                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
+                        
+                        <!-- Nút làm mới riêng cho Lịch sử Database -->
+                        <button onclick="refreshDbOnly()" id="btn-refresh-db" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-emerald-400 px-2.5 py-1 rounded border border-slate-700 transition">
+                            <svg id="spinner-db" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            <span id="txt-refresh-db">Làm mới dữ liệu</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1" id="db-total-count">Đang tải...</p>
                 </div>
                 
                 <div class="flex flex-wrap items-center gap-3">
@@ -179,7 +199,6 @@
                         </select>
                     </div>
 
-                    <!-- Nút mở cửa sổ Tải CSV -->
                     <button onclick="openCsvModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-emerald-600 shadow">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Tải CSV (Excel)
@@ -205,6 +224,7 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
+            <!-- Bảng dữ liệu -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
@@ -229,16 +249,29 @@
                 </table>
             </div>
 
-            <div class="flex justify-between items-center pt-2">
-                <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded text-white transition">← Trang trước</button>
-                <span id="page-indicator" class="text-xs text-gray-300 font-mono">Trang 1 / 1</span>
-                <button onclick="nextPage()" id="btn-next" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded text-white transition">Trang sau →</button>
+            <!-- PHÂN TRANG: GIỮ NGUYÊN NÚT TRANG TRƯỚC/SAU + THÊM Ô NHẬP SỐ TRANG -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-700/60">
+                <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded text-white transition flex items-center gap-1">
+                    <span>←</span> Trang trước
+                </button>
+
+                <!-- Nhập trực tiếp số trang để chuyển nhanh -->
+                <div class="flex items-center gap-1.5 text-xs text-gray-300 font-mono bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700">
+                    <span>Trang:</span>
+                    <input type="number" id="goto-page-input" min="1" value="1" class="w-16 bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-center text-white text-xs focus:outline-none focus:border-blue-500" onkeydown="if(event.key==='Enter') jumpToPage()">
+                    <span class="text-gray-400">/ <span id="page-total-display">1</span></span>
+                    <button onclick="jumpToPage()" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-0.5 rounded transition text-xs font-semibold ml-1">Đến</button>
+                </div>
+
+                <button onclick="nextPage()" id="btn-next" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded text-white transition flex items-center gap-1">
+                    Trang sau <span>→</span>
+                </button>
             </div>
         </div>
 
     </div>
 
-    <!-- ================= MODAL TÙY CHỌN TẢI CSV ================= -->
+    <!-- MODAL TÙY CHỌN TẢI CSV -->
     <div id="csv-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
@@ -250,7 +283,6 @@
             </div>
 
             <div class="space-y-3.5 text-xs">
-                <!-- Lựa chọn 1: Tải tất cả -->
                 <label class="flex items-start gap-3 p-3 bg-[#0b1329] border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
                     <input type="radio" name="export_type" value="all" checked class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div>
@@ -259,7 +291,6 @@
                     </div>
                 </label>
 
-                <!-- Lựa chọn 2: Tải theo số lượng bản ghi gần nhất -->
                 <label class="flex items-start gap-3 p-3 bg-[#0b1329] border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
                     <input type="radio" name="export_type" value="limit" class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div class="w-full">
@@ -272,7 +303,6 @@
                     </div>
                 </label>
 
-                <!-- Lựa chọn 3: Tải theo khoảng thời gian -->
                 <label class="flex items-start gap-3 p-3 bg-[#0b1329] border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
                     <input type="radio" name="export_type" value="range" class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div class="w-full space-y-2">
@@ -314,7 +344,61 @@
 
         let filterFromTime = '';
         let filterToTime = '';
+        let lastDeviceHeartbeat = 0;
 
+        function formatDbTime(rawTime) {
+            if (!rawTime) return '';
+            try {
+                const clean = rawTime.replace('T', ' ').split('.')[0];
+                const [dPart, tPart] = clean.split(' ');
+                const [y, m, d] = dPart.split('-');
+                return `${tPart} ${d}/${m}/${y}`;
+            } catch (e) {
+                return rawTime;
+            }
+        }
+
+        // ================= GIÁM SÁT KẾT NỐI THIẾT BỊ STM32 =================
+        function updateDeviceStatus(isOnline) {
+            const badge = document.getElementById('badge-device');
+            const dot = document.getElementById('dot-device');
+            const txt = document.getElementById('txt-device');
+
+            if (isOnline) {
+                badge.className = "flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400";
+                dot.className = "w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
+                txt.innerText = "Máy STM32: Đã kết nối";
+            } else {
+                badge.className = "flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-red-900/60 text-xs text-red-400";
+                dot.className = "w-2 h-2 bg-red-500 rounded-full";
+                txt.innerText = "Máy STM32: Mất kết nối";
+            }
+        }
+
+        // Kiểm tra watchdog nhịp tim thiết bị mỗi 2 giây
+        setInterval(() => {
+            if (lastDeviceHeartbeat === 0) return;
+            const elapsed = Date.now() - lastDeviceHeartbeat;
+            updateDeviceStatus(elapsed < 25000); // Quá 25s không có gói tin -> Offline
+        }, 2000);
+
+        socket.on('connect', () => {
+            document.getElementById('badge-server').className = "flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400";
+            document.getElementById('badge-server').innerHTML = '<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span><span>Server Web: Trực tuyến</span>';
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('badge-server').className = "flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-red-900/60 text-xs text-red-400";
+            document.getElementById('badge-server').innerHTML = '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span>Server Web: Mất kết nối</span>';
+            updateDeviceStatus(false);
+        });
+
+        socket.on('device_heartbeat', (info) => {
+            if (info.lastDeviceTime) lastDeviceHeartbeat = info.lastDeviceTime;
+            updateDeviceStatus(info.isOnline);
+        });
+
+        // ================= KHỞI TẠO BIỂU ĐỒ =================
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
@@ -348,19 +432,10 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false
-                        },
+                        interaction: { mode: 'index', intersect: false },
                         scales: {
-                            x: { 
-                                grid: { color: '#1e293b' }, 
-                                ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } 
-                            },
-                            y: { 
-                                grid: { color: '#1e293b' }, 
-                                ticks: { color: '#94a3b8', font: { size: 10 } } 
-                            }
+                            x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+                            y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
                         },
                         plugins: { 
                             legend: { display: false },
@@ -394,11 +469,14 @@
                 
                 const isLongRange = ['day', 'week', 'month', 'year'].includes(currentChartUnit);
                 const labels = data.map(d => {
-                    const date = new Date(d.created_at);
+                    if (!d.created_at) return '';
+                    const clean = d.created_at.replace('T', ' ').split('.')[0];
+                    const [dPart, tPart] = clean.split(' ');
+                    const [y, m, day] = dPart.split('-');
                     if (currentChartUnit === 'month' || currentChartUnit === 'year' || isLongRange) {
-                        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        return `${day}/${m} ${tPart.substring(0, 5)}`;
                     } else {
-                        return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        return tPart;
                     }
                 });
                 
@@ -420,6 +498,22 @@
             } catch (err) {
                 console.error("Lỗi chart:", err);
             }
+        }
+
+        // ================= NÚT LÀM MỚI RIÊNG CHO BIỂU ĐỒ =================
+        async function refreshChartOnly() {
+            const spinner = document.getElementById('spinner-chart');
+            const txt = document.getElementById('txt-refresh-chart');
+            spinner.classList.add('animate-spin');
+            txt.innerText = 'Đang tải...';
+
+            await fetchChartData();
+
+            setTimeout(() => {
+                spinner.classList.remove('animate-spin');
+                const nowTime = new Date().toLocaleTimeString('vi-VN');
+                txt.innerText = `Đã làm mới (${nowTime})`;
+            }, 300);
         }
 
         function setChartPreset(val, unit, labelStr, btnElem) {
@@ -444,6 +538,7 @@
             setChartPreset(val, unit, `${val} ${unitText}`, null);
         }
 
+        // ================= DỮ LIỆU DATABASE & PHÂN TRANG =================
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -455,7 +550,10 @@
                 
                 totalPages = result.totalPages || 1;
                 document.getElementById('db-total-count').innerText = `Tổng cộng: ${result.total.toLocaleString()} bản ghi ${filterFromTime || filterToTime ? '(Đang lọc)' : ''}`;
-                document.getElementById('page-indicator').innerText = `Trang ${result.page} / ${totalPages}`;
+                
+                // Cập nhật hiển thị trang
+                document.getElementById('goto-page-input').value = result.page;
+                document.getElementById('page-total-display').innerText = totalPages;
                 
                 document.getElementById('btn-prev').disabled = (currentPage <= 1);
                 document.getElementById('btn-next').disabled = (currentPage >= totalPages);
@@ -469,7 +567,7 @@
                 tbody.innerHTML = result.data.map(item => `
                     <tr>
                         <td class="py-2 px-2 text-gray-400">${item.id}</td>
-                        <td class="py-2 px-2 text-emerald-400">${new Date(item.created_at).toLocaleString('vi-VN', {timeZone: 'Asia/Ho_Chi_Minh'})}</td>
+                        <td class="py-2 px-2 text-emerald-400">${formatDbTime(item.created_at)}</td>
                         <td class="py-2 px-2 text-orange-400 font-bold">${Number(item.T).toFixed(2)}</td>
                         <td class="py-2 px-2 text-cyan-400 font-bold">${Number(item.S).toFixed(2)}</td>
                         <td class="py-2 px-2 text-emerald-400 font-bold">${Number(item.pH).toFixed(2)}</td>
@@ -487,6 +585,47 @@
             } catch (err) {
                 console.error("Lỗi paged logs:", err);
             }
+        }
+
+        // ================= NÚT LÀM MỚI RIÊNG CHO LỊCH SỬ DATABASE =================
+        async function refreshDbOnly() {
+            const spinner = document.getElementById('spinner-db');
+            const txt = document.getElementById('txt-refresh-db');
+            spinner.classList.add('animate-spin');
+            txt.innerText = 'Đang tải...';
+
+            await fetchPagedLogs();
+
+            setTimeout(() => {
+                spinner.classList.remove('animate-spin');
+                const nowTime = new Date().toLocaleTimeString('vi-VN');
+                txt.innerText = `Đã làm mới (${nowTime})`;
+            }, 300);
+        }
+
+        // Hàm nhảy trang khi nhập số
+        function jumpToPage() {
+            const inputVal = parseInt(document.getElementById('goto-page-input').value);
+            if (isNaN(inputVal) || inputVal < 1) {
+                alert('Vui lòng nhập số trang hợp lệ (từ 1 trở lên)!');
+                return;
+            }
+            if (inputVal > totalPages) {
+                alert(`Trang tối đa hiện có là ${totalPages}!`);
+                currentPage = totalPages;
+                document.getElementById('goto-page-input').value = totalPages;
+            } else {
+                currentPage = inputVal;
+            }
+            fetchPagedLogs();
+        }
+
+        function prevPage() { if (currentPage > 1) { currentPage--; fetchPagedLogs(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; fetchPagedLogs(); } }
+        function changeLimit() {
+            currentLimit = parseInt(document.getElementById('db-limit').value);
+            currentPage = 1;
+            fetchPagedLogs();
         }
 
         function applyDateFilter() {
@@ -513,14 +652,8 @@
             fetchPagedLogs();
         }
 
-        // ================= XỬ LÝ MODAL TẢI CSV =================
-        function openCsvModal() {
-            document.getElementById('csv-modal').classList.remove('hidden');
-        }
-
-        function closeCsvModal() {
-            document.getElementById('csv-modal').classList.add('hidden');
-        }
+        function openCsvModal() { document.getElementById('csv-modal').classList.remove('hidden'); }
+        function closeCsvModal() { document.getElementById('csv-modal').classList.add('hidden'); }
 
         function confirmExportCsv() {
             const selectedType = document.querySelector('input[name="export_type"]:checked').value;
@@ -534,7 +667,7 @@
                 const toVal = document.getElementById('csv-to-time').value;
 
                 if (!fromVal && !toVal) {
-                    alert('Vui lòng chọn ít nhất một mốc thời gian (Từ hoặc Đến)!');
+                    alert('Vui lòng chọn ít nhất một mốc thời gian!');
                     return;
                 }
                 if (fromVal) exportUrl += `&from_time=${encodeURIComponent(fromVal.replace('T', ' ') + ':00')}`;
@@ -545,31 +678,11 @@
             window.open(exportUrl, '_blank');
         }
 
-        function prevPage() { if (currentPage > 1) { currentPage--; fetchPagedLogs(); } }
-        function nextPage() { if (currentPage < totalPages) { currentPage++; fetchPagedLogs(); } }
-        function changeLimit() {
-            currentLimit = parseInt(document.getElementById('db-limit').value);
-            currentPage = 1;
-            fetchPagedLogs();
-        }
-
-        async function refreshAllData() {
-            const spinner = document.getElementById('refresh-spinner');
-            const txt = document.getElementById('refresh-text');
-            
-            spinner.classList.add('animate-spin');
-            txt.innerText = 'Đang làm mới...';
-
-            await Promise.all([fetchChartData(), fetchPagedLogs()]);
-
-            setTimeout(() => {
-                spinner.classList.remove('animate-spin');
-                const nowTime = new Date().toLocaleTimeString('vi-VN');
-                txt.innerText = `Đã cập nhật (${nowTime})`;
-            }, 400);
-        }
-
+        // ================= NHẬN DỮ LIỆU TELEMETRY REALTIME =================
         socket.on('new_telemetry', (packet) => {
+            lastDeviceHeartbeat = Date.now();
+            updateDeviceStatus(true); // Bật xanh trạng thái kết nối máy
+
             const d = packet.data;
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
             document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
@@ -633,6 +746,7 @@
             }
         }
 
+        // Khởi động
         initCharts();
         fetchChartData();
         fetchPagedLogs();
