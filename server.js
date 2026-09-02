@@ -9,7 +9,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Cấu hình Supabase & MQTT từ biến môi trường
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -24,6 +23,9 @@ const TOPIC_DOWNLINK = 'stm32/control-value';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Biến lưu mốc thời gian nhận gói tin thiết bị gần nhất
+let lastDeviceTime = 0;
+
 function getVietnamTimeString() {
     return new Date().toLocaleString('vi-VN', {
         timeZone: 'Asia/Ho_Chi_Minh',
@@ -35,6 +37,18 @@ function getVietnamTimeString() {
         month: '2-digit',
         year: 'numeric'
     });
+}
+
+function formatSupabaseTime(rawTime) {
+    if (!rawTime) return '';
+    try {
+        const clean = rawTime.replace('T', ' ').split('.')[0];
+        const [dPart, tPart] = clean.split(' ');
+        const [y, m, d] = dPart.split('-');
+        return `${tPart} ${d}/${m}/${y}`;
+    } catch (e) {
+        return rawTime;
+    }
 }
 
 // Kết nối MQTT Broker qua TLS
@@ -49,11 +63,12 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin JSON Uplink
+// Nhận gói tin JSON Uplink từ STM32 / Arduino
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
         const timeVN = getVietnamTimeString();
+        lastDeviceTime = Date.now(); // Cập nhật nhịp tim thiết bị
         let data = {};
 
         try {
@@ -88,6 +103,7 @@ mqttClient.on('message', async (topic, message) => {
 
         io.emit('new_telemetry', {
             time_vn: timeVN,
+            device_timestamp: lastDeviceTime,
             data: data
         });
     }
@@ -197,7 +213,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API xuất file CSV chuyên sâu (Hỗ trợ Tải tất cả, Tải theo số lượng, Tải theo ngày giờ)
+// 3. API xuất CSV
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -207,7 +223,6 @@ app.get('/api/export-csv', async (req, res) => {
         const CHUNK_SIZE = 1000;
         let fetched = 0;
 
-        // Vòng lặp tải dữ liệu nhiều trang để lấy trọn vẹn số lượng yêu cầu
         while (fetched < maxRows) {
             const from = fetched;
             const to = Math.min(fetched + CHUNK_SIZE - 1, maxRows - 1);
@@ -224,10 +239,7 @@ app.get('/api/export-csv', async (req, res) => {
             }
 
             const { data, error } = await query;
-            if (error) {
-                console.error('[CSV EXPORT ERROR]:', error.message);
-                break;
-            }
+            if (error) break;
             if (!data || data.length === 0) break;
 
             allData = allData.concat(data);
@@ -238,8 +250,8 @@ app.get('/api/export-csv', async (req, res) => {
 
         let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS\n";
         allData.forEach(r => {
-            const timeStr = new Date(r.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-            csv += `${r.id},"${timeStr}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs}\n`;
+            const timeFormatted = formatSupabaseTime(r.created_at);
+            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -250,8 +262,14 @@ app.get('/api/export-csv', async (req, res) => {
     }
 });
 
-// Xử lý Downlink
+// Xử lý Downlink & Socket
 io.on('connection', (socket) => {
+    // Gửi trạng thái thiết bị ngay khi web vừa mở
+    socket.emit('device_heartbeat', {
+        lastDeviceTime: lastDeviceTime,
+        isOnline: (Date.now() - lastDeviceTime < 25000)
+    });
+
     socket.on('send_control', async (commandStr) => {
         console.log(`[DOWNLINK] Phat lenh: ${commandStr}`);
         mqttClient.publish(TOPIC_DOWNLINK, String(commandStr));
