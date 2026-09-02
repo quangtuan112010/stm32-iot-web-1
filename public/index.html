@@ -11,7 +11,7 @@
 <body class="bg-[#0b1329] text-gray-100 p-3 md:p-6 font-sans">
     <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header với 2 Đèn Trạng Thái Rõ Ràng -->
+        <!-- Header với 2 Đèn Trạng Thái -->
         <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
@@ -31,7 +31,7 @@
             </div>
         </header>
 
-        <!-- BANNER CẢNH BÁO ĐẶC BIỆT KHI CS = 1 (CS_ANCHOR_PENDING THEO ĐẶC TẢ) -->
+        <!-- BANNER CẢNH BÁO KHI CS = 1 (CS_ANCHOR_PENDING) -->
         <div id="banner-cs-pending" class="hidden bg-amber-950/80 border-2 border-amber-500 text-amber-200 p-4 rounded-xl shadow-lg flex items-center justify-between gap-4 animate-pulse">
             <div class="flex items-center gap-3">
                 <span class="text-2xl">⚠️</span>
@@ -43,7 +43,7 @@
             <button onclick="focusAlkInput()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shrink-0">Nạp Kiềm Ngay</button>
         </div>
 
-        <!-- Bảng điều khiển Downlink có cơ chế xác thực 2 chiều Flash -->
+        <!-- Bảng điều khiển Downlink -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị & Xác nhận Flash (Downlink Control)</h2>
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -62,97 +62,115 @@
                 </div>
             </div>
             
-            <!-- Vùng hiển thị trạng thái và thông báo xác nhận Flash -->
             <div id="control-feedback" class="text-xs font-semibold min-h-[16px]"></div>
         </div>
 
-        <!-- 4 Thẻ cảm biến vật lý chính -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
-                <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
-                <div id="val-t" class="text-3xl font-extrabold text-orange-400 mt-2 font-mono">-- °C</div>
-                <div class="text-[10px] text-gray-400 mt-1">Hợp nhất Median-of-3</div>
-            </div>
-            <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
-                <div class="text-xs text-gray-400 font-medium">Độ mặn (S)</div>
-                <div id="val-s" class="text-3xl font-extrabold text-cyan-400 mt-2 font-mono">-- ‰</div>
-                <div class="text-[10px] text-gray-400 mt-1">Quy đổi từ EC (PSU)</div>
-            </div>
-            <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
-                <div class="text-xs text-gray-400 font-medium">Độ pH tức thời</div>
-                <div id="val-ph" class="text-3xl font-extrabold text-emerald-400 mt-2 font-mono">--</div>
-                <div class="text-[10px] text-gray-400 mt-1">Đã bù trừ trôi điện cực</div>
-            </div>
-            <div class="bg-[#152238] p-4 rounded-xl border border-slate-700 shadow">
-                <div class="text-xs text-gray-400 font-medium">Oxy hòa tan (DO)</div>
-                <div id="val-do" class="text-3xl font-extrabold text-blue-400 mt-2 font-mono">-- mg/L</div>
-                <div class="text-[10px] text-gray-400 mt-1">Cảm biến quang học</div>
-            </div>
-        </div>
-
-        <!-- 8 Thẻ trạng thái ĐÃ GIẢI MÃ CHỮ TRỰC QUAN THEO MỤC 3 -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            <!-- 1. Kiềm Flash -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Độ kiềm Flash (alk)</div>
-                <div id="val-alk" class="text-base font-bold text-white mt-1 font-mono">--</div>
-                <div id="txt-alk-status" class="text-[10px] text-gray-400 mt-0.5">mg/L CaCO3</div>
-            </div>
+        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI (CÓ THANH THỜI GIAN HOẠT ĐỘNG TINH TẾ) ================= -->
+        <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             
-            <!-- 2. Rủi ro sinh hóa BTRI -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Rủi ro sinh hóa (btri)</div>
-                <div id="val-btri" class="text-base font-bold text-amber-400 mt-1 font-mono">--</div>
-                <div id="txt-btri-eval" class="text-[10px] text-gray-400 mt-0.5">Lọc Kalman</div>
-            </div>
+            <!-- THANH THỜI GIAN NHỊP THỞ HOẠT ĐỘNG TINH TẾ (TELEMETRY PULSE BAR) -->
+            <div class="bg-[#0b1329]/90 border border-slate-700/80 rounded-lg p-3 px-4 shadow-inner flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                    <!-- Chấm nhịp thở xanh -->
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span id="telemetry-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="telemetry-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-xs font-bold text-gray-200 tracking-wider uppercase">Thông Số Tức Thời</span>
+                    <span class="text-gray-500 text-xs">|</span>
+                    <span id="telemetry-last-packet" class="text-xs font-mono text-cyan-400 font-medium">Mốc nhận: Đang chờ dữ liệu...</span>
+                </div>
 
-            <!-- 3. Quạt sục khí -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Quạt sục khí (fan)</div>
-                <div id="val-fan" class="text-base font-bold mt-1 font-mono">--</div>
-                <div id="txt-fan-mode" class="text-[10px] text-gray-400 mt-0.5">Relay Oxy</div>
-            </div>
-
-            <!-- 4. Khóa liên động (Giải mã Bitmask) -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center relative group cursor-pointer">
-                <div class="text-[11px] text-gray-400">Khóa liên động (il)</div>
-                <div id="val-il" class="text-base font-bold text-rose-400 mt-1 font-mono">0x00</div>
-                <div id="txt-il-desc" class="text-[10px] text-emerald-400 mt-0.5 truncate">An toàn</div>
-                <!-- Tooltip chi tiết khi rê chuột -->
-                <div id="tooltip-il" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 bg-slate-900 border border-slate-700 text-gray-200 text-[11px] p-2 rounded shadow-xl w-60 text-left pointer-events-none font-sans">
-                    Đang an toàn, không có sự cố.
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <!-- Đếm giây trôi qua từng giây một -->
+                    <span id="telemetry-elapsed-text" class="text-xs font-mono text-gray-300 whitespace-nowrap min-w-[130px] text-right">Đang kết nối...</span>
+                    
+                    <!-- Thanh tiến trình chu kỳ 10 giây siêu mượt (0% -> 100%) -->
+                    <div class="w-full md:w-36 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700/70 relative">
+                        <div id="telemetry-progress" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full w-0 transition-all duration-300 ease-linear"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 5. Miền sinh thái (Giải mã Domain Guard) -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center relative group cursor-pointer">
-                <div class="text-[11px] text-gray-400">Miền sinh học (dom)</div>
-                <div id="val-dom" class="text-base font-bold text-purple-400 mt-1 font-mono">0x00</div>
-                <div id="txt-dom-desc" class="text-[10px] text-emerald-400 mt-0.5 truncate">DG_OK (Tối ưu)</div>
-                <div id="tooltip-dom" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 bg-slate-900 border border-slate-700 text-gray-200 text-[11px] p-2 rounded shadow-xl w-60 text-left pointer-events-none font-sans">
-                    Tất cả thông số nằm trong dải sinh thái tối ưu.
+            <!-- 4 Thẻ cảm biến vật lý chính -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 shadow">
+                    <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
+                    <div id="val-t" class="text-3xl font-extrabold text-orange-400 mt-2 font-mono">-- °C</div>
+                    <div class="text-[10px] text-gray-400 mt-1">Hợp nhất Median-of-3</div>
+                </div>
+                <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 shadow">
+                    <div class="text-xs text-gray-400 font-medium">Độ mặn (S)</div>
+                    <div id="val-s" class="text-3xl font-extrabold text-cyan-400 mt-2 font-mono">-- ‰</div>
+                    <div class="text-[10px] text-gray-400 mt-1">Quy đổi từ EC (PSU)</div>
+                </div>
+                <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 shadow">
+                    <div class="text-xs text-gray-400 font-medium">Độ pH tức thời</div>
+                    <div id="val-ph" class="text-3xl font-extrabold text-emerald-400 mt-2 font-mono">--</div>
+                    <div class="text-[10px] text-gray-400 mt-1">Đã bù trừ trôi điện cực</div>
+                </div>
+                <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 shadow">
+                    <div class="text-xs text-gray-400 font-medium">Oxy hòa tan (DO)</div>
+                    <div id="val-do" class="text-3xl font-extrabold text-blue-400 mt-2 font-mono">-- mg/L</div>
+                    <div class="text-[10px] text-gray-400 mt-1">Cảm biến quang học</div>
                 </div>
             </div>
 
-            <!-- 6. Sinh tồn MPU -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Sinh tồn MPU (surv)</div>
-                <div id="val-surv" class="text-base font-bold mt-1 font-mono">OFF</div>
-                <div id="txt-surv-desc" class="text-[10px] text-gray-400 mt-0.5">Bình thường</div>
-            </div>
+            <!-- 8 Thẻ trạng thái & Cờ sinh thái giải mã -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Độ kiềm Flash (alk)</div>
+                    <div id="val-alk" class="text-base font-bold text-white mt-1 font-mono">--</div>
+                    <div id="txt-alk-status" class="text-[10px] text-gray-400 mt-0.5">mg/L CaCO3</div>
+                </div>
+                
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Rủi ro sinh hóa (btri)</div>
+                    <div id="val-btri" class="text-base font-bold text-amber-400 mt-1 font-mono">--</div>
+                    <div id="txt-btri-eval" class="text-[10px] text-gray-400 mt-0.5">Lọc Kalman</div>
+                </div>
 
-            <!-- 7. PINN Thích nghi -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Thích nghi PINN</div>
-                <div id="val-adapt" class="text-base font-bold text-indigo-400 mt-1 font-mono">0</div>
-                <div id="txt-adapt-desc" class="text-[10px] text-gray-400 mt-0.5">Chưa có trọng số mới</div>
-            </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Quạt sục khí (fan)</div>
+                    <div id="val-fan" class="text-base font-bold mt-1 font-mono">--</div>
+                    <div id="txt-fan-mode" class="text-[10px] text-gray-400 mt-0.5">Relay Oxy</div>
+                </div>
 
-            <!-- 8. Khởi động lạnh 72h (Giải mã CS Enum) -->
-            <div class="bg-[#152238] p-3 rounded-lg border border-slate-700 text-center">
-                <div class="text-[11px] text-gray-400">Khởi động lạnh (cs)</div>
-                <div id="val-cs" class="text-base font-bold text-blue-300 mt-1 font-mono">2</div>
-                <div id="txt-cs-desc" class="text-[10px] text-emerald-400 mt-0.5 font-semibold">CS_NORMAL</div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center relative group cursor-pointer">
+                    <div class="text-[11px] text-gray-400">Khóa liên động (il)</div>
+                    <div id="val-il" class="text-base font-bold text-rose-400 mt-1 font-mono">0x00</div>
+                    <div id="txt-il-desc" class="text-[10px] text-emerald-400 mt-0.5 truncate">An toàn</div>
+                    <div id="tooltip-il" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 bg-slate-900 border border-slate-700 text-gray-200 text-[11px] p-2 rounded shadow-xl w-60 text-left pointer-events-none font-sans">
+                        Đang an toàn, không có sự cố.
+                    </div>
+                </div>
+
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center relative group cursor-pointer">
+                    <div class="text-[11px] text-gray-400">Miền sinh học (dom)</div>
+                    <div id="val-dom" class="text-base font-bold text-purple-400 mt-1 font-mono">0x00</div>
+                    <div id="txt-dom-desc" class="text-[10px] text-emerald-400 mt-0.5 truncate">DG_OK (Tối ưu)</div>
+                    <div id="tooltip-dom" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 bg-slate-900 border border-slate-700 text-gray-200 text-[11px] p-2 rounded shadow-xl w-60 text-left pointer-events-none font-sans">
+                        Tất cả thông số nằm trong dải sinh thái tối ưu.
+                    </div>
+                </div>
+
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Sinh tồn MPU (surv)</div>
+                    <div id="val-surv" class="text-base font-bold mt-1 font-mono">OFF</div>
+                    <div id="txt-surv-desc" class="text-[10px] text-gray-400 mt-0.5">Bình thường</div>
+                </div>
+
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Thích nghi PINN</div>
+                    <div id="val-adapt" class="text-base font-bold text-indigo-400 mt-1 font-mono">0</div>
+                    <div id="txt-adapt-desc" class="text-[10px] text-gray-400 mt-0.5">Chưa có trọng số mới</div>
+                </div>
+
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Khởi động lạnh (cs)</div>
+                    <div id="val-cs" class="text-base font-bold text-blue-300 mt-1 font-mono">2</div>
+                    <div id="txt-cs-desc" class="text-[10px] text-emerald-400 mt-0.5 font-semibold">CS_NORMAL</div>
+                </div>
             </div>
         </div>
 
@@ -416,8 +434,7 @@
         let filterFromTime = '';
         let filterToTime = '';
         let lastDeviceHeartbeat = 0;
-
-        // Biến theo dõi xác nhận Flash 2 chiều
+        let lastTelemetryTimestamp = 0; // Mốc thời gian nhận gói tin tức thời
         let pendingExpectedAlk = null;
 
         function formatDbTime(rawTime) {
@@ -432,8 +449,7 @@
             }
         }
 
-        // ================= HÀM GIẢI MÃ CHUẨN XÁC MỤC 3 =================
-        // 1. Cờ khóa liên động (il - Interlock Flags)
+        // ================= GIẢI MÃ CỜ THEO ĐẶC TẢ MỤC 3 =================
         function decodeIL(ilVal) {
             const val = parseInt(ilVal) || 0;
             if (val === 0) return { shortText: "An toàn (0x00)", fullHtml: "<span class='text-emerald-400 font-bold'>An toàn:</span> Không phát hiện sự cố hóa-lý nguy cấp." };
@@ -453,7 +469,6 @@
             };
         }
 
-        // 2. Cờ vi phạm miền sinh học (dom - Domain Guard)
         function decodeDOM(domVal) {
             const val = parseInt(domVal) || 0;
             if (val === 0) return { shortText: "DG_OK (Tối ưu)", fullHtml: "<span class='text-emerald-400 font-bold'>DG_OK:</span> Mọi thông số đều nằm trong dải sinh thái tối ưu của cá rô phi." };
@@ -470,7 +485,6 @@
             };
         }
 
-        // 3. Trạng thái khởi động lạnh (cs - Cold Start)
         function decodeCS(csVal) {
             const val = parseInt(csVal);
             if (val === 0) return { label: "0 (COLD_START)", desc: "Cửa sổ 72h ổn định (Khóa Relay)", color: "text-blue-400" };
@@ -485,7 +499,7 @@
             setTimeout(() => input.classList.remove('ring-2', 'ring-amber-400'), 2000);
         }
 
-        // ================= GIÁM SÁT KẾT NỐI THIẾT BỊ STM32 =================
+        // ================= GIÁM SÁT KẾT NỐI THIẾT BỊ =================
         function updateDeviceStatus(isOnline) {
             const badge = document.getElementById('badge-device');
             const dot = document.getElementById('dot-device');
@@ -522,6 +536,171 @@
         socket.on('device_heartbeat', (info) => {
             if (info.lastDeviceTime) lastDeviceHeartbeat = info.lastDeviceTime;
             updateDeviceStatus(info.isOnline);
+
+            // Nạp ngay gói tin tức thời từ RAM server nếu có (không cần chờ 10s)
+            if (info.latestPacket && info.latestPacket.data) {
+                renderTelemetryUI(info.latestPacket);
+            }
+        });
+
+        // ================= VÒNG LẶP CHẠY THANH TIẾN TRÌNH 10S TINH TẾ (CHẠY MỖI 100MS) =================
+        setInterval(() => {
+            if (!lastTelemetryTimestamp) return;
+
+            const elapsedMs = Date.now() - lastTelemetryTimestamp;
+            const elapsedSec = Math.floor(elapsedMs / 1000);
+            const progressEl = document.getElementById('telemetry-progress');
+            const elapsedTxt = document.getElementById('telemetry-elapsed-text');
+
+            // Tính tỷ lệ % chu kỳ 10 giây (10,000 ms)
+            const percent = Math.min(100, (elapsedMs / 10000) * 100);
+
+            if (elapsedSec <= 10) {
+                progressEl.style.width = `${percent}%`;
+                progressEl.className = "bg-gradient-to-r from-blue-500 to-emerald-400 h-full transition-all duration-100 ease-linear";
+                elapsedTxt.innerHTML = `<span class="text-emerald-400 font-bold">Vừa cập nhật: ${elapsedSec}s trước</span>`;
+            } else if (elapsedSec <= 20) {
+                progressEl.style.width = "100%";
+                progressEl.className = "bg-amber-500 h-full animate-pulse";
+                elapsedTxt.innerHTML = `<span class="text-amber-400">Đang đợi gói mới (${elapsedSec}s)...</span>`;
+            } else {
+                progressEl.style.width = "100%";
+                progressEl.className = "bg-red-500 h-full";
+                elapsedTxt.innerHTML = `<span class="text-red-400 font-bold">Trễ gói tin (${elapsedSec}s)</span>`;
+            }
+        }, 100);
+
+        // ================= HÀM HIỂN THỊ DỮ LIỆU TỨC THỜI =================
+        function renderTelemetryUI(packet) {
+            lastTelemetryTimestamp = packet.device_timestamp || Date.now();
+            lastDeviceHeartbeat = lastTelemetryTimestamp;
+            updateDeviceStatus(true);
+
+            // Cập nhật mốc nhận trên thanh nhịp thở
+            document.getElementById('telemetry-last-packet').innerText = `Mốc nhận: ${packet.time_vn}`;
+            
+            // Hiệu ứng nháy sáng chấm xanh khi vừa nhận gói tin mới
+            const pingDot = document.getElementById('telemetry-dot');
+            pingDot.classList.add('scale-150');
+            setTimeout(() => pingDot.classList.remove('scale-150'), 300);
+
+            const d = packet.data;
+            
+            // 4 Cảm biến chính
+            document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
+            document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
+            document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
+            document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
+
+            // Độ kiềm
+            document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
+            const alkStatusTxt = document.getElementById('txt-alk-status');
+            if (Number(d.alk) < 0) {
+                alkStatusTxt.innerText = "Chưa nạp (-1.00)";
+                alkStatusTxt.className = "text-[10px] text-amber-400 mt-0.5";
+            } else {
+                alkStatusTxt.innerText = "Đã lưu Flash";
+                alkStatusTxt.className = "text-[10px] text-emerald-400 mt-0.5";
+            }
+
+            // Cơ chế xác nhận 2 chiều Flash
+            if (pendingExpectedAlk !== null) {
+                if (Math.abs(Number(d.alk) - pendingExpectedAlk) < 0.05) {
+                    const fb = document.getElementById('control-feedback');
+                    fb.innerHTML = `<span class="text-emerald-400 font-bold">✅ CẬP NHẬT THÀNH CÔNG: STM32 đã lưu Flash Sector 127 = ${Number(d.alk).toFixed(2)} mg/L</span>`;
+                    pendingExpectedAlk = null;
+                }
+            }
+
+            // Rủi ro BTRI
+            document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
+            const btriTxt = document.getElementById('txt-btri-eval');
+            if (d.btri >= 75) {
+                btriTxt.innerText = "Rủi ro Nguy kịch";
+                btriTxt.className = "text-[10px] text-red-500 font-bold mt-0.5";
+            } else if (d.btri >= 50) {
+                btriTxt.innerText = "Rủi ro Cao";
+                btriTxt.className = "text-[10px] text-amber-400 mt-0.5";
+            } else {
+                btriTxt.innerText = "An toàn";
+                btriTxt.className = "text-[10px] text-emerald-400 mt-0.5";
+            }
+
+            // Quạt
+            const fanEl = document.getElementById('val-fan');
+            fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
+            fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
+
+            // Cờ IL
+            const ilDecoded = decodeIL(d.il);
+            const ilEl = document.getElementById('val-il');
+            ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
+            ilEl.className = `text-base font-bold mt-1 font-mono ${d.il > 0 ? 'text-rose-400 animate-pulse' : 'text-gray-400'}`;
+            document.getElementById('txt-il-desc').innerText = ilDecoded.shortText;
+            document.getElementById('txt-il-desc').className = `text-[10px] mt-0.5 truncate ${d.il > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}`;
+            document.getElementById('tooltip-il').innerHTML = ilDecoded.fullHtml;
+
+            // Cờ DOM
+            const domDecoded = decodeDOM(d.dom);
+            const domEl = document.getElementById('val-dom');
+            domEl.innerText = `0x${Number(d.dom).toString(16).toUpperCase()}`;
+            domEl.className = `text-base font-bold mt-1 font-mono ${d.dom > 0 ? 'text-purple-400 animate-pulse' : 'text-gray-400'}`;
+            document.getElementById('txt-dom-desc').innerText = domDecoded.shortText;
+            document.getElementById('txt-dom-desc').className = `text-[10px] mt-0.5 truncate ${d.dom > 0 ? 'text-purple-400 font-bold' : 'text-emerald-400'}`;
+            document.getElementById('tooltip-dom').innerHTML = domDecoded.fullHtml;
+
+            // Cờ SURV
+            const survEl = document.getElementById('val-surv');
+            const survTxt = document.getElementById('txt-surv-desc');
+            if (d.surv == 1) {
+                survEl.innerText = "CƯỠNG BỨC";
+                survEl.className = "text-base font-bold mt-1 font-mono text-red-500 animate-pulse";
+                survTxt.innerText = "MPU Sinh tồn: Bật quạt";
+                survTxt.className = "text-[10px] text-red-400 font-bold mt-0.5";
+            } else {
+                survEl.innerText = "OFF";
+                survEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
+                survTxt.innerText = "Bình thường";
+                survTxt.className = "text-[10px] text-gray-400 mt-0.5";
+            }
+
+            // Cờ ADAPT
+            const adaptEl = document.getElementById('val-adapt');
+            const adaptTxt = document.getElementById('txt-adapt-desc');
+            if (d.adapt_acc == 1) {
+                adaptEl.innerText = "MỚI (1)";
+                adaptEl.className = "text-base font-bold mt-1 font-mono text-emerald-400";
+                adaptTxt.innerText = "Đã nạp trọng số mới";
+                adaptTxt.className = "text-[10px] text-emerald-400 font-bold mt-0.5";
+            } else {
+                adaptEl.innerText = "0";
+                adaptEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
+                adaptTxt.innerText = "Chưa có trọng số";
+                adaptTxt.className = "text-[10px] text-gray-400 mt-0.5";
+            }
+
+            // Cờ CS
+            const csDecoded = decodeCS(d.cs);
+            const csEl = document.getElementById('val-cs');
+            csEl.innerText = d.cs;
+            document.getElementById('txt-cs-desc').innerText = csDecoded.desc;
+            document.getElementById('txt-cs-desc').className = `text-[10px] mt-0.5 font-semibold ${csDecoded.color}`;
+
+            // Banner CS=1
+            const bannerCs = document.getElementById('banner-cs-pending');
+            if (d.cs === 1) {
+                bannerCs.classList.remove('hidden');
+            } else {
+                bannerCs.classList.add('hidden');
+            }
+
+            if (currentPage === 1 && !filterFromTime && !filterToTime) {
+                fetchPagedLogs();
+            }
+        }
+
+        socket.on('new_telemetry', (packet) => {
+            renderTelemetryUI(packet);
         });
 
         // ================= KHỞI TẠO BIỂU ĐỒ =================
@@ -850,126 +1029,6 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= NHẬN DỮ LIỆU TELEMETRY REALTIME (ĐỐI CHIẾU MỤC 3 & 4) =================
-        socket.on('new_telemetry', (packet) => {
-            lastDeviceHeartbeat = Date.now();
-            updateDeviceStatus(true);
-
-            const d = packet.data;
-            
-            // 4 Cảm biến đo đạc (Float32)
-            document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
-            document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
-            document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
-            document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
-
-            // 1. Độ kiềm Flash (alk)
-            document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
-            const alkStatusTxt = document.getElementById('txt-alk-status');
-            if (Number(d.alk) < 0) {
-                alkStatusTxt.innerText = "Chưa nạp (-1.00)";
-                alkStatusTxt.className = "text-[10px] text-amber-400 mt-0.5";
-            } else {
-                alkStatusTxt.innerText = "Đã lưu Flash";
-                alkStatusTxt.className = "text-[10px] text-emerald-400 mt-0.5";
-            }
-
-            // Cơ chế xác nhận 2 chiều mục 4: Kiểm tra STM32 đã ghi Flash chưa
-            if (pendingExpectedAlk !== null) {
-                if (Math.abs(Number(d.alk) - pendingExpectedAlk) < 0.05) {
-                    const fb = document.getElementById('control-feedback');
-                    fb.innerHTML = `<span class="text-emerald-400 font-bold">✅ CẬP NHẬT THÀNH CÔNG: STM32 đã lưu Flash Sector 127 = ${Number(d.alk).toFixed(2)} mg/L</span>`;
-                    pendingExpectedAlk = null;
-                }
-            }
-
-            // 2. Chỉ số rủi ro BTRI
-            document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
-            const btriTxt = document.getElementById('txt-btri-eval');
-            if (d.btri >= 75) {
-                btriTxt.innerText = "Rủi ro Nguy kịch";
-                btriTxt.className = "text-[10px] text-red-500 font-bold mt-0.5";
-            } else if (d.btri >= 50) {
-                btriTxt.innerText = "Rủi ro Cao";
-                btriTxt.className = "text-[10px] text-amber-400 mt-0.5";
-            } else {
-                btriTxt.innerText = "An toàn";
-                btriTxt.className = "text-[10px] text-emerald-400 mt-0.5";
-            }
-
-            // 3. Quạt sục khí (fan)
-            const fanEl = document.getElementById('val-fan');
-            fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
-            fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
-
-            // 4. Giải mã Cờ khóa liên động (il - Interlock Flags)
-            const ilDecoded = decodeIL(d.il);
-            const ilEl = document.getElementById('val-il');
-            ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
-            ilEl.className = `text-base font-bold mt-1 font-mono ${d.il > 0 ? 'text-rose-400 animate-pulse' : 'text-gray-400'}`;
-            document.getElementById('txt-il-desc').innerText = ilDecoded.shortText;
-            document.getElementById('txt-il-desc').className = `text-[10px] mt-0.5 truncate ${d.il > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}`;
-            document.getElementById('tooltip-il').innerHTML = ilDecoded.fullHtml;
-
-            // 5. Giải mã Cờ vi phạm miền sinh học (dom - Domain Guard)
-            const domDecoded = decodeDOM(d.dom);
-            const domEl = document.getElementById('val-dom');
-            domEl.innerText = `0x${Number(d.dom).toString(16).toUpperCase()}`;
-            domEl.className = `text-base font-bold mt-1 font-mono ${d.dom > 0 ? 'text-purple-400 animate-pulse' : 'text-gray-400'}`;
-            document.getElementById('txt-dom-desc').innerText = domDecoded.shortText;
-            document.getElementById('txt-dom-desc').className = `text-[10px] mt-0.5 truncate ${d.dom > 0 ? 'text-purple-400 font-bold' : 'text-emerald-400'}`;
-            document.getElementById('tooltip-dom').innerHTML = domDecoded.fullHtml;
-
-            // 6. Chế độ sinh tồn MPU (surv)
-            const survEl = document.getElementById('val-surv');
-            const survTxt = document.getElementById('txt-surv-desc');
-            if (d.surv == 1) {
-                survEl.innerText = "CƯỠNG BỨC";
-                survEl.className = "text-base font-bold mt-1 font-mono text-red-500 animate-pulse";
-                survTxt.innerText = "MPU Sinh tồn: Bật quạt";
-                survTxt.className = "text-[10px] text-red-400 font-bold mt-0.5";
-            } else {
-                survEl.innerText = "OFF";
-                survEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
-                survTxt.innerText = "Bình thường";
-                survTxt.className = "text-[10px] text-gray-400 mt-0.5";
-            }
-
-            // 7. Thích nghi PINN (adapt_acc)
-            const adaptEl = document.getElementById('val-adapt');
-            const adaptTxt = document.getElementById('txt-adapt-desc');
-            if (d.adapt_acc == 1) {
-                adaptEl.innerText = "MỚI (1)";
-                adaptEl.className = "text-base font-bold mt-1 font-mono text-emerald-400";
-                adaptTxt.innerText = "Đã nạp trọng số mới";
-                adaptTxt.className = "text-[10px] text-emerald-400 font-bold mt-0.5";
-            } else {
-                adaptEl.innerText = "0";
-                adaptEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
-                adaptTxt.innerText = "Chưa có trọng số";
-                adaptTxt.className = "text-[10px] text-gray-400 mt-0.5";
-            }
-
-            // 8. Khởi động lạnh 72h (cs)
-            const csDecoded = decodeCS(d.cs);
-            const csEl = document.getElementById('val-cs');
-            csEl.innerText = d.cs;
-            document.getElementById('txt-cs-desc').innerText = csDecoded.desc;
-            document.getElementById('txt-cs-desc').className = `text-[10px] mt-0.5 font-semibold ${csDecoded.color}`;
-
-            // Quản lý Banner yêu cầu nạp kiềm khi cs = 1
-            const bannerCs = document.getElementById('banner-cs-pending');
-            if (d.cs === 1) {
-                bannerCs.classList.remove('hidden');
-            } else {
-                bannerCs.classList.add('hidden');
-            }
-
-            if (currentPage === 1 && !filterFromTime && !filterToTime) {
-                fetchPagedLogs();
-            }
-        });
-
         socket.on('control_status', (msg) => {
             const fb = document.getElementById('control-feedback');
             fb.innerHTML = `<span class="text-blue-400 font-medium">${msg}</span>`;
@@ -992,7 +1051,6 @@
                 return;
             }
 
-            // Ghi nhận giá trị đang chờ xác nhận từ STM32 Flash
             pendingExpectedAlk = alkFloat;
 
             socket.emit('send_control', `ALK,${alkFloat.toFixed(2)}`);
