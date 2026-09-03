@@ -27,7 +27,6 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
-                <!-- Nút mở Trung Tâm Rà Soát Sự Cố 72h -->
                 <button onclick="openIncidentModal()" id="btn-incident-badge" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 transition shadow">
                     <span class="text-base">🛡️</span>
                     <span id="txt-incident-count" class="font-bold text-gray-300">Đang quét 72h...</span>
@@ -45,13 +44,13 @@
             </div>
         </header>
 
-        <!-- Banner cảnh báo nổi bật khi phát hiện biến cố trong 72h -->
+        <!-- Banner cảnh báo 72h -->
         <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span class="text-2xl animate-bounce">🚨</span>
                 <div>
                     <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN SỰ CỐ TRONG 72 GIỜ VỪA QUA</h3>
-                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện có gián đoạn kết nối hoặc biến động sinh hóa trong Database. Yêu cầu quyền Chủ Ao để xác nhận xử lý.</p>
+                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện có gián đoạn kết nối hoặc biến động sinh hóa. Yêu cầu quyền Chủ Ao để xác nhận xử lý.</p>
                 </div>
             </div>
             <button onclick="openIncidentModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 shadow flex items-center gap-1.5">
@@ -380,7 +379,7 @@
 
     </div>
 
-    <!-- ================= MODAL TRUNG TÂM SỰ CỐ 72 GIỜ ================= -->
+    <!-- Modal trung tâm sự cố 72h -->
     <div id="incident-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -388,7 +387,7 @@
                     <span class="text-2xl">🛡️</span>
                     <div>
                         <h3 class="text-base font-bold text-gray-100">Trung Tâm Kiểm Tra & Phân Tích Sự Cố Tự Động</h3>
-                        <p class="text-xs text-gray-400">Rà soát chuẩn xác 72 giờ gần nhất (25.920 bản ghi) | Yêu cầu quyền Chủ Ao để tắt cảnh báo</p>
+                        <p class="text-xs text-gray-400">Rà soát chuẩn xác 72 giờ gần nhất | Yêu cầu quyền Chủ Ao để tắt cảnh báo</p>
                     </div>
                 </div>
                 <button onclick="closeIncidentModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -413,7 +412,7 @@
         </div>
     </div>
 
-    <!-- Dialog nhập mã PIN (Không lộ số) -->
+    <!-- Dialog nhập PIN bảo mật -->
     <div id="pin-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
         <div id="pin-box" class="bg-[#152238] border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-red-950/80 border border-red-600 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl">
@@ -499,7 +498,7 @@
     <script>
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
-        const OWNER_DISMISS_PIN = "7492"; // Mật mã bảo mật
+        const OWNER_DISMISS_PIN = "7492";
 
         let charts = {};
         let currentChartMode = 'recent';
@@ -521,6 +520,7 @@
         let allIncidents = [];
         let currentIncTab = 'active';
         let pendingDismissIncidentId = null;
+        let dismissedIncidentIdsOnCloud = []; // Lưu danh sách đã tắt lấy từ Database
 
         function formatDbTime(rawTime) {
             if (!rawTime) return '';
@@ -1096,26 +1096,21 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ 72 GIỜ =================
-        function getDismissedIncidentIds() {
+        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ (ĐỒNG BỘ ĐÁM MÂY SUPABASE) =================
+        async function fetchDismissedCloud() {
             try {
-                return JSON.parse(localStorage.getItem('pond_dismissed_incidents') || '[]');
+                const res = await fetch('/api/dismissed-incidents');
+                const data = await res.json();
+                dismissedIncidentIdsOnCloud = data || [];
             } catch (e) {
-                return [];
-            }
-        }
-
-        function saveDismissedIncidentId(id) {
-            let list = getDismissedIncidentIds();
-            if (!list.includes(id)) {
-                list.push(id);
-                localStorage.setItem('pond_dismissed_incidents', JSON.stringify(list));
+                dismissedIncidentIdsOnCloud = [];
             }
         }
 
         async function fetchIncidentAudit() {
             try {
-                const res = await fetch('/api/audit-incidents?hours=72'); // Quét chuẩn xác 72 giờ
+                await fetchDismissedCloud();
+                const res = await fetch('/api/audit-incidents?hours=72');
                 const data = await res.json();
                 allIncidents = data.incidents || [];
                 updateIncidentUI();
@@ -1125,9 +1120,8 @@
         }
 
         function updateIncidentUI() {
-            const dismissedIds = getDismissedIncidentIds();
-            const activeList = allIncidents.filter(inc => !dismissedIds.includes(inc.id));
-            const dismissedList = allIncidents.filter(inc => dismissedIds.includes(inc.id));
+            const activeList = allIncidents.filter(inc => !dismissedIncidentIdsOnCloud.includes(inc.id));
+            const dismissedList = allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
 
             document.getElementById('count-tab-active').innerText = activeList.length;
             document.getElementById('count-tab-dismissed').innerText = dismissedList.length;
@@ -1152,10 +1146,9 @@
 
         function renderIncidentList() {
             const container = document.getElementById('incident-list-container');
-            const dismissedIds = getDismissedIncidentIds();
             const listToShow = currentIncTab === 'active' 
-                ? allIncidents.filter(inc => !dismissedIds.includes(inc.id))
-                : allIncidents.filter(inc => dismissedIds.includes(inc.id));
+                ? allIncidents.filter(inc => !dismissedIncidentIdsOnCloud.includes(inc.id))
+                : allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
 
             if (listToShow.length === 0) {
                 container.innerHTML = `
@@ -1179,7 +1172,7 @@
                     icon = "💡";
                 }
 
-                const isDismissed = dismissedIds.includes(inc.id);
+                const isDismissed = dismissedIncidentIdsOnCloud.includes(inc.id);
 
                 return `
                     <div class="bg-[#0b1329] border border-slate-700 hover:border-slate-500 rounded-xl p-4.5 space-y-3 transition shadow-md">
@@ -1200,7 +1193,7 @@
                                 </button>
                             ` : `
                                 <span class="text-xs text-emerald-400 flex items-center gap-1 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-lg">
-                                    <span>✓</span> Đã xác nhận & Tắt bởi Chủ Ao
+                                    <span>✓</span> Đã xác nhận & Tắt trên đám mây
                                 </span>
                             `}
                         </div>
@@ -1247,7 +1240,6 @@
             document.getElementById('incident-modal').classList.add('hidden');
         }
 
-        // ================= XỬ LÝ NHẬP MÃ PIN (TUYỆT ĐỐI KHÔNG HIỂN THỊ MÃ SỐ RA GIAO DIỆN) =================
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
             document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
@@ -1258,8 +1250,7 @@
         }
 
         function promptDismissAll() {
-            const dismissedIds = getDismissedIncidentIds();
-            const activeList = allIncidents.filter(inc => !dismissedIds.includes(inc.id));
+            const activeList = allIncidents.filter(inc => !dismissedIncidentIdsOnCloud.includes(inc.id));
             if (activeList.length === 0) {
                 alert('Không có cảnh báo nào cần tắt!');
                 return;
@@ -1278,7 +1269,7 @@
             pendingDismissIncidentId = null;
         }
 
-        function verifyAndExecuteDismiss() {
+        async function verifyAndExecuteDismiss() {
             const enteredPin = document.getElementById('input-owner-pin').value.trim();
             const pinBox = document.getElementById('pin-box');
             const errorMsg = document.getElementById('pin-error-msg');
@@ -1290,14 +1281,23 @@
                 return;
             }
 
-            if (pendingDismissIncidentId) {
-                saveDismissedIncidentId(pendingDismissIncidentId);
-            } else {
-                allIncidents.forEach(inc => saveDismissedIncidentId(inc.id));
-            }
+            // Ghi trạng thái tắt lên Supabase Cloud để đồng bộ mọi thiết bị
+            try {
+                let idsToSave = pendingDismissIncidentId ? [pendingDismissIncidentId] : allIncidents.map(i => i.id);
+                
+                for (let id of idsToSave) {
+                    await fetch('/api/dismiss-incident', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ incident_id: id })
+                    });
+                }
 
-            closePinModal();
-            updateIncidentUI();
+                closePinModal();
+                fetchIncidentAudit(); // Cập nhật lại danh sách từ cloud
+            } catch (err) {
+                alert('Lỗi kết nối lưu trạng thái lên đám mây!');
+            }
         }
 
         socket.on('control_status', (msg) => {
