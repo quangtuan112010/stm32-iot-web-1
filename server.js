@@ -60,7 +60,6 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -115,17 +114,44 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// ================= API RÀ SOÁT CHUẨN XÁC 72 GIỜ SỰ CỐ TRONG DATABASE =================
+// API Lấy danh sách ID sự cố đã tắt từ Database
+app.get('/api/dismissed-incidents', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('incident_dismissals').select('incident_id');
+        if (error) return res.json([]);
+        res.json(data.map(d => d.incident_id));
+    } catch (err) {
+        res.json([]);
+    }
+});
+
+// API Lưu ID sự cố đã tắt lên Database
+app.post('/api/dismiss-incident', async (req, res) => {
+    try {
+        const { incident_id } = req.body;
+        if (!incident_id) return res.status(400).json({ error: 'Missing incident_id' });
+
+        const { error } = await supabase
+            .from('incident_dismissals')
+            .upsert([{ incident_id }], { onConflict: 'incident_id' });
+
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// API rà soát 72 giờ sự cố
 app.get('/api/audit-incidents', async (req, res) => {
     try {
-        const hours = parseInt(req.query.hours) || 72; // Rà soát đúng 72 giờ gần nhất (25.920 bản ghi)
+        const hours = parseInt(req.query.hours) || 72;
         const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
         const cutoffVN = new Date(nowVN.getTime() - hours * 60 * 60 * 1000);
 
         const pad = (n) => String(n).padStart(2, '0');
         const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
 
-        // 1. Xác định nhanh biên độ min_id và max_id của 72 giờ qua chỉ mục B-tree
         const [minRes, maxRes] = await Promise.all([
             supabase.from('telemetry_logs').select('id').gte('created_at', cutoffStr).order('id', { ascending: true }).limit(1),
             supabase.from('telemetry_logs').select('id').order('id', { ascending: false }).limit(1)
@@ -139,9 +165,8 @@ app.get('/api/audit-incidents', async (req, res) => {
         const maxId = maxRes.data[0].id;
         const totalRowsInRange = maxId - minId + 1;
         const CHUNK_SIZE = 1000;
-        const neededChunks = Math.min(Math.ceil(totalRowsInRange / CHUNK_SIZE), 30); // Tối đa 30.000 dòng
+        const neededChunks = Math.min(Math.ceil(totalRowsInRange / CHUNK_SIZE), 30);
 
-        // 2. Đọc nhanh dữ liệu các trường kiểm soát sự cố
         const fetchPromises = [];
         for (let i = 0; i < neededChunks; i++) {
             const fromId = minId + i * CHUNK_SIZE;
@@ -170,7 +195,6 @@ app.get('/api/audit-incidents', async (req, res) => {
 
         const incidents = [];
 
-        // Sự cố 1: Gián đoạn kết nối / Nghẽn dữ liệu 4G (Khoảng cách giữa 2 gói >= 35s)
         for (let i = 1; i < logs.length; i++) {
             const tPrev = new Date(logs[i - 1].created_at).getTime();
             const tCurr = new Date(logs[i].created_at).getTime();
@@ -213,167 +237,129 @@ app.get('/api/audit-incidents', async (req, res) => {
             if (active) incidents.push(createIncidentFn(active));
         }
 
-        // Sự cố 2: Khóa liên động sự cố (il > 0)
-        analyzeContinuousRun(
-            'il',
-            (r) => parseInt(r.il) > 0,
-            (act) => {
-                const t1 = new Date(act.start_row.created_at).getTime();
-                const t2 = new Date(act.end_row.created_at).getTime();
-                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                let unionMask = 0;
-                act.rows.forEach(r => unionMask |= parseInt(r.il));
+        analyzeContinuousRun('il', (r) => parseInt(r.il) > 0, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            let unionMask = 0;
+            act.rows.forEach(r => unionMask |= parseInt(r.il));
 
-                let bitDescs = [];
-                if (unionMask & 0x01) bitDescs.push("Khí độc NH3 vượt ngưỡng (R_NH3 ≥ 1.48)");
-                if (unionMask & 0x02) bitDescs.push("Khí độc H2S vượt ngưỡng (R_H2S ≥ 1.05)");
-                if (unionMask & 0x04) bitDescs.push("Oxy tương đối thấp (R_DO ≥ 1.44)");
-                if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (DO < 2.0 mg/L) -> Cưỡng bức quạt");
-                if (unionMask & 0x10) bitDescs.push("Độ kiềm sụt giảm (< 50 mg/L) -> Mất hệ đệm");
-                if (unionMask & 0x20) bitDescs.push("pH nguy hiểm (< 6.0 hoặc > 9.5) -> Cưỡng bức quạt");
-                if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến / Mất gói liên tiếp");
+            let bitDescs = [];
+            if (unionMask & 0x01) bitDescs.push("NH3 vượt ngưỡng");
+            if (unionMask & 0x02) bitDescs.push("H2S vượt ngưỡng");
+            if (unionMask & 0x04) bitDescs.push("Oxy thấp");
+            if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (<2mg/L)");
+            if (unionMask & 0x10) bitDescs.push("Kiềm sụt giảm");
+            if (unionMask & 0x20) bitDescs.push("pH nguy hiểm");
+            if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến");
 
-                return {
-                    id: `il_${act.start_row.id}_${act.end_row.id}`,
-                    type: 'INTERLOCK',
-                    severity: (unionMask & 0x28) ? 'critical' : 'warning',
-                    category: 'Khóa liên động sự cố hóa-lý (il)',
-                    title: `Kích hoạt cờ liên động (0x${unionMask.toString(16).toUpperCase()})`,
-                    start_time: formatSupabaseTime(act.start_row.created_at),
-                    end_time: formatSupabaseTime(act.end_row.created_at),
-                    duration: formatDurationSeconds(durSec),
-                    start_raw: act.start_row.created_at,
-                    details: `Các sự cố phát hiện trong khoảng này: ${bitDescs.join("; ")}.`
-                };
-            }
-        );
+            return {
+                id: `il_${act.start_row.id}_${act.end_row.id}`,
+                type: 'INTERLOCK',
+                severity: (unionMask & 0x28) ? 'critical' : 'warning',
+                category: 'Khóa liên động sự cố (il)',
+                title: `Kích hoạt cờ liên động (0x${unionMask.toString(16).toUpperCase()})`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Các sự cố phát hiện: ${bitDescs.join("; ")}.`
+            };
+        });
 
-        // Sự cố 3: Quạt sục khí khẩn cấp chạy (fan == 1)
-        analyzeContinuousRun(
-            'fan',
-            (r) => parseInt(r.fan) === 1,
-            (act) => {
-                const t1 = new Date(act.start_row.created_at).getTime();
-                const t2 = new Date(act.end_row.created_at).getTime();
-                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                return {
-                    id: `fan_${act.start_row.id}_${act.end_row.id}`,
-                    type: 'FAN_RUN',
-                    severity: 'warning',
-                    category: 'Quạt sục khí khẩn cấp (fan)',
-                    title: `Quạt oxy tự động BẬT liên tục (${formatDurationSeconds(durSec)})`,
-                    start_time: formatSupabaseTime(act.start_row.created_at),
-                    end_time: formatSupabaseTime(act.end_row.created_at),
-                    duration: formatDurationSeconds(durSec),
-                    start_raw: act.start_row.created_at,
-                    details: `Relay quạt sục khí đã đóng và vận hành từ ${formatSupabaseTime(act.start_row.created_at)} đến ${formatSupabaseTime(act.end_row.created_at)} để cấp cứu oxy cho ao.`
-                };
-            }
-        );
+        analyzeContinuousRun('fan', (r) => parseInt(r.fan) === 1, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            return {
+                id: `fan_${act.start_row.id}_${act.end_row.id}`,
+                type: 'FAN_RUN',
+                severity: 'warning',
+                category: 'Quạt sục khí khẩn cấp (fan)',
+                title: `Quạt oxy tự động BẬT liên tục (${formatDurationSeconds(durSec)})`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Relay quạt sục khí đã đóng và vận hành từ ${formatSupabaseTime(act.start_row.created_at)} đến ${formatSupabaseTime(act.end_row.created_at)}.`
+            };
+        });
 
-        // Sự cố 4: Chế độ sinh tồn MPU (surv == 1)
-        analyzeContinuousRun(
-            'surv',
-            (r) => parseInt(r.surv) === 1,
-            (act) => {
-                const t1 = new Date(act.start_row.created_at).getTime();
-                const t2 = new Date(act.end_row.created_at).getTime();
-                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                return {
-                    id: `surv_${act.start_row.id}_${act.end_row.id}`,
-                    type: 'SURVIVAL',
-                    severity: 'critical',
-                    category: 'Chế độ sinh tồn vi điều khiển (surv)',
-                    title: `MPU kích hoạt chế độ Sinh tồn (${formatDurationSeconds(durSec)})`,
-                    start_time: formatSupabaseTime(act.start_row.created_at),
-                    end_time: formatSupabaseTime(act.end_row.created_at),
-                    duration: formatDurationSeconds(durSec),
-                    start_raw: act.start_row.created_at,
-                    details: `Cảm biến bị hỏng hoặc giá trị ngoài biên, firmware STM32 đã kích hoạt chế độ an toàn sự cố và cưỡng bức bật quạt khẩn cấp.`
-                };
-            }
-        );
+        analyzeContinuousRun('surv', (r) => parseInt(r.surv) === 1, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            return {
+                id: `surv_${act.start_row.id}_${act.end_row.id}`,
+                type: 'SURVIVAL',
+                severity: 'critical',
+                category: 'Chế độ sinh tồn vi điều khiển (surv)',
+                title: `MPU kích hoạt chế độ Sinh tồn (${formatDurationSeconds(durSec)})`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Cảm biến hỏng hoặc ngoài biên, firmware STM32 cưỡng bức bật quạt khẩn cấp.`
+            };
+        });
 
-        // Sự cố 5: Rủi ro sinh hóa tăng cao (btri >= 50.0)
-        analyzeContinuousRun(
-            'btri',
-            (r) => parseFloat(r.btri) >= 50.0,
-            (act) => {
-                const t1 = new Date(act.start_row.created_at).getTime();
-                const t2 = new Date(act.end_row.created_at).getTime();
-                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                const maxBtri = Math.max(...act.rows.map(r => parseFloat(r.btri) || 0));
-                return {
-                    id: `btri_${act.start_row.id}_${act.end_row.id}`,
-                    type: 'BTRI_HIGH',
-                    severity: maxBtri >= 75 ? 'critical' : 'warning',
-                    category: 'Rủi ro độc chất sinh hóa (btri)',
-                    title: `Rủi ro sinh hóa vượt ngưỡng - Đỉnh: ${maxBtri.toFixed(1)} điểm`,
-                    start_time: formatSupabaseTime(act.start_row.created_at),
-                    end_time: formatSupabaseTime(act.end_row.created_at),
-                    duration: formatDurationSeconds(durSec),
-                    start_raw: act.start_row.created_at,
-                    details: `Chỉ số rủi ro sinh hóa BTRI đạt đỉnh ${maxBtri.toFixed(1)} điểm trong khoảng thời gian này (mức an toàn < 50.0).`
-                };
-            }
-        );
+        analyzeContinuousRun('btri', (r) => parseFloat(r.btri) >= 50.0, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            const maxBtri = Math.max(...act.rows.map(r => parseFloat(r.btri) || 0));
+            return {
+                id: `btri_${act.start_row.id}_${act.end_row.id}`,
+                type: 'BTRI_HIGH',
+                severity: maxBtri >= 75 ? 'critical' : 'warning',
+                category: 'Rủi ro độc chất sinh hóa (btri)',
+                title: `Rủi ro sinh hóa vượt ngưỡng - Đỉnh: ${maxBtri.toFixed(1)} điểm`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Chỉ số rủi ro sinh hóa BTRI đạt đỉnh ${maxBtri.toFixed(1)} điểm.`
+            };
+        });
 
-        // Sự cố 6: Vi phạm miền sinh thái (dom > 0)
-        analyzeContinuousRun(
-            'dom',
-            (r) => parseInt(r.dom) > 0,
-            (act) => {
-                const t1 = new Date(act.start_row.created_at).getTime();
-                const t2 = new Date(act.end_row.created_at).getTime();
-                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                let domMask = 0;
-                act.rows.forEach(r => domMask |= parseInt(r.dom));
+        analyzeContinuousRun('dom', (r) => parseInt(r.dom) > 0, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            let domMask = 0;
+            act.rows.forEach(r => domMask |= parseInt(r.dom));
+            return {
+                id: `dom_${act.start_row.id}_${act.end_row.id}`,
+                type: 'DOMAIN_GUARD',
+                severity: 'warning',
+                category: 'Miền sinh học cá rô phi (dom)',
+                title: `Vi phạm giới hạn sinh thái (0x${domMask.toString(16).toUpperCase()})`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Thông số nước nằm ngoài dải sinh thái tối ưu cho cá rô phi.`
+            };
+        });
 
-                let domDescs = [];
-                if (domMask & 0x01) domDescs.push("Độ mặn ngoài dải (S > 5.0‰)");
-                if (domMask & 0x02) domDescs.push("Nhiệt độ ngoài dải (< 20°C hoặc > 35°C)");
-                if (domMask & 0x04) domDescs.push("pH ngoài dải sinh thái (< 6.5 hoặc > 9.5)");
-                if (domMask & 0x08) domDescs.push("Cảm biến trả về NaN hoặc đứt dây tín hiệu");
+        analyzeContinuousRun('cs1', (r) => parseInt(r.cs) === 1, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            return {
+                id: `cs1_${act.start_row.id}_${act.end_row.id}`,
+                type: 'COLD_START_PENDING',
+                severity: 'warning',
+                category: 'Chu trình khởi động lạnh (cs)',
+                title: `Hệ thống chờ nạp Độ Kiềm neo (CS_ANCHOR_PENDING)`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Hệ thống kết thúc 72h cửa sổ ổn định ban đầu và chờ nạp độ kiềm thực tế.`
+            };
+        });
 
-                return {
-                    id: `dom_${act.start_row.id}_${act.end_row.id}`,
-                    type: 'DOMAIN_GUARD',
-                    severity: 'warning',
-                    category: 'Miền sinh học cá rô phi (dom)',
-                    title: `Vi phạm giới hạn sinh thái (0x${domMask.toString(16).toUpperCase()})`,
-                    start_time: formatSupabaseTime(act.start_row.created_at),
-                    end_time: formatSupabaseTime(act.end_row.created_at),
-                    duration: formatDurationSeconds(durSec),
-                    start_raw: act.start_row.created_at,
-                    details: `Các vi phạm: ${domDescs.join("; ")}.`
-                };
-            }
-        );
-
-        // Sự cố 7: Khởi động lạnh chờ nạp kiềm (cs == 1)
-        analyzeContinuousRun(
-            'cs1',
-            (r) => parseInt(r.cs) === 1,
-            (act) => {
-                const t1 = new Date(act.start_row.created_at).getTime();
-                const t2 = new Date(act.end_row.created_at).getTime();
-                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                return {
-                    id: `cs1_${act.start_row.id}_${act.end_row.id}`,
-                    type: 'COLD_START_PENDING',
-                    severity: 'warning',
-                    category: 'Chu trình khởi động lạnh (cs)',
-                    title: `Hệ thống chờ nạp Độ Kiềm neo (CS_ANCHOR_PENDING)`,
-                    start_time: formatSupabaseTime(act.start_row.created_at),
-                    end_time: formatSupabaseTime(act.end_row.created_at),
-                    duration: formatDurationSeconds(durSec),
-                    start_raw: act.start_row.created_at,
-                    details: `Hệ thống kết thúc 72h cửa sổ ổn định ban đầu và chờ kỹ thuật viên nạp giá trị độ kiềm thực tế.`
-                };
-            }
-        );
-
-        // Sự kiện 8: Thích nghi PINN (adapt_acc == 1)
         for (let i = 0; i < logs.length; i++) {
             if (parseInt(logs[i].adapt_acc) === 1 && (i === 0 || parseInt(logs[i - 1].adapt_acc) === 0)) {
                 incidents.push({
@@ -386,7 +372,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                     end_time: formatSupabaseTime(logs[i].created_at),
                     duration: 'Sự kiện tức thời',
                     start_raw: logs[i].created_at,
-                    details: `Mạng nơ-ron vật lý PINN trên STM32 đã hoàn thành chu kỳ học tuần và cập nhật bộ trọng số thích nghi vào bộ nhớ Flash.`
+                    details: `Mạng PINN trên STM32 đã cập nhật bộ trọng số thích nghi vào bộ nhớ Flash.`
                 });
             }
         }
@@ -403,7 +389,7 @@ app.get('/api/audit-incidents', async (req, res) => {
     }
 });
 
-// API Lấy biểu đồ: Thuật toán Full-Span ID Sampling
+// API Lấy biểu đồ Full-Span ID Sampling
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
@@ -578,7 +564,6 @@ app.get('/api/export-csv', async (req, res) => {
     }
 });
 
-// Xử lý Socket.io & Downlink
 io.on('connection', (socket) => {
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
