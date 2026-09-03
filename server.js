@@ -63,7 +63,6 @@ mqttClient.on('message', async (topic, message) => {
             return;
         }
 
-        // Ghi vào Supabase và nhận lại chính xác ID và created_at từ Database
         const { data: insertedRows, error } = await supabase
             .from('telemetry_logs')
             .insert([{
@@ -107,7 +106,80 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ
+// 1. API TỰ ĐỘNG PHÂN TÍCH GIÁN ĐOẠN / NGHẼN MẠNG TỪ DATABASE
+app.get('/api/check-outages', async (req, res) => {
+    try {
+        // Lấy tối đa 1500 bản ghi gần nhất để phân tích vết đứt gãy dữ liệu
+        const { data, error } = await supabase
+            .from('telemetry_logs')
+            .select('id, created_at')
+            .order('id', { ascending: false })
+            .limit(1500);
+
+        if (error || !data || data.length < 2) {
+            return res.json({ outages: [], ongoing: null });
+        }
+
+        const sorted = data.reverse(); // Xếp theo thứ tự từ cũ đến mới
+        const outages = [];
+        const OUTAGE_THRESHOLD_MS = 25000; // Ngưỡng > 25 giây xem như bị đứt/nghẽn
+
+        for (let i = 0; i < sorted.length - 1; i++) {
+            const t1 = new Date(sorted[i].created_at.replace(' ', 'T')).getTime();
+            const t2 = new Date(sorted[i + 1].created_at.replace(' ', 'T')).getTime();
+            const diffMs = t2 - t1;
+
+            if (diffMs >= OUTAGE_THRESHOLD_MS) {
+                const diffSec = Math.round(diffMs / 1000);
+                let type = 'Nghẽn mạng / Chậm gói';
+                let level = 'warning'; // Vàng
+
+                if (diffSec >= 600) {
+                    type = 'Mất nguồn / Đứt sóng dài';
+                    level = 'danger'; // Đỏ
+                } else if (diffSec >= 60) {
+                    type = 'Mất kết nối 4G tạm thời';
+                    level = 'orange'; // Cam
+                }
+
+                outages.push({
+                    outage_key: `outage_${sorted[i+1].id}`,
+                    from_id: sorted[i].id,
+                    to_id: sorted[i+1].id,
+                    from_time: formatSupabaseTime(sorted[i].created_at),
+                    to_time: formatSupabaseTime(sorted[i+1].created_at),
+                    timestamp: t2,
+                    duration_sec: diffSec,
+                    missed_packets: Math.max(1, Math.floor(diffSec / 10) - 1),
+                    type: type,
+                    level: level
+                });
+            }
+        }
+
+        // Kiểm tra tình trạng thiết bị hiện tại có đang mất kết nối không
+        let ongoing = null;
+        if (lastDeviceTime > 0 && (Date.now() - lastDeviceTime >= OUTAGE_THRESHOLD_MS)) {
+            const elapsedSec = Math.round((Date.now() - lastDeviceTime) / 1000);
+            ongoing = {
+                from_time: new Date(lastDeviceTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+                duration_sec: elapsedSec,
+                missed_packets: Math.floor(elapsedSec / 10),
+                type: 'ĐANG MẤT KẾT NỐI HIỆN TẠI',
+                level: 'danger'
+            };
+        }
+
+        res.json({
+            outages: outages.reverse(), // Sự kiện mới nhất lên đầu
+            ongoing: ongoing
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. API lấy dữ liệu biểu đồ
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
@@ -186,7 +258,7 @@ app.get('/api/chart-data', async (req, res) => {
     }
 });
 
-// 2. API phân trang & tìm kiếm lịch sử
+// 3. API phân trang & tìm kiếm lịch sử
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -220,7 +292,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API xuất file CSV
+// 4. API xuất CSV
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
