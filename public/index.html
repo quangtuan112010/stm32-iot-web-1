@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -19,6 +19,12 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Nút xem lại lịch sử gián đoạn kết nối -->
+                <button onclick="openOutageModal(true)" id="badge-outage-btn" class="hidden flex items-center space-x-1.5 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-500/60 px-3 py-1.5 rounded-lg text-xs text-amber-300 transition">
+                    <span class="w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
+                    <span id="badge-outage-txt">⚠️ Phát hiện gián đoạn</span>
+                </button>
+
                 <div id="badge-server" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span>Server Web: Trực tuyến</span>
@@ -65,10 +71,9 @@
             <div id="control-feedback" class="text-xs font-semibold min-h-[16px]"></div>
         </div>
 
-        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI (ĐỒNG BỘ 100% VỚI DATABASE) ================= -->
+        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             
-            <!-- THANH ĐỒNG BỘ MỐC GIỜ CHÍNH XÁC TỪ DATABASE (KHÔNG ĐẾM NGƯỢC) -->
             <div class="bg-[#0b1329]/90 border border-slate-700/80 rounded-lg p-3 px-4 shadow-inner flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5">
                     <span class="relative flex h-2.5 w-2.5">
@@ -80,7 +85,6 @@
                     <span class="text-xs text-gray-400">Khớp chuẩn Database lịch sử</span>
                 </div>
 
-                <!-- HIỂN THỊ CHÍNH XÁC ID VÀ THỜI GIAN DATABASE GHI NHẬN -->
                 <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
                     <span class="text-gray-400">Bản ghi gần nhất:</span>
                     <span id="telemetry-db-id" class="text-blue-400 font-bold bg-slate-900 border border-slate-700 px-2 py-0.5 rounded">ID: --</span>
@@ -290,7 +294,6 @@
                 </div>
             </div>
 
-            <!-- Thanh tìm kiếm theo ngày giờ -->
             <div class="flex flex-wrap items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-xs">
                 <span class="text-blue-400 font-semibold flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -308,7 +311,6 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
-            <!-- Bảng dữ liệu 12 trường -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
@@ -354,7 +356,53 @@
 
     </div>
 
-    <!-- Modal tải CSV -->
+    <!-- ================= MODAL CẢNH BÁO GIÁN ĐOẠN / NGHẼN MẠNG (MÃ MỞ KHÓA: 7492) ================= -->
+    <div id="outage-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-[#152238] border-2 border-amber-500/80 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 text-gray-200 animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-start border-b border-slate-700/80 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/40 text-2xl">
+                        ⚠️
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-amber-300 tracking-wide uppercase">Cảnh Báo Gián Đoạn Kết Nối & Nghẽn Dữ Liệu</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Tự động phân tích từ mốc thời gian thực tế trong Database</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách sự cố phát hiện -->
+            <div class="space-y-3">
+                <div class="text-xs text-gray-300 font-medium flex justify-between items-center">
+                    <span>Các đợt gián đoạn được ghi nhận:</span>
+                    <span id="outage-count-badge" class="bg-amber-950 text-amber-400 border border-amber-700/60 px-2 py-0.5 rounded text-[11px] font-mono font-bold">0 sự cố</span>
+                </div>
+
+                <div id="outage-list" class="max-h-60 overflow-y-auto space-y-2 pr-1 text-xs">
+                    <!-- Dữ liệu sự cố sẽ được Javascript đổ vào đây -->
+                </div>
+            </div>
+
+            <!-- KHUNG NHẬP MẬT MÃ 7492 ĐỂ XÁC NHẬN & TẮT CẢNH BÁO -->
+            <div class="bg-[#0b1329] border border-slate-700 rounded-xl p-4 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <div class="text-xs font-semibold text-gray-200">Xác nhận xem báo cáo (Mật khẩu: 7492):</div>
+                        <div class="text-[11px] text-gray-400">Nhập đúng mật mã để tự động tắt cảnh báo cho phiên làm việc này.</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="password" id="outage-passcode" maxlength="8" placeholder="Nhập mã 7492..." class="bg-slate-900 border border-slate-600 focus:border-amber-400 rounded-lg px-3 py-1.5 text-center text-white font-mono text-sm tracking-widest w-36 focus:outline-none" onkeydown="if(event.key==='Enter') verifyOutagePasscode()">
+                        <button onclick="verifyOutagePasscode()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition whitespace-nowrap">
+                            Tắt Cảnh Báo
+                        </button>
+                    </div>
+                </div>
+                <div id="outage-error-msg" class="text-xs text-rose-400 font-semibold hidden">Mật mã không đúng! Vui lòng nhập đúng số 7492.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TẢI CSV -->
     <div id="csv-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
@@ -417,6 +465,7 @@
     <script>
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
+        const OUTAGE_PASSCODE = "7492"; // MẬT MÃ TẮT CẢNH BÁO THEO YÊU CẦU
 
         let charts = {};
         let currentChartMode = 'recent';
@@ -433,6 +482,7 @@
         let filterToTime = '';
         let lastDeviceHeartbeat = 0;
         let pendingExpectedAlk = null;
+        let latestOutageTimestamp = 0;
 
         function formatDbTime(rawTime) {
             if (!rawTime) return '';
@@ -443,6 +493,130 @@
                 return `${tPart} ${d}/${m}/${y}`;
             } catch (e) {
                 return rawTime;
+            }
+        }
+
+        function formatDuration(sec) {
+            if (sec < 60) return `${sec} giây`;
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            if (m < 60) return s > 0 ? `${m} phút ${s} giây` : `${m} phút`;
+            const h = Math.floor(m / 60);
+            const rm = m % 60;
+            return `${h} giờ ${rm} phút`;
+        }
+
+        // ================= XỬ LÝ QUÉT VÀ HIỂN THỊ CẢNH BÁO GIÁN ĐOẠN (MÃ 7492) =================
+        async function checkOutagesOnStartup() {
+            try {
+                const res = await fetch('/api/check-outages');
+                const data = await res.json();
+                
+                const listEl = document.getElementById('outage-list');
+                const countBadge = document.getElementById('outage-count-badge');
+                const badgeBtn = document.getElementById('badge-outage-btn');
+                const badgeTxt = document.getElementById('badge-outage-txt');
+
+                let totalCount = (data.outages ? data.outages.length : 0) + (data.ongoing ? 1 : 0);
+
+                if (totalCount === 0) {
+                    badgeBtn.classList.add('hidden');
+                    return;
+                }
+
+                // Cập nhật nút xem lại trên header
+                badgeBtn.classList.remove('hidden');
+                badgeTxt.innerText = `⚠️ ${totalCount} Sự cố kết nối`;
+
+                countBadge.innerText = `${totalCount} sự cố`;
+
+                let html = '';
+
+                // 1. Nếu đang có sự cố mất kết nối tức thời
+                if (data.ongoing) {
+                    html += `
+                        <div class="p-3 bg-red-950/70 border border-red-600 rounded-xl space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-red-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                                    ${data.ongoing.type}
+                                </span>
+                                <span class="bg-red-900/80 text-red-200 px-2 py-0.5 rounded text-[10px] font-mono">Đang diễn ra</span>
+                            </div>
+                            <div class="text-gray-300">Từ: <b class="text-white font-mono">${data.ongoing.from_time}</b> đến <b class="text-red-400">Hiện tại</b></div>
+                            <div class="text-[11px] text-gray-400">Đã mất liên lạc: <b class="text-red-300 font-mono">${formatDuration(data.ongoing.duration_sec)}</b> (Hụt khoảng ${data.ongoing.missed_packets} chu kỳ gửi)</div>
+                        </div>
+                    `;
+                }
+
+                // 2. Danh sách các khoảng gián đoạn trong quá khứ đã được lưu trong DB
+                if (data.outages && data.outages.length > 0) {
+                    latestOutageTimestamp = data.outages[0].timestamp; // Lưu mốc sự cố mới nhất
+
+                    data.outages.forEach(item => {
+                        let badgeColor = item.level === 'danger' ? 'border-red-700 bg-red-950/50 text-red-400' : (item.level === 'orange' ? 'border-amber-700 bg-amber-950/50 text-amber-400' : 'border-slate-700 bg-slate-900 text-gray-300');
+                        html += `
+                            <div class="p-3 ${badgeColor} border rounded-xl space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-gray-200">${item.type}</span>
+                                    <span class="font-mono text-[11px] text-gray-400">Gián đoạn: <b class="text-amber-300">${formatDuration(item.duration_sec)}</b></span>
+                                </div>
+                                <div class="text-gray-300">
+                                    Từ: <b class="text-gray-100 font-mono">${item.from_time}</b> (ID: #${item.from_id}) 
+                                    <br>Đến: <b class="text-emerald-400 font-mono">${item.to_time}</b> (ID: #${item.to_id})
+                                </div>
+                                <div class="text-[11px] text-gray-400">Ước tính mất: <b class="text-white font-mono">${item.missed_packets} gói tin</b> chu kỳ 10s.</div>
+                            </div>
+                        `;
+                    });
+                }
+
+                listEl.innerHTML = html;
+
+                // KIỂM TRA XEM NGƯỜI DÙNG ĐÃ TỪNG NHẬP MÃ 7492 XÁC NHẬN SỰ CỐ NÀY CHƯA
+                const lastAck = localStorage.getItem('outage_acknowledged_ts');
+                if (!lastAck || parseInt(lastAck) < latestOutageTimestamp || data.ongoing) {
+                    // Nếu có sự cố mới chưa từng được xác nhận -> Tự động bật Modal cảnh báo
+                    openOutageModal(false);
+                }
+            } catch (e) {
+                console.error("Lỗi kiểm tra sự cố gián đoạn:", e);
+            }
+        }
+
+        function openOutageModal(isManualClick = false) {
+            document.getElementById('outage-modal').classList.remove('hidden');
+            document.getElementById('outage-error-msg').classList.add('hidden');
+            document.getElementById('outage-passcode').value = '';
+            document.getElementById('outage-passcode').focus();
+        }
+
+        function closeOutageModal() {
+            document.getElementById('outage-modal').classList.add('hidden');
+        }
+
+        // Kiểm tra mật mã 7492 để tắt cảnh báo
+        function verifyOutagePasscode() {
+            const inputVal = document.getElementById('outage-passcode').value.trim();
+            const errMsg = document.getElementById('outage-error-msg');
+
+            if (inputVal === OUTAGE_PASSCODE) {
+                errMsg.classList.add('hidden');
+                // Ghi nhớ mốc đã xác nhận vào localStorage
+                localStorage.setItem('outage_acknowledged_ts', String(latestOutageTimestamp || Date.now()));
+                
+                // Hiệu ứng đóng nhẹ nhàng
+                closeOutageModal();
+
+                // Đổi nhãn nút trên Header về màu bình thường
+                const badgeBtn = document.getElementById('badge-outage-btn');
+                badgeBtn.className = "flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-gray-300 transition";
+                badgeBtn.innerHTML = `<span>📋 Nhật ký gián đoạn</span>`;
+            } else {
+                errMsg.classList.remove('hidden');
+                const inputEl = document.getElementById('outage-passcode');
+                inputEl.classList.add('ring-2', 'ring-rose-500');
+                setTimeout(() => inputEl.classList.remove('ring-2', 'ring-rose-500'), 1500);
             }
         }
 
@@ -496,7 +670,6 @@
             setTimeout(() => input.classList.remove('ring-2', 'ring-amber-400'), 2000);
         }
 
-        // Giám sát trạng thái máy
         function updateDeviceStatus(isOnline) {
             const badge = document.getElementById('badge-device');
             const dot = document.getElementById('dot-device');
@@ -539,12 +712,10 @@
             }
         });
 
-        // Hàm đổ dữ liệu tức thời: Hiển thị đúng ID và giờ Database
         function renderTelemetryUI(packet) {
             lastDeviceHeartbeat = packet.device_timestamp || Date.now();
             updateDeviceStatus(true);
 
-            // Ghi đúng ID và Giờ phút giây từ Database
             if (packet.db_id && packet.db_id !== '--') {
                 document.getElementById('telemetry-db-id').innerText = `ID: #${packet.db_id}`;
             }
@@ -552,7 +723,6 @@
                 document.getElementById('telemetry-db-time').innerText = packet.db_time;
             }
 
-            // Nháy sáng chấm xanh xác nhận có gói mới
             const pingDot = document.getElementById('telemetry-dot');
             pingDot.classList.add('scale-150');
             setTimeout(() => pingDot.classList.remove('scale-150'), 300);
@@ -564,7 +734,6 @@
             document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
             document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
 
-            // Độ kiềm
             document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
             const alkStatusTxt = document.getElementById('txt-alk-status');
             if (Number(d.alk) < 0) {
@@ -575,7 +744,6 @@
                 alkStatusTxt.className = "text-[10px] text-emerald-400 mt-0.5";
             }
 
-            // Xác nhận Flash
             if (pendingExpectedAlk !== null) {
                 if (Math.abs(Number(d.alk) - pendingExpectedAlk) < 0.05) {
                     const fb = document.getElementById('control-feedback');
@@ -584,7 +752,6 @@
                 }
             }
 
-            // BTRI
             document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
             const btriTxt = document.getElementById('txt-btri-eval');
             if (d.btri >= 75) {
@@ -598,12 +765,10 @@
                 btriTxt.className = "text-[10px] text-emerald-400 mt-0.5";
             }
 
-            // Quạt
             const fanEl = document.getElementById('val-fan');
             fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
             fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
 
-            // Cờ IL
             const ilDecoded = decodeIL(d.il);
             const ilEl = document.getElementById('val-il');
             ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
@@ -612,7 +777,6 @@
             document.getElementById('txt-il-desc').className = `text-[10px] mt-0.5 truncate ${d.il > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}`;
             document.getElementById('tooltip-il').innerHTML = ilDecoded.fullHtml;
 
-            // Cờ DOM
             const domDecoded = decodeDOM(d.dom);
             const domEl = document.getElementById('val-dom');
             domEl.innerText = `0x${Number(d.dom).toString(16).toUpperCase()}`;
@@ -621,7 +785,6 @@
             document.getElementById('txt-dom-desc').className = `text-[10px] mt-0.5 truncate ${d.dom > 0 ? 'text-purple-400 font-bold' : 'text-emerald-400'}`;
             document.getElementById('tooltip-dom').innerHTML = domDecoded.fullHtml;
 
-            // Cờ SURV
             const survEl = document.getElementById('val-surv');
             const survTxt = document.getElementById('txt-surv-desc');
             if (d.surv == 1) {
@@ -636,7 +799,6 @@
                 survTxt.className = "text-[10px] text-gray-400 mt-0.5";
             }
 
-            // Cờ ADAPT
             const adaptEl = document.getElementById('val-adapt');
             const adaptTxt = document.getElementById('txt-adapt-desc');
             if (d.adapt_acc == 1) {
@@ -651,7 +813,6 @@
                 adaptTxt.className = "text-[10px] text-gray-400 mt-0.5";
             }
 
-            // Cờ CS
             const csDecoded = decodeCS(d.cs);
             const csEl = document.getElementById('val-cs');
             csEl.innerText = d.cs;
@@ -863,7 +1024,6 @@
             }, 300);
         }
 
-        // Dữ liệu Database & Phân trang
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -888,7 +1048,6 @@
                     return;
                 }
 
-                // Cập nhật ngay thẻ tức thời theo dòng đầu tiên nếu chưa có dữ liệu từ Socket
                 if (currentPage === 1 && !filterFromTime && !filterToTime && result.data[0]) {
                     const topRow = result.data[0];
                     const topRowTime = formatDbTime(topRow.created_at);
@@ -1046,9 +1205,11 @@
             }
         }
 
+        // Khởi động
         initCharts();
         fetchChartData();
         fetchPagedLogs();
+        checkOutagesOnStartup(); // Tự động quét và phát hiện gián đoạn ngay khi mở web
     </script>
 </body>
 </html>
