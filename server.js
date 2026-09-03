@@ -115,19 +115,119 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// ================= API PHÂN TÍCH TOÀN DIỆN SỰ CỐ & GIÁN ĐOẠN TRONG DATABASE =================
+// ================= 1. API LẤY BIỂU ĐỒ: THUẬT TOÁN FULL-SPAN ID SAMPLING (BAO TRỌN 1 TUẦN, 1 NĂM) =================
+app.get('/api/chart-data', async (req, res) => {
+    try {
+        const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
+        let queryGte = null;
+        let queryLte = null;
+
+        if (mode === 'range' || from_time || to_time) {
+            if (from_time) queryGte = from_time;
+            if (to_time) queryLte = to_time;
+        } else {
+            const valNum = parseInt(value) || 30;
+            const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+            let cutoffVN = new Date(nowVN.getTime());
+
+            if (unit === 'minute') cutoffVN.setMinutes(cutoffVN.getMinutes() - valNum);
+            else if (unit === 'hour') cutoffVN.setHours(cutoffVN.getHours() - valNum);
+            else if (unit === 'day') cutoffVN.setDate(cutoffVN.getDate() - valNum);
+            else if (unit === 'week') cutoffVN.setDate(cutoffVN.getDate() - (valNum * 7));
+            else if (unit === 'month') cutoffVN.setMonth(cutoffVN.getMonth() - valNum);
+            else if (unit === 'year') cutoffVN.setFullYear(cutoffVN.getFullYear() - valNum);
+
+            const pad = (n) => String(n).padStart(2, '0');
+            queryGte = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
+        }
+
+        // Bước 1: Tìm min_id và max_id trong dải thời gian yêu cầu
+        let minQ = supabase.from('telemetry_logs').select('id').order('id', { ascending: true }).limit(1);
+        let maxQ = supabase.from('telemetry_logs').select('id').order('id', { ascending: false }).limit(1);
+
+        if (queryGte) {
+            minQ = minQ.gte('created_at', queryGte);
+            maxQ = maxQ.gte('created_at', queryGte);
+        }
+        if (queryLte) {
+            minQ = minQ.lte('created_at', queryLte);
+            maxQ = maxQ.lte('created_at', queryLte);
+        }
+
+        const [minRes, maxRes] = await Promise.all([minQ, maxQ]);
+
+        if (!minRes.data || minRes.data.length === 0 || !maxRes.data || maxRes.data.length === 0) {
+            const fallback = await supabase
+                .from('telemetry_logs')
+                .select('T, S, pH, DO, created_at')
+                .order('id', { ascending: false })
+                .limit(100);
+            return res.json(fallback.data ? fallback.data.reverse() : []);
+        }
+
+        const minId = minRes.data[0].id;
+        const maxId = maxRes.data[0].id;
+        const idSpan = maxId - minId;
+
+        // Nếu số bản ghi trong dải <= 1.000: Lấy toàn bộ không bỏ sót điểm nào
+        if (idSpan <= 1000) {
+            let q = supabase
+                .from('telemetry_logs')
+                .select('T, S, pH, DO, created_at')
+                .gte('id', minId)
+                .lte('id', maxId)
+                .order('id', { ascending: true })
+                .limit(1000);
+            const { data, error } = await q;
+            return res.json(data || []);
+        }
+
+        // Nếu số bản ghi > 1.000 (Ví dụ 21.000 dòng của 1 Tuần hoặc cả Năm):
+        // Lấy mẫu đều 300 điểm trải dài từ minId (ngày đầu tiên) đến maxId (hiện tại)
+        const targetPoints = 300;
+        const step = idSpan / targetPoints;
+        const targetIds = [];
+        for (let i = 0; i < targetPoints; i++) {
+            targetIds.push(Math.round(minId + i * step));
+        }
+        if (!targetIds.includes(maxId)) {
+            targetIds.push(maxId);
+        }
+
+        const { data, error } = await supabase
+            .from('telemetry_logs')
+            .select('T, S, pH, DO, created_at')
+            .in('id', targetIds)
+            .order('id', { ascending: true });
+
+        if (error || !data || data.length === 0) {
+            const fallback = await supabase
+                .from('telemetry_logs')
+                .select('T, S, pH, DO, created_at')
+                .order('id', { ascending: false })
+                .limit(300);
+            return res.json(fallback.data ? fallback.data.reverse() : []);
+        }
+
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. API phân tích sự cố tự động
 app.get('/api/audit-incidents', async (req, res) => {
     try {
-        const hours = parseInt(req.query.hours) || 36; // Mặc định quét 36 tiếng (bao quát 18-20h vắng mặt)
+        const hours = parseInt(req.query.hours) || 36;
         const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
         const cutoffVN = new Date(nowVN.getTime() - hours * 60 * 60 * 1000);
 
         const pad = (n) => String(n).padStart(2, '0');
         const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
 
-        // Lấy dữ liệu theo thứ tự thời gian tăng dần để phân tích chuỗi
+        // Quét tới 15.000 dòng gần nhất để bao quát 36 tiếng vắng mặt
         const CHUNK_SIZE = 1000;
-        const MAX_CHUNKS = 10;
+        const MAX_CHUNKS = 15;
         const fetchPromises = [];
 
         for (let i = 0; i < MAX_CHUNKS; i++) {
@@ -138,7 +238,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                     .from('telemetry_logs')
                     .select('*')
                     .gte('created_at', cutoffStr)
-                    .order('id', { ascending: true })
+                    .order('id', { ascending: false })
                     .range(from, to)
             );
         }
@@ -154,19 +254,22 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         }
 
+        // Đảo lại theo thứ tự thời gian tăng dần để phân tích chuỗi
+        logs.reverse();
+
         if (logs.length === 0) {
             return res.json({ incidents: [], scanned_records: 0 });
         }
 
         const incidents = [];
 
-        // 1. Phát hiện Mất kết nối / Nghẽn dữ liệu 4G (Data Outage Gap >= 35s)
+        // 1. Gián đoạn kết nối / Nghẽn dữ liệu (Khoảng trống >= 35s)
         for (let i = 1; i < logs.length; i++) {
             const tPrev = new Date(logs[i - 1].created_at).getTime();
             const tCurr = new Date(logs[i].created_at).getTime();
             const gapSec = (tCurr - tPrev) / 1000;
 
-            if (gapSec >= 35) { // Lệch quá 3 chu kỳ 10s
+            if (gapSec >= 35) {
                 incidents.push({
                     id: `outage_${logs[i - 1].id}_${logs[i].id}`,
                     type: 'OFFLINE_GAP',
@@ -182,7 +285,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         }
 
-        // 2. Thuật toán phát hiện các dải sự cố liên tục (Continuous State Runs)
         function analyzeContinuousRun(keyName, conditionFn, createIncidentFn) {
             let active = null;
             for (let i = 0; i < logs.length; i++) {
@@ -204,7 +306,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             if (active) incidents.push(createIncidentFn(active));
         }
 
-        // Sự cố A: Khóa liên động sự cố (il > 0)
+        // Khóa liên động il > 0
         analyzeContinuousRun(
             'il',
             (r) => parseInt(r.il) > 0,
@@ -212,8 +314,6 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t1 = new Date(act.start_row.created_at).getTime();
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                
-                // Gom tất cả các cờ bit đã kích hoạt trong khoảng này
                 let unionMask = 0;
                 act.rows.forEach(r => unionMask |= parseInt(r.il));
 
@@ -241,7 +341,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         );
 
-        // Sự cố B: Quạt sục khí khẩn cấp chạy (fan == 1)
+        // Quạt chạy fan == 1
         analyzeContinuousRun(
             'fan',
             (r) => parseInt(r.fan) === 1,
@@ -264,7 +364,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         );
 
-        // Sự cố C: Chế độ sinh tồn MPU (surv == 1)
+        // Chế độ sinh tồn surv == 1
         analyzeContinuousRun(
             'surv',
             (r) => parseInt(r.surv) === 1,
@@ -287,7 +387,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         );
 
-        // Sự cố D: Rủi ro sinh hóa tăng cao (btri >= 50.0)
+        // BTRI >= 50.0
         analyzeContinuousRun(
             'btri',
             (r) => parseFloat(r.btri) >= 50.0,
@@ -311,7 +411,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         );
 
-        // Sự cố E: Vi phạm miền sinh thái (dom > 0)
+        // Vi phạm miền sinh thái dom > 0
         analyzeContinuousRun(
             'dom',
             (r) => parseInt(r.dom) > 0,
@@ -343,7 +443,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         );
 
-        // Sự cố F: Khởi động lạnh chờ nạp kiềm (cs == 1)
+        // Khởi động lạnh cs == 1
         analyzeContinuousRun(
             'cs1',
             (r) => parseInt(r.cs) === 1,
@@ -366,7 +466,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         );
 
-        // Sự kiện G: Mạng PINN thích nghi chấp nhận trọng số mới (adapt_acc == 1)
+        // Thích nghi PINN adapt_acc == 1
         for (let i = 0; i < logs.length; i++) {
             if (parseInt(logs[i].adapt_acc) === 1 && (i === 0 || parseInt(logs[i - 1].adapt_acc) === 0)) {
                 incidents.push({
@@ -384,7 +484,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         }
 
-        // Sắp xếp các sự cố theo thứ tự thời gian mới nhất lên đầu để chủ ao xem ngay
         incidents.sort((a, b) => new Date(b.start_raw).getTime() - new Date(a.start_raw).getTime());
 
         res.json({
@@ -397,86 +496,7 @@ app.get('/api/audit-incidents', async (req, res) => {
     }
 });
 
-// 1. API lấy dữ liệu biểu đồ
-app.get('/api/chart-data', async (req, res) => {
-    try {
-        const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
-        let queryGte = null;
-        let queryLte = null;
-
-        if (mode === 'range' || from_time || to_time) {
-            if (from_time) queryGte = from_time;
-            if (to_time) queryLte = to_time;
-        } else {
-            const valNum = parseInt(value) || 30;
-            const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-            let cutoffVN = new Date(nowVN.getTime());
-
-            if (unit === 'minute') cutoffVN.setMinutes(cutoffVN.getMinutes() - valNum);
-            else if (unit === 'hour') cutoffVN.setHours(cutoffVN.getHours() - valNum);
-            else if (unit === 'day') cutoffVN.setDate(cutoffVN.getDate() - valNum);
-            else if (unit === 'week') cutoffVN.setDate(cutoffVN.getDate() - (valNum * 7));
-            else if (unit === 'month') cutoffVN.setMonth(cutoffVN.getMonth() - valNum);
-            else if (unit === 'year') cutoffVN.setFullYear(cutoffVN.getFullYear() - valNum);
-
-            const pad = (n) => String(n).padStart(2, '0');
-            queryGte = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
-        }
-
-        const CHUNK_SIZE = 1000;
-        const MAX_CHUNKS = 10;
-        const fetchPromises = [];
-
-        for (let i = 0; i < MAX_CHUNKS; i++) {
-            const from = i * CHUNK_SIZE;
-            const to = from + CHUNK_SIZE - 1;
-            let q = supabase
-                .from('telemetry_logs')
-                .select('T, S, pH, DO, created_at')
-                .order('id', { ascending: false })
-                .range(from, to);
-
-            if (queryGte) q = q.gte('created_at', queryGte);
-            if (queryLte) q = q.lte('created_at', queryLte);
-
-            fetchPromises.push(q);
-        }
-
-        const results = await Promise.all(fetchPromises);
-        let allData = [];
-
-        for (const r of results) {
-            if (r.data && r.data.length > 0) {
-                allData = allData.concat(r.data);
-                if (r.data.length < CHUNK_SIZE) break;
-            } else {
-                break;
-            }
-        }
-
-        if (allData.length === 0) {
-            const fallback = await supabase
-                .from('telemetry_logs')
-                .select('T, S, pH, DO, created_at')
-                .order('id', { ascending: false })
-                .limit(100);
-            return res.json(fallback.data ? fallback.data.reverse() : []);
-        }
-
-        let sampled = allData;
-        const maxPoints = 300;
-        if (allData.length > maxPoints) {
-            const step = Math.ceil(allData.length / maxPoints);
-            sampled = allData.filter((_, idx) => idx % step === 0);
-        }
-
-        res.json(sampled.reverse());
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 2. API phân trang & tìm kiếm lịch sử
+// 3. API phân trang xem Database
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -510,7 +530,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 3. API xuất file CSV
+// 4. API xuất file CSV (lên tới 100.000 dòng)
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -559,7 +579,7 @@ app.get('/api/export-csv', async (req, res) => {
     }
 });
 
-// Xử lý Socket.io
+// Xử lý Socket.io & Downlink
 io.on('connection', (socket) => {
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
