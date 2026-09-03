@@ -7,11 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .shake-animation { animation: shake 0.35s ease-in-out; }
+    </style>
 </head>
 <body class="bg-[#0b1329] text-gray-100 p-3 md:p-6 font-sans">
     <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header -->
+        <!-- Header với 2 Đèn Trạng Thái & Nút Mở Trung Tâm Cảnh Báo -->
         <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
@@ -19,10 +27,10 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
-                <!-- Nút xem lại lịch sử gián đoạn kết nối -->
-                <button onclick="openOutageModal(true)" id="badge-outage-btn" class="hidden flex items-center space-x-1.5 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-500/60 px-3 py-1.5 rounded-lg text-xs text-amber-300 transition">
-                    <span class="w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
-                    <span id="badge-outage-txt">⚠️ Phát hiện gián đoạn</span>
+                <!-- Nút Huy hiệu Cảnh báo có chuông và bộ đếm -->
+                <button onclick="openIncidentModal()" id="btn-incident-badge" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 transition shadow">
+                    <span class="text-base">🔔</span>
+                    <span id="txt-incident-count" class="font-bold text-gray-300">Đang quét sự cố...</span>
                 </button>
 
                 <div id="badge-server" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
@@ -36,6 +44,21 @@
                 </div>
             </div>
         </header>
+
+        <!-- THANH CẢNH BÁO NỔI BẬT KHI CÓ SỰ CỐ TRONG THỜI GIAN VẮNG MẶT -->
+        <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl animate-bounce">🚨</span>
+                <div>
+                    <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN SỰ CỐ TRONG THỜI GIAN VẮNG MẶT</h3>
+                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện các gián đoạn kết nối hoặc biến động sinh hóa trong Database. Nhập mã PIN 7492 để xác nhận xử lý.</p>
+                </div>
+            </div>
+            <button onclick="openIncidentModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 shadow flex items-center gap-1.5">
+                <span>Xem Chi Tiết Sự Cố</span>
+                <span>➔</span>
+            </button>
+        </div>
 
         <!-- Banner cảnh báo khi cs = 1 -->
         <div id="banner-cs-pending" class="hidden bg-amber-950/80 border-2 border-amber-500 text-amber-200 p-4 rounded-xl shadow-lg flex items-center justify-between gap-4 animate-pulse">
@@ -71,9 +94,8 @@
             <div id="control-feedback" class="text-xs font-semibold min-h-[16px]"></div>
         </div>
 
-        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI ================= -->
+        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI (ĐỒNG BỘ 100% VỚI DATABASE) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
-            
             <div class="bg-[#0b1329]/90 border border-slate-700/80 rounded-lg p-3 px-4 shadow-inner flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5">
                     <span class="relative flex h-2.5 w-2.5">
@@ -294,6 +316,7 @@
                 </div>
             </div>
 
+            <!-- Thanh tìm kiếm theo ngày giờ -->
             <div class="flex flex-wrap items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-xs">
                 <span class="text-blue-400 font-semibold flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -311,6 +334,7 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
+            <!-- Bảng dữ liệu 12 trường -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
@@ -356,53 +380,72 @@
 
     </div>
 
-    <!-- ================= MODAL CẢNH BÁO GIÁN ĐOẠN / NGHẼN MẠNG (MÃ MỞ KHÓA: 7492) ================= -->
-    <div id="outage-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-[#152238] border-2 border-amber-500/80 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 text-gray-200 animate-in fade-in zoom-in duration-200">
-            <div class="flex justify-between items-start border-b border-slate-700/80 pb-4">
+    <!-- ================= MODAL TRUNG TÂM KIỂM TRA SỰ CỐ & GIÁN ĐOẠN ================= -->
+    <div id="incident-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
+        <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Header Modal -->
+            <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
                 <div class="flex items-center gap-3">
-                    <div class="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/40 text-2xl">
-                        ⚠️
-                    </div>
+                    <span class="text-2xl">🛡️</span>
                     <div>
-                        <h3 class="text-base font-bold text-amber-300 tracking-wide uppercase">Cảnh Báo Gián Đoạn Kết Nối & Nghẽn Dữ Liệu</h3>
-                        <p class="text-xs text-gray-400 mt-0.5">Tự động phân tích từ mốc thời gian thực tế trong Database</p>
+                        <h3 class="text-base font-bold text-gray-100 flex items-center gap-2">
+                            <span>Trung Tâm Kiểm Tra & Phân Tích Sự Cố Tự Động</span>
+                        </h3>
+                        <p class="text-xs text-gray-400">Phân tích toàn diện 36 giờ dữ liệu trong Database | Mật mã xác nhận: Chủ ao</p>
                     </div>
+                </div>
+                <button onclick="closeIncidentModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+
+            <!-- Thanh điều hướng tab: Chưa tắt / Đã tắt & Nút tắt tất cả -->
+            <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-[#111c30] border-b border-slate-700 text-xs">
+                <div class="flex items-center gap-2">
+                    <button onclick="setIncidentTab('active')" id="tab-inc-active" class="px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow">
+                        ⚠️ Cần xử lý (<span id="count-tab-active">0</span>)
+                    </button>
+                    <button onclick="setIncidentTab('dismissed')" id="tab-inc-dismissed" class="px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200">
+                        ✅ Lịch sử đã tắt (<span id="count-tab-dismissed">0</span>)
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="promptDismissAll()" class="bg-red-950/70 hover:bg-red-900 border border-red-700 text-red-300 px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5">
+                        <span>🔒</span> Tắt tất cả (Cần PIN 7492)
+                    </button>
                 </div>
             </div>
 
-            <!-- Danh sách sự cố phát hiện -->
-            <div class="space-y-3">
-                <div class="text-xs text-gray-300 font-medium flex justify-between items-center">
-                    <span>Các đợt gián đoạn được ghi nhận:</span>
-                    <span id="outage-count-badge" class="bg-amber-950 text-amber-400 border border-amber-700/60 px-2 py-0.5 rounded text-[11px] font-mono font-bold">0 sự cố</span>
-                </div>
-
-                <div id="outage-list" class="max-h-60 overflow-y-auto space-y-2 pr-1 text-xs">
-                    <!-- Dữ liệu sự cố sẽ được Javascript đổ vào đây -->
-                </div>
-            </div>
-
-            <!-- KHUNG NHẬP MẬT MÃ 7492 ĐỂ XÁC NHẬN & TẮT CẢNH BÁO -->
-            <div class="bg-[#0b1329] border border-slate-700 rounded-xl p-4 space-y-3">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                        <div class="text-xs font-semibold text-gray-200">Xác nhận xem báo cáo (Mật khẩu: 7492):</div>
-                        <div class="text-[11px] text-gray-400">Nhập đúng mật mã để tự động tắt cảnh báo cho phiên làm việc này.</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="password" id="outage-passcode" maxlength="8" placeholder="Nhập mã 7492..." class="bg-slate-900 border border-slate-600 focus:border-amber-400 rounded-lg px-3 py-1.5 text-center text-white font-mono text-sm tracking-widest w-36 focus:outline-none" onkeydown="if(event.key==='Enter') verifyOutagePasscode()">
-                        <button onclick="verifyOutagePasscode()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition whitespace-nowrap">
-                            Tắt Cảnh Báo
-                        </button>
-                    </div>
-                </div>
-                <div id="outage-error-msg" class="text-xs text-rose-400 font-semibold hidden">Mật mã không đúng! Vui lòng nhập đúng số 7492.</div>
+            <!-- Danh sách các thẻ sự cố -->
+            <div id="incident-list-container" class="p-6 overflow-y-auto space-y-4 flex-1">
+                <!-- Sẽ được JavaScript render tự động -->
             </div>
         </div>
     </div>
 
-    <!-- MODAL TẢI CSV -->
+    <!-- ================= DIALOG NHẬP MÃ PIN 7492 ĐỂ XÁC NHẬN TẮT CẢNH BÁO ================= -->
+    <div id="pin-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
+        <div id="pin-box" class="bg-[#152238] border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 bg-red-950/80 border border-red-600 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl">
+                🔒
+            </div>
+            <div>
+                <h4 class="text-sm font-bold text-gray-100">Xác Thực Quyền Chủ Ao</h4>
+                <p class="text-xs text-gray-400 mt-1" id="pin-modal-desc">Nhập mã PIN gồm 4 chữ số để xác nhận và tắt cảnh báo sự cố này:</p>
+            </div>
+
+            <div class="space-y-2">
+                <input type="password" id="input-owner-pin" maxlength="6" placeholder="Nhập PIN..." class="w-40 mx-auto bg-slate-900 border-2 border-slate-600 rounded-lg py-2 text-center text-white text-lg font-mono tracking-widest focus:outline-none focus:border-red-500" onkeydown="if(event.key==='Enter') verifyAndExecuteDismiss()">
+                <div id="pin-error-msg" class="text-xs text-red-400 min-h-[16px] font-medium"></div>
+            </div>
+
+            <div class="flex justify-center gap-2 pt-2">
+                <button onclick="closePinModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-gray-200 rounded-lg transition">Hủy</button>
+                <button onclick="verifyAndExecuteDismiss()" class="px-5 py-1.5 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-lg transition shadow">Xác Nhận Tắt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal tải CSV -->
     <div id="csv-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
@@ -464,8 +507,8 @@
 
     <script>
         const socket = io();
-        const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
-        const OUTAGE_PASSCODE = "7492"; // MẬT MÃ TẮT CẢNH BÁO THEO YÊU CẦU
+        const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR"; // Mật khẩu nạp lệnh
+        const OWNER_DISMISS_PIN = "7492";                 // MÃ PIN BẢO MẬT CỦA CHỦ AO ĐỂ TẮT CẢNH BÁO
 
         let charts = {};
         let currentChartMode = 'recent';
@@ -482,7 +525,11 @@
         let filterToTime = '';
         let lastDeviceHeartbeat = 0;
         let pendingExpectedAlk = null;
-        let latestOutageTimestamp = 0;
+
+        // Quản lý sự cố & Xác thực mã PIN 7492
+        let allIncidents = [];
+        let currentIncTab = 'active'; // 'active' hoặc 'dismissed'
+        let pendingDismissIncidentId = null; // null: tắt tất cả, string: tắt từng cái
 
         function formatDbTime(rawTime) {
             if (!rawTime) return '';
@@ -496,131 +543,7 @@
             }
         }
 
-        function formatDuration(sec) {
-            if (sec < 60) return `${sec} giây`;
-            const m = Math.floor(sec / 60);
-            const s = sec % 60;
-            if (m < 60) return s > 0 ? `${m} phút ${s} giây` : `${m} phút`;
-            const h = Math.floor(m / 60);
-            const rm = m % 60;
-            return `${h} giờ ${rm} phút`;
-        }
-
-        // ================= XỬ LÝ QUÉT VÀ HIỂN THỊ CẢNH BÁO GIÁN ĐOẠN (MÃ 7492) =================
-        async function checkOutagesOnStartup() {
-            try {
-                const res = await fetch('/api/check-outages');
-                const data = await res.json();
-                
-                const listEl = document.getElementById('outage-list');
-                const countBadge = document.getElementById('outage-count-badge');
-                const badgeBtn = document.getElementById('badge-outage-btn');
-                const badgeTxt = document.getElementById('badge-outage-txt');
-
-                let totalCount = (data.outages ? data.outages.length : 0) + (data.ongoing ? 1 : 0);
-
-                if (totalCount === 0) {
-                    badgeBtn.classList.add('hidden');
-                    return;
-                }
-
-                // Cập nhật nút xem lại trên header
-                badgeBtn.classList.remove('hidden');
-                badgeTxt.innerText = `⚠️ ${totalCount} Sự cố kết nối`;
-
-                countBadge.innerText = `${totalCount} sự cố`;
-
-                let html = '';
-
-                // 1. Nếu đang có sự cố mất kết nối tức thời
-                if (data.ongoing) {
-                    html += `
-                        <div class="p-3 bg-red-950/70 border border-red-600 rounded-xl space-y-1">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-red-400 flex items-center gap-1.5">
-                                    <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                                    ${data.ongoing.type}
-                                </span>
-                                <span class="bg-red-900/80 text-red-200 px-2 py-0.5 rounded text-[10px] font-mono">Đang diễn ra</span>
-                            </div>
-                            <div class="text-gray-300">Từ: <b class="text-white font-mono">${data.ongoing.from_time}</b> đến <b class="text-red-400">Hiện tại</b></div>
-                            <div class="text-[11px] text-gray-400">Đã mất liên lạc: <b class="text-red-300 font-mono">${formatDuration(data.ongoing.duration_sec)}</b> (Hụt khoảng ${data.ongoing.missed_packets} chu kỳ gửi)</div>
-                        </div>
-                    `;
-                }
-
-                // 2. Danh sách các khoảng gián đoạn trong quá khứ đã được lưu trong DB
-                if (data.outages && data.outages.length > 0) {
-                    latestOutageTimestamp = data.outages[0].timestamp; // Lưu mốc sự cố mới nhất
-
-                    data.outages.forEach(item => {
-                        let badgeColor = item.level === 'danger' ? 'border-red-700 bg-red-950/50 text-red-400' : (item.level === 'orange' ? 'border-amber-700 bg-amber-950/50 text-amber-400' : 'border-slate-700 bg-slate-900 text-gray-300');
-                        html += `
-                            <div class="p-3 ${badgeColor} border rounded-xl space-y-1">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-bold text-gray-200">${item.type}</span>
-                                    <span class="font-mono text-[11px] text-gray-400">Gián đoạn: <b class="text-amber-300">${formatDuration(item.duration_sec)}</b></span>
-                                </div>
-                                <div class="text-gray-300">
-                                    Từ: <b class="text-gray-100 font-mono">${item.from_time}</b> (ID: #${item.from_id}) 
-                                    <br>Đến: <b class="text-emerald-400 font-mono">${item.to_time}</b> (ID: #${item.to_id})
-                                </div>
-                                <div class="text-[11px] text-gray-400">Ước tính mất: <b class="text-white font-mono">${item.missed_packets} gói tin</b> chu kỳ 10s.</div>
-                            </div>
-                        `;
-                    });
-                }
-
-                listEl.innerHTML = html;
-
-                // KIỂM TRA XEM NGƯỜI DÙNG ĐÃ TỪNG NHẬP MÃ 7492 XÁC NHẬN SỰ CỐ NÀY CHƯA
-                const lastAck = localStorage.getItem('outage_acknowledged_ts');
-                if (!lastAck || parseInt(lastAck) < latestOutageTimestamp || data.ongoing) {
-                    // Nếu có sự cố mới chưa từng được xác nhận -> Tự động bật Modal cảnh báo
-                    openOutageModal(false);
-                }
-            } catch (e) {
-                console.error("Lỗi kiểm tra sự cố gián đoạn:", e);
-            }
-        }
-
-        function openOutageModal(isManualClick = false) {
-            document.getElementById('outage-modal').classList.remove('hidden');
-            document.getElementById('outage-error-msg').classList.add('hidden');
-            document.getElementById('outage-passcode').value = '';
-            document.getElementById('outage-passcode').focus();
-        }
-
-        function closeOutageModal() {
-            document.getElementById('outage-modal').classList.add('hidden');
-        }
-
-        // Kiểm tra mật mã 7492 để tắt cảnh báo
-        function verifyOutagePasscode() {
-            const inputVal = document.getElementById('outage-passcode').value.trim();
-            const errMsg = document.getElementById('outage-error-msg');
-
-            if (inputVal === OUTAGE_PASSCODE) {
-                errMsg.classList.add('hidden');
-                // Ghi nhớ mốc đã xác nhận vào localStorage
-                localStorage.setItem('outage_acknowledged_ts', String(latestOutageTimestamp || Date.now()));
-                
-                // Hiệu ứng đóng nhẹ nhàng
-                closeOutageModal();
-
-                // Đổi nhãn nút trên Header về màu bình thường
-                const badgeBtn = document.getElementById('badge-outage-btn');
-                badgeBtn.className = "flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-gray-300 transition";
-                badgeBtn.innerHTML = `<span>📋 Nhật ký gián đoạn</span>`;
-            } else {
-                errMsg.classList.remove('hidden');
-                const inputEl = document.getElementById('outage-passcode');
-                inputEl.classList.add('ring-2', 'ring-rose-500');
-                setTimeout(() => inputEl.classList.remove('ring-2', 'ring-rose-500'), 1500);
-            }
-        }
-
-        // Giải mã cờ theo mục 3
+        // ================= GIẢI MÃ CỜ THEO MỤC 3 =================
         function decodeIL(ilVal) {
             const val = parseInt(ilVal) || 0;
             if (val === 0) return { shortText: "An toàn (0x00)", fullHtml: "<span class='text-emerald-400 font-bold'>An toàn:</span> Không phát hiện sự cố hóa-lý nguy cấp." };
@@ -670,6 +593,7 @@
             setTimeout(() => input.classList.remove('ring-2', 'ring-amber-400'), 2000);
         }
 
+        // ================= GIÁM SÁT KẾT NỐI MÁY THỰC TẾ =================
         function updateDeviceStatus(isOnline) {
             const badge = document.getElementById('badge-device');
             const dot = document.getElementById('dot-device');
@@ -712,6 +636,7 @@
             }
         });
 
+        // ================= XỬ LÝ DỮ LIỆU TỨC THỜI REALTIME =================
         function renderTelemetryUI(packet) {
             lastDeviceHeartbeat = packet.device_timestamp || Date.now();
             updateDeviceStatus(true);
@@ -834,6 +759,215 @@
         socket.on('new_telemetry', (packet) => {
             renderTelemetryUI(packet);
         });
+
+        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ & QUẢN LÝ MẬT KHẨU 7492 =================
+        function getDismissedIncidentIds() {
+            try {
+                return JSON.parse(localStorage.getItem('pond_dismissed_incidents') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveDismissedIncidentId(id) {
+            let list = getDismissedIncidentIds();
+            if (!list.includes(id)) {
+                list.push(id);
+                localStorage.setItem('pond_dismissed_incidents', JSON.stringify(list));
+            }
+        }
+
+        async function fetchIncidentAudit() {
+            try {
+                const res = await fetch('/api/audit-incidents?hours=36');
+                const data = await res.json();
+                allIncidents = data.incidents || [];
+                updateIncidentUI();
+            } catch (err) {
+                console.error("Lỗi quét sự cố:", err);
+            }
+        }
+
+        function updateIncidentUI() {
+            const dismissedIds = getDismissedIncidentIds();
+            const activeList = allIncidents.filter(inc => !dismissedIds.includes(inc.id));
+            const dismissedList = allIncidents.filter(inc => dismissedIds.includes(inc.id));
+
+            // Cập nhật số lượng trên các nút và banner
+            document.getElementById('count-tab-active').innerText = activeList.length;
+            document.getElementById('count-tab-dismissed').innerText = dismissedList.length;
+            
+            const badgeBtn = document.getElementById('btn-incident-badge');
+            const countTxt = document.getElementById('txt-incident-count');
+            const banner = document.getElementById('banner-active-incidents');
+
+            if (activeList.length > 0) {
+                badgeBtn.className = "flex items-center gap-2 bg-red-950/80 hover:bg-red-900 text-xs px-3.5 py-1.5 rounded-lg border border-red-500 text-red-300 transition shadow animate-pulse";
+                countTxt.innerText = `${activeList.length} sự cố cần xem!`;
+                banner.classList.remove('hidden');
+                document.getElementById('banner-incident-title').innerText = `PHÁT HIỆN ${activeList.length} SỰ CỐ TRONG THỜI GIAN VẮNG MẶT`;
+            } else {
+                badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-emerald-400 transition shadow";
+                countTxt.innerText = "Hệ thống an toàn";
+                banner.classList.add('hidden');
+            }
+
+            renderIncidentList();
+        }
+
+        function renderIncidentList() {
+            const container = document.getElementById('incident-list-container');
+            const dismissedIds = getDismissedIncidentIds();
+            const listToShow = currentIncTab === 'active' 
+                ? allIncidents.filter(inc => !dismissedIds.includes(inc.id))
+                : allIncidents.filter(inc => dismissedIds.includes(inc.id));
+
+            if (listToShow.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-400 space-y-2">
+                        <div class="text-4xl">🎉</div>
+                        <div class="font-bold text-sm text-gray-300">Không có sự cố nào trong danh mục này!</div>
+                        <p class="text-xs text-gray-500">Mọi dữ liệu đo đạc và đường truyền trong khoảng thời gian qua đều ổn định.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = listToShow.map(inc => {
+                let badgeColor = "bg-red-900/60 border-red-600 text-red-300";
+                let icon = "🚨";
+                if (inc.severity === 'warning') {
+                    badgeColor = "bg-amber-900/60 border-amber-600 text-amber-300";
+                    icon = "⚠️";
+                } else if (inc.severity === 'info') {
+                    badgeColor = "bg-blue-900/60 border-blue-600 text-blue-300";
+                    icon = "💡";
+                }
+
+                const isDismissed = dismissedIds.includes(inc.id);
+
+                return `
+                    <div class="bg-[#0b1329] border border-slate-700 hover:border-slate-500 rounded-xl p-4.5 space-y-3 transition shadow-md">
+                        <div class="flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 pb-2.5">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">${icon}</span>
+                                <div>
+                                    <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${badgeColor}">
+                                        ${inc.category}
+                                    </span>
+                                    <h4 class="font-bold text-sm text-gray-100 mt-1">${inc.title}</h4>
+                                </div>
+                            </div>
+                            
+                            <!-- Nút tắt cảnh báo yêu cầu nhập mã PIN 7492 -->
+                            ${!isDismissed ? `
+                                <button onclick="promptDismissSingle('${inc.id}')" class="bg-slate-800 hover:bg-red-900/70 border border-slate-700 hover:border-red-600 text-gray-300 hover:text-red-200 text-xs px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5 shadow">
+                                    <span>🔒</span> Tắt cảnh báo này
+                                </button>
+                            ` : `
+                                <span class="text-xs text-emerald-400 flex items-center gap-1 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-lg">
+                                    <span>✓</span> Đã xác nhận & Tắt bởi Chủ Ao
+                                </span>
+                            `}
+                        </div>
+
+                        <p class="text-xs text-gray-300 leading-relaxed">${inc.details}</p>
+
+                        <!-- Khung hiển thị thời gian chính xác từ Database -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#152238] p-2.5 rounded-lg border border-slate-700/80 text-xs font-mono">
+                            <div class="text-gray-300">
+                                <span class="text-gray-500">Mốc thời gian (Database):</span><br>
+                                <span class="text-cyan-400 font-bold">Từ: ${inc.start_time}</span><br>
+                                <span class="text-emerald-400 font-bold">Đến: ${inc.end_time}</span>
+                            </div>
+                            <div class="text-gray-300 sm:text-right flex flex-col justify-center">
+                                <span class="text-gray-500">Thời lượng xuất hiện / gián đoạn:</span>
+                                <span class="text-amber-400 font-bold text-sm mt-0.5">⏱️ ${inc.duration}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setIncidentTab(tab) {
+            currentIncTab = tab;
+            const btnActive = document.getElementById('tab-inc-active');
+            const btnDismissed = document.getElementById('tab-inc-dismissed');
+
+            if (tab === 'active') {
+                btnActive.className = "px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow";
+                btnDismissed.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200";
+            } else {
+                btnDismissed.className = "px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow";
+                btnActive.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200";
+            }
+            renderIncidentList();
+        }
+
+        function openIncidentModal() {
+            document.getElementById('incident-modal').classList.remove('hidden');
+            fetchIncidentAudit();
+        }
+
+        function closeIncidentModal() {
+            document.getElementById('incident-modal').classList.add('hidden');
+        }
+
+        // ================= XỬ LÝ MÃ PIN 7492 =================
+        function promptDismissSingle(incidentId) {
+            pendingDismissIncidentId = incidentId;
+            document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN chủ ao (4 chữ số) để tắt cảnh báo sự cố này:";
+            document.getElementById('input-owner-pin').value = '';
+            document.getElementById('pin-error-msg').innerText = '';
+            document.getElementById('pin-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('input-owner-pin').focus(), 100);
+        }
+
+        function promptDismissAll() {
+            const dismissedIds = getDismissedIncidentIds();
+            const activeList = allIncidents.filter(inc => !dismissedIds.includes(inc.id));
+            if (activeList.length === 0) {
+                alert('Không có cảnh báo nào cần tắt!');
+                return;
+            }
+
+            pendingDismissIncidentId = null; // Tắt tất cả
+            document.getElementById('pin-modal-desc').innerText = `Nhập mã PIN chủ ao (4 chữ số) để xác nhận và TẮT TOÀN BỘ ${activeList.length} CẢNH BÁO:`;
+            document.getElementById('input-owner-pin').value = '';
+            document.getElementById('pin-error-msg').innerText = '';
+            document.getElementById('pin-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('input-owner-pin').focus(), 100);
+        }
+
+        function closePinModal() {
+            document.getElementById('pin-modal').classList.add('hidden');
+            pendingDismissIncidentId = null;
+        }
+
+        function verifyAndExecuteDismiss() {
+            const enteredPin = document.getElementById('input-owner-pin').value.trim();
+            const pinBox = document.getElementById('pin-box');
+            const errorMsg = document.getElementById('pin-error-msg');
+
+            if (enteredPin !== OWNER_DISMISS_PIN) {
+                pinBox.classList.add('shake-animation');
+                errorMsg.innerText = "❌ Mật khẩu PIN không đúng! Chỉ chủ ao mới có quyền tắt.";
+                setTimeout(() => pinBox.classList.remove('shake-animation'), 400);
+                return;
+            }
+
+            // Đúng mã PIN 7492 -> Thực hiện tắt cảnh báo
+            if (pendingDismissIncidentId) {
+                saveDismissedIncidentId(pendingDismissIncidentId);
+            } else {
+                // Tắt tất cả
+                allIncidents.forEach(inc => saveDismissedIncidentId(inc.id));
+            }
+
+            closePinModal();
+            updateIncidentUI();
+        }
 
         // Khởi tạo biểu đồ
         function initCharts() {
@@ -1024,6 +1158,7 @@
             }, 300);
         }
 
+        // Dữ liệu Database & Phân trang
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -1205,11 +1340,11 @@
             }
         }
 
-        // Khởi động
+        // Khởi động trang web
         initCharts();
         fetchChartData();
         fetchPagedLogs();
-        checkOutagesOnStartup(); // Tự động quét và phát hiện gián đoạn ngay khi mở web
+        fetchIncidentAudit(); // Tự động quét và phát hiện sự cố ngay khi vừa mở trang
     </script>
 </body>
 </html>
