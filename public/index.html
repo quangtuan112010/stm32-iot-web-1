@@ -27,9 +27,10 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Nút mở Trung Tâm Rà Soát Sự Cố 72h -->
                 <button onclick="openIncidentModal()" id="btn-incident-badge" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 transition shadow">
-                    <span class="text-base">🔔</span>
-                    <span id="txt-incident-count" class="font-bold text-gray-300">Đang quét sự cố...</span>
+                    <span class="text-base">🛡️</span>
+                    <span id="txt-incident-count" class="font-bold text-gray-300">Đang quét 72h...</span>
                 </button>
 
                 <div id="badge-server" class="flex items-center space-x-2 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400">
@@ -44,13 +45,13 @@
             </div>
         </header>
 
-        <!-- Banner cảnh báo (Đã giấu kín mật khẩu) -->
+        <!-- Banner cảnh báo nổi bật khi phát hiện biến cố trong 72h -->
         <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span class="text-2xl animate-bounce">🚨</span>
                 <div>
-                    <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN SỰ CỐ TRONG THỜI GIAN VẮNG MẶT</h3>
-                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện các gián đoạn kết nối hoặc biến động sinh hóa trong Database. Yêu cầu quyền Chủ Ao để xác nhận xử lý.</p>
+                    <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN SỰ CỐ TRONG 72 GIỜ VỪA QUA</h3>
+                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện có gián đoạn kết nối hoặc biến động sinh hóa trong Database. Yêu cầu quyền Chủ Ao để xác nhận xử lý.</p>
                 </div>
             </div>
             <button onclick="openIncidentModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 shadow flex items-center gap-1.5">
@@ -139,7 +140,7 @@
                 </div>
             </div>
 
-            <!-- 8 Thẻ trạng thái -->
+            <!-- 8 Thẻ trạng thái & Cờ giải mã -->
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Độ kiềm Flash (alk)</div>
@@ -379,7 +380,7 @@
 
     </div>
 
-    <!-- Modal trung tâm sự cố (Đã ẩn danh mật khẩu) -->
+    <!-- ================= MODAL TRUNG TÂM SỰ CỐ 72 GIỜ ================= -->
     <div id="incident-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -387,7 +388,7 @@
                     <span class="text-2xl">🛡️</span>
                     <div>
                         <h3 class="text-base font-bold text-gray-100">Trung Tâm Kiểm Tra & Phân Tích Sự Cố Tự Động</h3>
-                        <p class="text-xs text-gray-400">Phân tích toàn diện Database | Yêu cầu quyền Chủ Ao để tắt cảnh báo</p>
+                        <p class="text-xs text-gray-400">Rà soát chuẩn xác 72 giờ gần nhất (25.920 bản ghi) | Yêu cầu quyền Chủ Ao để tắt cảnh báo</p>
                     </div>
                 </div>
                 <button onclick="closeIncidentModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -412,7 +413,7 @@
         </div>
     </div>
 
-    <!-- Dialog nhập mã PIN (Tuyệt đối không in số ra giao diện) -->
+    <!-- Dialog nhập mã PIN (Không lộ số) -->
     <div id="pin-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
         <div id="pin-box" class="bg-[#152238] border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-red-950/80 border border-red-600 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl">
@@ -498,7 +499,7 @@
     <script>
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
-        const OWNER_DISMISS_PIN = "7492"; // Mật mã xác thực chủ ao bí mật
+        const OWNER_DISMISS_PIN = "7492"; // Mật mã bảo mật
 
         let charts = {};
         let currentChartMode = 'recent';
@@ -949,7 +950,7 @@
             }, 300);
         }
 
-        // ================= DỮ LIỆU DATABASE & PHÂN TRANG =================
+        // Dữ liệu Database & Phân trang
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -1095,7 +1096,7 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ =================
+        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ 72 GIỜ =================
         function getDismissedIncidentIds() {
             try {
                 return JSON.parse(localStorage.getItem('pond_dismissed_incidents') || '[]');
@@ -1114,12 +1115,12 @@
 
         async function fetchIncidentAudit() {
             try {
-                const res = await fetch('/api/audit-incidents?hours=36');
+                const res = await fetch('/api/audit-incidents?hours=72'); // Quét chuẩn xác 72 giờ
                 const data = await res.json();
                 allIncidents = data.incidents || [];
                 updateIncidentUI();
             } catch (err) {
-                console.error("Lỗi quét sự cố:", err);
+                console.error("Lỗi quét sự cố 72h:", err);
             }
         }
 
@@ -1137,12 +1138,12 @@
 
             if (activeList.length > 0) {
                 badgeBtn.className = "flex items-center gap-2 bg-red-950/80 hover:bg-red-900 text-xs px-3.5 py-1.5 rounded-lg border border-red-500 text-red-300 transition shadow animate-pulse";
-                countTxt.innerText = `${activeList.length} sự cố cần xem!`;
+                countTxt.innerText = `${activeList.length} sự cố (72h)`;
                 banner.classList.remove('hidden');
-                document.getElementById('banner-incident-title').innerText = `PHÁT HIỆN ${activeList.length} SỰ CỐ TRONG THỜI GIAN VẮNG MẶT`;
+                document.getElementById('banner-incident-title').innerText = `PHÁT HIỆN ${activeList.length} SỰ CỐ TRONG 72 GIỜ VỪA QUA`;
             } else {
                 badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-emerald-400 transition shadow";
-                countTxt.innerText = "Hệ thống an toàn";
+                countTxt.innerText = "72h qua an toàn";
                 banner.classList.add('hidden');
             }
 
@@ -1161,7 +1162,7 @@
                     <div class="text-center py-12 text-gray-400 space-y-2">
                         <div class="text-4xl">🎉</div>
                         <div class="font-bold text-sm text-gray-300">Không có sự cố nào trong danh mục này!</div>
-                        <p class="text-xs text-gray-500">Mọi dữ liệu đo đạc và đường truyền trong khoảng thời gian qua đều ổn định.</p>
+                        <p class="text-xs text-gray-500">Toàn bộ dữ liệu đo đạc và kết nối trong 72 giờ qua đều ổn định.</p>
                     </div>
                 `;
                 return;
@@ -1246,7 +1247,7 @@
             document.getElementById('incident-modal').classList.add('hidden');
         }
 
-        // ================= XỬ LÝ NHẬP MÃ PIN (TUYỆT ĐỐI KHÔNG LỘ SỐ RA UI) =================
+        // ================= XỬ LÝ NHẬP MÃ PIN (TUYỆT ĐỐI KHÔNG HIỂN THỊ MÃ SỐ RA GIAO DIỆN) =================
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
             document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
