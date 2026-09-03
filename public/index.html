@@ -44,13 +44,13 @@
             </div>
         </header>
 
-        <!-- Banner cảnh báo sự cố -->
+        <!-- Banner cảnh báo (Đã giấu kín mật khẩu) -->
         <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span class="text-2xl animate-bounce">🚨</span>
                 <div>
                     <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN SỰ CỐ TRONG THỜI GIAN VẮNG MẶT</h3>
-                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện các gián đoạn kết nối hoặc biến động sinh hóa trong Database. Nhập mã PIN 7492 để xác nhận xử lý.</p>
+                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện các gián đoạn kết nối hoặc biến động sinh hóa trong Database. Yêu cầu quyền Chủ Ao để xác nhận xử lý.</p>
                 </div>
             </div>
             <button onclick="openIncidentModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 shadow flex items-center gap-1.5">
@@ -139,7 +139,7 @@
                 </div>
             </div>
 
-            <!-- 8 Thẻ trạng thái & Cờ giải mã -->
+            <!-- 8 Thẻ trạng thái -->
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Độ kiềm Flash (alk)</div>
@@ -197,7 +197,7 @@
             </div>
         </div>
 
-        <!-- ================= KHU VỰC BIỂU ĐỒ: ĐÃ NÂNG CẤP XEM TRỌN VẸN 1 TUẦN & NĂM GẦN NHẤT ================= -->
+        <!-- ================= KHU VỰC BIỂU ĐỒ ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700 pb-4">
                 <div>
@@ -218,7 +218,6 @@
                 </div>
             </div>
 
-            <!-- Thanh điều khiển chọn nhanh & chọn năm gần nhất -->
             <div id="chart-controls-recent" class="flex flex-wrap items-center justify-between gap-3 bg-[#0b1329]/80 p-3 rounded-lg border border-slate-700">
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="text-xs text-gray-400 font-medium mr-1">Chọn nhanh:</span>
@@ -380,7 +379,7 @@
 
     </div>
 
-    <!-- Modal trung tâm sự cố -->
+    <!-- Modal trung tâm sự cố (Đã ẩn danh mật khẩu) -->
     <div id="incident-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -388,7 +387,7 @@
                     <span class="text-2xl">🛡️</span>
                     <div>
                         <h3 class="text-base font-bold text-gray-100">Trung Tâm Kiểm Tra & Phân Tích Sự Cố Tự Động</h3>
-                        <p class="text-xs text-gray-400">Phân tích toàn diện Database | Mật mã xác nhận chủ ao: 7492</p>
+                        <p class="text-xs text-gray-400">Phân tích toàn diện Database | Yêu cầu quyền Chủ Ao để tắt cảnh báo</p>
                     </div>
                 </div>
                 <button onclick="closeIncidentModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -405,7 +404,7 @@
                 </div>
 
                 <button onclick="promptDismissAll()" class="bg-red-950/70 hover:bg-red-900 border border-red-700 text-red-300 px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5">
-                    <span>🔒</span> Tắt tất cả (Cần PIN 7492)
+                    <span>🔒</span> Tắt tất cả (Cần PIN Chủ Ao)
                 </button>
             </div>
 
@@ -413,7 +412,7 @@
         </div>
     </div>
 
-    <!-- Dialog nhập mã PIN 7492 -->
+    <!-- Dialog nhập mã PIN (Tuyệt đối không in số ra giao diện) -->
     <div id="pin-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
         <div id="pin-box" class="bg-[#152238] border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-red-950/80 border border-red-600 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl">
@@ -421,7 +420,7 @@
             </div>
             <div>
                 <h4 class="text-sm font-bold text-gray-100">Xác Thực Quyền Chủ Ao</h4>
-                <p class="text-xs text-gray-400 mt-1" id="pin-modal-desc">Nhập mã PIN 7492 để xác nhận và tắt cảnh báo sự cố:</p>
+                <p class="text-xs text-gray-400 mt-1" id="pin-modal-desc">Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo:</p>
             </div>
 
             <div class="space-y-2">
@@ -499,7 +498,7 @@
     <script>
         const socket = io();
         const CORRECT_PASSWORD = "tuskact4JohnyjO7STBR";
-        const OWNER_DISMISS_PIN = "7492";
+        const OWNER_DISMISS_PIN = "7492"; // Mật mã xác thực chủ ao bí mật
 
         let charts = {};
         let currentChartMode = 'recent';
@@ -507,7 +506,7 @@
         let currentChartUnit = 'minute';
         let chartFromTime = '';
         let chartToTime = '';
-        let lastChartRawData = []; // Lưu raw data để tooltip hiển thị chính xác ngày giờ
+        let lastChartRawData = [];
 
         let currentPage = 1;
         let currentLimit = 1000;
@@ -748,7 +747,7 @@
             renderTelemetryUI(packet);
         });
 
-        // ================= KHỞI TẠO BIỂU ĐỒ VỚI TOOLTIP CHÍNH XÁC TỪNG GIÂY =================
+        // Khởi tạo biểu đồ
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
@@ -801,7 +800,6 @@
                                 titleFont: { size: 11, weight: 'bold' },
                                 bodyFont: { size: 13, weight: 'bold', family: 'monospace' },
                                 callbacks: {
-                                    // Hiển thị chính xác ngày giờ thực tế từ Database trong tooltip
                                     title: function(context) {
                                         const idx = context[0].dataIndex;
                                         const raw = lastChartRawData[idx];
@@ -833,9 +831,8 @@
 
                 const res = await fetch(url);
                 const data = await res.json();
-                lastChartRawData = data; // Lưu lại để tooltip trích xuất ngày giờ chuẩn
+                lastChartRawData = data;
 
-                // Định dạng nhãn trục hoành phù hợp với 1 tuần, 1 năm
                 const labels = data.map(d => {
                     if (!d.created_at) return '';
                     const clean = d.created_at.replace('T', ' ').split('.')[0];
@@ -1098,7 +1095,7 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ & PIN 7492 =================
+        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ =================
         function getDismissedIncidentIds() {
             try {
                 return JSON.parse(localStorage.getItem('pond_dismissed_incidents') || '[]');
@@ -1249,9 +1246,10 @@
             document.getElementById('incident-modal').classList.add('hidden');
         }
 
+        // ================= XỬ LÝ NHẬP MÃ PIN (TUYỆT ĐỐI KHÔNG LỘ SỐ RA UI) =================
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
-            document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN chủ ao (4 chữ số) để tắt cảnh báo sự cố này:";
+            document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
             document.getElementById('input-owner-pin').value = '';
             document.getElementById('pin-error-msg').innerText = '';
             document.getElementById('pin-modal').classList.remove('hidden');
@@ -1267,7 +1265,7 @@
             }
 
             pendingDismissIncidentId = null;
-            document.getElementById('pin-modal-desc').innerText = `Nhập mã PIN chủ ao (4 chữ số) để xác nhận và TẮT TOÀN BỘ ${activeList.length} CẢNH BÁO:`;
+            document.getElementById('pin-modal-desc').innerText = `Nhập mã PIN bảo mật để xác nhận và TẮT TOÀN BỘ ${activeList.length} CẢNH BÁO:`;
             document.getElementById('input-owner-pin').value = '';
             document.getElementById('pin-error-msg').innerText = '';
             document.getElementById('pin-modal').classList.remove('hidden');
