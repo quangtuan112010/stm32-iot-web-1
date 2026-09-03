@@ -60,6 +60,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
+// Nhận gói tin Uplink từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -114,7 +115,7 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// API Lấy danh sách ID sự cố đã tắt từ Database
+// API Đồng bộ trạng thái đã tắt lên Supabase Cloud
 app.get('/api/dismissed-incidents', async (req, res) => {
     try {
         const { data, error } = await supabase.from('incident_dismissals').select('incident_id');
@@ -125,7 +126,6 @@ app.get('/api/dismissed-incidents', async (req, res) => {
     }
 });
 
-// API Lưu ID sự cố đã tắt lên Database
 app.post('/api/dismiss-incident', async (req, res) => {
     try {
         const { incident_id } = req.body;
@@ -142,7 +142,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// API rà soát 72 giờ sự cố
+// API Rà soát sự cố 72 giờ chuẩn xác
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -211,7 +211,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                     end_time: formatSupabaseTime(logs[i].created_at),
                     duration: formatDurationSeconds(gapSec),
                     start_raw: logs[i - 1].created_at,
-                    details: `Thiết bị không gửi dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}. Nguyên nhân có thể do mất điện lưới tại ao, sóng 4G chập chờn hoặc thiết bị khởi động lại.`
+                    details: `Thiết bị không gửi dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}. Nguyên nhân có thể do mất nguồn thiết bị, mất sóng 4G hoặc thiết bị khởi động lại.`
                 });
             }
         }
@@ -245,13 +245,13 @@ app.get('/api/audit-incidents', async (req, res) => {
             act.rows.forEach(r => unionMask |= parseInt(r.il));
 
             let bitDescs = [];
-            if (unionMask & 0x01) bitDescs.push("NH3 vượt ngưỡng");
-            if (unionMask & 0x02) bitDescs.push("H2S vượt ngưỡng");
-            if (unionMask & 0x04) bitDescs.push("Oxy thấp");
-            if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (<2mg/L)");
-            if (unionMask & 0x10) bitDescs.push("Kiềm sụt giảm");
-            if (unionMask & 0x20) bitDescs.push("pH nguy hiểm");
-            if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến");
+            if (unionMask & 0x01) bitDescs.push("Khí độc NH3 vượt ngưỡng");
+            if (unionMask & 0x02) bitDescs.push("Khí độc H2S vượt ngưỡng");
+            if (unionMask & 0x04) bitDescs.push("Oxy tương đối thấp");
+            if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (< 2.0 mg/L) -> Cưỡng bức quạt");
+            if (unionMask & 0x10) bitDescs.push("Độ kiềm sụt giảm (< 50 mg/L)");
+            if (unionMask & 0x20) bitDescs.push("pH nguy hiểm (< 6.0 hoặc > 9.5)");
+            if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến / Mất gói liên tiếp");
 
             return {
                 id: `il_${act.start_row.id}_${act.end_row.id}`,
@@ -562,6 +562,17 @@ app.get('/api/export-csv', async (req, res) => {
     } catch (err) {
         res.status(500).send("Lỗi xuất file: " + err.message);
     }
+});
+
+// ================= BỘ ĐIỀU HƯỚNG THÔNG MINH (CHỐNG LỖI 404 CANNOT GET /api/) =================
+app.get(['/api', '/api/'], (req, res) => res.redirect('/'));
+
+// Nếu truy cập vào bất kỳ đường dẫn trang web nào không tồn tại -> Đưa ngay về trang chủ
+app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/socket.io')) {
+        return res.redirect('/');
+    }
+    res.status(404).send('Not Found');
 });
 
 io.on('connection', (socket) => {
