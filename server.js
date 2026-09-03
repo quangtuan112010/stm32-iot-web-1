@@ -38,6 +38,17 @@ function formatSupabaseTime(rawTime) {
     }
 }
 
+function formatDurationSeconds(totalSeconds) {
+    totalSeconds = Math.max(0, Math.floor(totalSeconds));
+    if (totalSeconds < 60) return `${totalSeconds} giây`;
+    const mins = Math.floor(totalSeconds / 60);
+    const sec = totalSeconds % 60;
+    if (mins < 60) return sec > 0 ? `${mins} phút ${sec} giây` : `${mins} phút`;
+    const hours = Math.floor(mins / 60);
+    const remMin = mins % 60;
+    return remMin > 0 ? `${hours} giờ ${remMin} phút ${sec} giây` : `${hours} giờ ${sec} giây`;
+}
+
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -89,8 +100,6 @@ mqttClient.on('message', async (topic, message) => {
             dbTimeFormatted = formatSupabaseTime(insertedRows[0].created_at);
         }
 
-        console.log(`[MQTT] [DB ID #${dbId} - ${dbTimeFormatted}] Nhan du lieu:`, data);
-
         lastTelemetryPacket = {
             db_id: dbId,
             db_time: dbTimeFormatted,
@@ -106,80 +115,289 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// 1. API TỰ ĐỘNG PHÂN TÍCH GIÁN ĐOẠN / NGHẼN MẠNG TỪ DATABASE
-app.get('/api/check-outages', async (req, res) => {
+// ================= API PHÂN TÍCH TOÀN DIỆN SỰ CỐ & GIÁN ĐOẠN TRONG DATABASE =================
+app.get('/api/audit-incidents', async (req, res) => {
     try {
-        // Lấy tối đa 1500 bản ghi gần nhất để phân tích vết đứt gãy dữ liệu
-        const { data, error } = await supabase
-            .from('telemetry_logs')
-            .select('id, created_at')
-            .order('id', { ascending: false })
-            .limit(1500);
+        const hours = parseInt(req.query.hours) || 36; // Mặc định quét 36 tiếng (bao quát 18-20h vắng mặt)
+        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+        const cutoffVN = new Date(nowVN.getTime() - hours * 60 * 60 * 1000);
 
-        if (error || !data || data.length < 2) {
-            return res.json({ outages: [], ongoing: null });
+        const pad = (n) => String(n).padStart(2, '0');
+        const cutoffStr = `${cutoffVN.getFullYear()}-${pad(cutoffVN.getMonth() + 1)}-${pad(cutoffVN.getDate())} ${pad(cutoffVN.getHours())}:${pad(cutoffVN.getMinutes())}:${pad(cutoffVN.getSeconds())}`;
+
+        // Lấy dữ liệu theo thứ tự thời gian tăng dần để phân tích chuỗi
+        const CHUNK_SIZE = 1000;
+        const MAX_CHUNKS = 10;
+        const fetchPromises = [];
+
+        for (let i = 0; i < MAX_CHUNKS; i++) {
+            const from = i * CHUNK_SIZE;
+            const to = from + CHUNK_SIZE - 1;
+            fetchPromises.push(
+                supabase
+                    .from('telemetry_logs')
+                    .select('*')
+                    .gte('created_at', cutoffStr)
+                    .order('id', { ascending: true })
+                    .range(from, to)
+            );
         }
 
-        const sorted = data.reverse(); // Xếp theo thứ tự từ cũ đến mới
-        const outages = [];
-        const OUTAGE_THRESHOLD_MS = 25000; // Ngưỡng > 25 giây xem như bị đứt/nghẽn
+        const results = await Promise.all(fetchPromises);
+        let logs = [];
+        for (const r of results) {
+            if (r.data && r.data.length > 0) {
+                logs = logs.concat(r.data);
+                if (r.data.length < CHUNK_SIZE) break;
+            } else {
+                break;
+            }
+        }
 
-        for (let i = 0; i < sorted.length - 1; i++) {
-            const t1 = new Date(sorted[i].created_at.replace(' ', 'T')).getTime();
-            const t2 = new Date(sorted[i + 1].created_at.replace(' ', 'T')).getTime();
-            const diffMs = t2 - t1;
+        if (logs.length === 0) {
+            return res.json({ incidents: [], scanned_records: 0 });
+        }
 
-            if (diffMs >= OUTAGE_THRESHOLD_MS) {
-                const diffSec = Math.round(diffMs / 1000);
-                let type = 'Nghẽn mạng / Chậm gói';
-                let level = 'warning'; // Vàng
+        const incidents = [];
 
-                if (diffSec >= 600) {
-                    type = 'Mất nguồn / Đứt sóng dài';
-                    level = 'danger'; // Đỏ
-                } else if (diffSec >= 60) {
-                    type = 'Mất kết nối 4G tạm thời';
-                    level = 'orange'; // Cam
-                }
+        // 1. Phát hiện Mất kết nối / Nghẽn dữ liệu 4G (Data Outage Gap >= 35s)
+        for (let i = 1; i < logs.length; i++) {
+            const tPrev = new Date(logs[i - 1].created_at).getTime();
+            const tCurr = new Date(logs[i].created_at).getTime();
+            const gapSec = (tCurr - tPrev) / 1000;
 
-                outages.push({
-                    outage_key: `outage_${sorted[i+1].id}`,
-                    from_id: sorted[i].id,
-                    to_id: sorted[i+1].id,
-                    from_time: formatSupabaseTime(sorted[i].created_at),
-                    to_time: formatSupabaseTime(sorted[i+1].created_at),
-                    timestamp: t2,
-                    duration_sec: diffSec,
-                    missed_packets: Math.max(1, Math.floor(diffSec / 10) - 1),
-                    type: type,
-                    level: level
+            if (gapSec >= 35) { // Lệch quá 3 chu kỳ 10s
+                incidents.push({
+                    id: `outage_${logs[i - 1].id}_${logs[i].id}`,
+                    type: 'OFFLINE_GAP',
+                    severity: 'critical',
+                    category: 'Mất kết nối / Nghẽn dữ liệu 4G',
+                    title: `Gián đoạn truyền tin IoT (${formatDurationSeconds(gapSec)})`,
+                    start_time: formatSupabaseTime(logs[i - 1].created_at),
+                    end_time: formatSupabaseTime(logs[i].created_at),
+                    duration: formatDurationSeconds(gapSec),
+                    start_raw: logs[i - 1].created_at,
+                    details: `Hệ thống không nhận được dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}. Nguyên nhân có thể do mất nguồn thiết bị, mất sóng 4G hoặc nghẽn mạng.`
                 });
             }
         }
 
-        // Kiểm tra tình trạng thiết bị hiện tại có đang mất kết nối không
-        let ongoing = null;
-        if (lastDeviceTime > 0 && (Date.now() - lastDeviceTime >= OUTAGE_THRESHOLD_MS)) {
-            const elapsedSec = Math.round((Date.now() - lastDeviceTime) / 1000);
-            ongoing = {
-                from_time: new Date(lastDeviceTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
-                duration_sec: elapsedSec,
-                missed_packets: Math.floor(elapsedSec / 10),
-                type: 'ĐANG MẤT KẾT NỐI HIỆN TẠI',
-                level: 'danger'
-            };
+        // 2. Thuật toán phát hiện các dải sự cố liên tục (Continuous State Runs)
+        function analyzeContinuousRun(keyName, conditionFn, createIncidentFn) {
+            let active = null;
+            for (let i = 0; i < logs.length; i++) {
+                const row = logs[i];
+                if (conditionFn(row)) {
+                    if (!active) {
+                        active = { start_row: row, end_row: row, rows: [row] };
+                    } else {
+                        active.end_row = row;
+                        active.rows.push(row);
+                    }
+                } else {
+                    if (active) {
+                        incidents.push(createIncidentFn(active));
+                        active = null;
+                    }
+                }
+            }
+            if (active) incidents.push(createIncidentFn(active));
         }
 
+        // Sự cố A: Khóa liên động sự cố (il > 0)
+        analyzeContinuousRun(
+            'il',
+            (r) => parseInt(r.il) > 0,
+            (act) => {
+                const t1 = new Date(act.start_row.created_at).getTime();
+                const t2 = new Date(act.end_row.created_at).getTime();
+                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+                
+                // Gom tất cả các cờ bit đã kích hoạt trong khoảng này
+                let unionMask = 0;
+                act.rows.forEach(r => unionMask |= parseInt(r.il));
+
+                let bitDescs = [];
+                if (unionMask & 0x01) bitDescs.push("Khí độc NH3 vượt ngưỡng (R_NH3 ≥ 1.48)");
+                if (unionMask & 0x02) bitDescs.push("Khí độc H2S vượt ngưỡng (R_H2S ≥ 1.05)");
+                if (unionMask & 0x04) bitDescs.push("Oxy tương đối thấp (R_DO ≥ 1.44)");
+                if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (DO < 2.0 mg/L) -> Cưỡng bức quạt");
+                if (unionMask & 0x10) bitDescs.push("Độ kiềm sụt giảm (< 50 mg/L)");
+                if (unionMask & 0x20) bitDescs.push("pH nguy hiểm (< 6.0 hoặc > 9.5)");
+                if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến / Mất gói liên tiếp");
+
+                return {
+                    id: `il_${act.start_row.id}_${act.end_row.id}`,
+                    type: 'INTERLOCK',
+                    severity: (unionMask & 0x28) ? 'critical' : 'warning',
+                    category: 'Khóa liên động sự cố hóa-lý (il)',
+                    title: `Kích hoạt cờ liên động (0x${unionMask.toString(16).toUpperCase()})`,
+                    start_time: formatSupabaseTime(act.start_row.created_at),
+                    end_time: formatSupabaseTime(act.end_row.created_at),
+                    duration: formatDurationSeconds(durSec),
+                    start_raw: act.start_row.created_at,
+                    details: `Các sự cố phát hiện trong khoảng này: ${bitDescs.join("; ")}.`
+                };
+            }
+        );
+
+        // Sự cố B: Quạt sục khí khẩn cấp chạy (fan == 1)
+        analyzeContinuousRun(
+            'fan',
+            (r) => parseInt(r.fan) === 1,
+            (act) => {
+                const t1 = new Date(act.start_row.created_at).getTime();
+                const t2 = new Date(act.end_row.created_at).getTime();
+                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+                return {
+                    id: `fan_${act.start_row.id}_${act.end_row.id}`,
+                    type: 'FAN_RUN',
+                    severity: 'warning',
+                    category: 'Quạt sục khí khẩn cấp (fan)',
+                    title: `Quạt oxy tự động BẬT liên tục (${formatDurationSeconds(durSec)})`,
+                    start_time: formatSupabaseTime(act.start_row.created_at),
+                    end_time: formatSupabaseTime(act.end_row.created_at),
+                    duration: formatDurationSeconds(durSec),
+                    start_raw: act.start_row.created_at,
+                    details: `Relay quạt sục khí đã đóng và vận hành từ ${formatSupabaseTime(act.start_row.created_at)} đến ${formatSupabaseTime(act.end_row.created_at)} để cấp cứu oxy cho ao.`
+                };
+            }
+        );
+
+        // Sự cố C: Chế độ sinh tồn MPU (surv == 1)
+        analyzeContinuousRun(
+            'surv',
+            (r) => parseInt(r.surv) === 1,
+            (act) => {
+                const t1 = new Date(act.start_row.created_at).getTime();
+                const t2 = new Date(act.end_row.created_at).getTime();
+                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+                return {
+                    id: `surv_${act.start_row.id}_${act.end_row.id}`,
+                    type: 'SURVIVAL',
+                    severity: 'critical',
+                    category: 'Chế độ sinh tồn vi điều khiển (surv)',
+                    title: `MPU kích hoạt chế độ Sinh tồn (${formatDurationSeconds(durSec)})`,
+                    start_time: formatSupabaseTime(act.start_row.created_at),
+                    end_time: formatSupabaseTime(act.end_row.created_at),
+                    duration: formatDurationSeconds(durSec),
+                    start_raw: act.start_row.created_at,
+                    details: `Cảm biến bị hỏng hoặc giá trị ngoài biên, firmware STM32 đã kích hoạt chế độ an toàn sự cố và cưỡng bức bật quạt khẩn cấp.`
+                };
+            }
+        );
+
+        // Sự cố D: Rủi ro sinh hóa tăng cao (btri >= 50.0)
+        analyzeContinuousRun(
+            'btri',
+            (r) => parseFloat(r.btri) >= 50.0,
+            (act) => {
+                const t1 = new Date(act.start_row.created_at).getTime();
+                const t2 = new Date(act.end_row.created_at).getTime();
+                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+                const maxBtri = Math.max(...act.rows.map(r => parseFloat(r.btri) || 0));
+                return {
+                    id: `btri_${act.start_row.id}_${act.end_row.id}`,
+                    type: 'BTRI_HIGH',
+                    severity: maxBtri >= 75 ? 'critical' : 'warning',
+                    category: 'Rủi ro độc chất sinh hóa (btri)',
+                    title: `Rủi ro sinh hóa vượt ngưỡng - Đỉnh: ${maxBtri.toFixed(1)} điểm`,
+                    start_time: formatSupabaseTime(act.start_row.created_at),
+                    end_time: formatSupabaseTime(act.end_row.created_at),
+                    duration: formatDurationSeconds(durSec),
+                    start_raw: act.start_row.created_at,
+                    details: `Chỉ số rủi ro sinh hóa BTRI đạt đỉnh ${maxBtri.toFixed(1)} điểm trong khoảng thời gian này (mức an toàn < 50.0).`
+                };
+            }
+        );
+
+        // Sự cố E: Vi phạm miền sinh thái (dom > 0)
+        analyzeContinuousRun(
+            'dom',
+            (r) => parseInt(r.dom) > 0,
+            (act) => {
+                const t1 = new Date(act.start_row.created_at).getTime();
+                const t2 = new Date(act.end_row.created_at).getTime();
+                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+                let domMask = 0;
+                act.rows.forEach(r => domMask |= parseInt(r.dom));
+
+                let domDescs = [];
+                if (domMask & 0x01) domDescs.push("Độ mặn ngoài dải (S > 5.0‰)");
+                if (domMask & 0x02) domDescs.push("Nhiệt độ ngoài dải (< 20°C hoặc > 35°C)");
+                if (domMask & 0x04) domDescs.push("pH ngoài dải sinh thái (< 6.5 hoặc > 9.5)");
+                if (domMask & 0x08) domDescs.push("Cảm biến trả về NaN hoặc đứt dây tín hiệu");
+
+                return {
+                    id: `dom_${act.start_row.id}_${act.end_row.id}`,
+                    type: 'DOMAIN_GUARD',
+                    severity: 'warning',
+                    category: 'Miền sinh học cá rô phi (dom)',
+                    title: `Vi phạm giới hạn sinh thái (0x${domMask.toString(16).toUpperCase()})`,
+                    start_time: formatSupabaseTime(act.start_row.created_at),
+                    end_time: formatSupabaseTime(act.end_row.created_at),
+                    duration: formatDurationSeconds(durSec),
+                    start_raw: act.start_row.created_at,
+                    details: `Các vi phạm: ${domDescs.join("; ")}.`
+                };
+            }
+        );
+
+        // Sự cố F: Khởi động lạnh chờ nạp kiềm (cs == 1)
+        analyzeContinuousRun(
+            'cs1',
+            (r) => parseInt(r.cs) === 1,
+            (act) => {
+                const t1 = new Date(act.start_row.created_at).getTime();
+                const t2 = new Date(act.end_row.created_at).getTime();
+                const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+                return {
+                    id: `cs1_${act.start_row.id}_${act.end_row.id}`,
+                    type: 'COLD_START_PENDING',
+                    severity: 'warning',
+                    category: 'Chu trình khởi động lạnh (cs)',
+                    title: `Hệ thống chờ nạp Độ Kiềm neo (CS_ANCHOR_PENDING)`,
+                    start_time: formatSupabaseTime(act.start_row.created_at),
+                    end_time: formatSupabaseTime(act.end_row.created_at),
+                    duration: formatDurationSeconds(durSec),
+                    start_raw: act.start_row.created_at,
+                    details: `Hệ thống kết thúc 72h cửa sổ ổn định ban đầu và chờ kỹ thuật viên nạp giá trị độ kiềm thực tế.`
+                };
+            }
+        );
+
+        // Sự kiện G: Mạng PINN thích nghi chấp nhận trọng số mới (adapt_acc == 1)
+        for (let i = 0; i < logs.length; i++) {
+            if (parseInt(logs[i].adapt_acc) === 1 && (i === 0 || parseInt(logs[i - 1].adapt_acc) === 0)) {
+                incidents.push({
+                    id: `adapt_${logs[i].id}`,
+                    type: 'PINN_ADAPT',
+                    severity: 'info',
+                    category: 'Học máy thích nghi PINN (adapt)',
+                    title: `Mạng PINN nạp thành công bộ trọng số thích nghi mới`,
+                    start_time: formatSupabaseTime(logs[i].created_at),
+                    end_time: formatSupabaseTime(logs[i].created_at),
+                    duration: 'Sự kiện tức thời',
+                    start_raw: logs[i].created_at,
+                    details: `Mạng nơ-ron vật lý PINN trên STM32 đã hoàn thành chu kỳ học tuần và cập nhật bộ trọng số thích nghi vào bộ nhớ Flash.`
+                });
+            }
+        }
+
+        // Sắp xếp các sự cố theo thứ tự thời gian mới nhất lên đầu để chủ ao xem ngay
+        incidents.sort((a, b) => new Date(b.start_raw).getTime() - new Date(a.start_raw).getTime());
+
         res.json({
-            outages: outages.reverse(), // Sự kiện mới nhất lên đầu
-            ongoing: ongoing
+            incidents: incidents,
+            scanned_records: logs.length,
+            time_window_hours: hours
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 2. API lấy dữ liệu biểu đồ
+// 1. API lấy dữ liệu biểu đồ
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
@@ -258,7 +476,7 @@ app.get('/api/chart-data', async (req, res) => {
     }
 });
 
-// 3. API phân trang & tìm kiếm lịch sử
+// 2. API phân trang & tìm kiếm lịch sử
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -292,7 +510,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// 4. API xuất CSV
+// 3. API xuất file CSV
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
