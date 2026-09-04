@@ -71,29 +71,44 @@
             <button onclick="focusAlkInput()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shrink-0">Nạp Kiềm Ngay</button>
         </div>
 
-        <!-- Bảng điều khiển Downlink -->
+        <!-- BẢNG ĐIỀU KHIỂN DOWNLINK: THÊM NÚT RESET CHIP AN TOÀN -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
-            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị & Xác nhận Flash (Downlink Control)</h2>
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị & Quản trị Vi điều khiển (Downlink Control)</h2>
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                 <span class="text-xs text-gray-400 font-medium">Mật khẩu bảo mật:</span>
                 <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-1.5 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <input type="text" id="alk-input" placeholder="VD: 120.50 hoặc -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-40 focus:outline-none focus:border-blue-500">
-                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">Nạp Độ Kiềm (Float32)</button>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Nạp độ kiềm -->
+                <div class="flex items-center gap-2 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <input type="text" id="alk-input" placeholder="120.50 / -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-32 focus:outline-none focus:border-blue-500">
+                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2.5 rounded transition flex-1">Nạp Kiềm (Float)</button>
                 </div>
+                
+                <!-- Xóa Flash -->
                 <div class="flex items-center justify-between bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <span class="text-xs text-gray-400">Xóa bộ đệm lịch sử học máy PINN</span>
-                    <button onclick="sendWipe()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition">WIPE FLASH</button>
+                    <span class="text-xs text-gray-400">Xóa đệm PINN</span>
+                    <button onclick="sendWipe()" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold px-3.5 py-2.5 rounded transition">WIPE FLASH</button>
+                </div>
+
+                <!-- Nút RESET CHIP MỚI -->
+                <div class="flex items-center justify-between bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <div>
+                        <div class="text-xs font-semibold text-rose-300">Khởi động lại STM32</div>
+                        <div class="text-[10px] text-gray-400">Safe Reset (Giữ Flash)</div>
+                    </div>
+                    <button onclick="sendReset()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3.5 py-2.5 rounded transition shadow flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        RESET CHIP
+                    </button>
                 </div>
             </div>
             
             <div id="control-feedback" class="text-xs font-semibold min-h-[16px]"></div>
         </div>
 
-        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI ================= -->
+        <!-- ================= KHỐI THÔNG SỐ TỨC THỜI (12 THÔNG SỐ CỐT LÕI) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="bg-[#0b1329]/90 border border-slate-700/80 rounded-lg p-3 px-4 shadow-inner flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5">
@@ -101,7 +116,7 @@
                         <span id="telemetry-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span id="telemetry-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
-                    <span class="text-xs font-bold text-gray-200 tracking-wider uppercase">Thông Số Tức Thời</span>
+                    <span class="text-xs font-bold text-gray-200 tracking-wider uppercase">Chất Lượng Nước Tức Thời</span>
                     <span class="text-gray-600 text-xs">|</span>
                     <span class="text-xs text-gray-400">Khớp chuẩn Database lịch sử</span>
                 </div>
@@ -115,7 +130,7 @@
                 </div>
             </div>
 
-            <!-- 4 Thẻ cảm biến -->
+            <!-- 4 Thẻ cảm biến vật lý -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 shadow">
                     <div class="text-xs text-gray-400 font-medium">Nhiệt độ nước (T)</div>
@@ -139,26 +154,23 @@
                 </div>
             </div>
 
-            <!-- 8 Thẻ trạng thái & Cờ giải mã -->
+            <!-- 8 Cờ trạng thái sinh học & logic -->
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Độ kiềm Flash (alk)</div>
                     <div id="val-alk" class="text-base font-bold text-white mt-1 font-mono">--</div>
                     <div id="txt-alk-status" class="text-[10px] text-gray-400 mt-0.5">mg/L CaCO3</div>
                 </div>
-                
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Rủi ro sinh hóa (btri)</div>
                     <div id="val-btri" class="text-base font-bold text-amber-400 mt-1 font-mono">--</div>
                     <div id="txt-btri-eval" class="text-[10px] text-gray-400 mt-0.5">Lọc Kalman</div>
                 </div>
-
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Quạt sục khí (fan)</div>
                     <div id="val-fan" class="text-base font-bold mt-1 font-mono">--</div>
                     <div id="txt-fan-mode" class="text-[10px] text-gray-400 mt-0.5">Relay Oxy</div>
                 </div>
-
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center relative group cursor-pointer">
                     <div class="text-[11px] text-gray-400">Khóa liên động (il)</div>
                     <div id="val-il" class="text-base font-bold text-rose-400 mt-1 font-mono">0x00</div>
@@ -167,7 +179,6 @@
                         Đang an toàn, không có sự cố.
                     </div>
                 </div>
-
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center relative group cursor-pointer">
                     <div class="text-[11px] text-gray-400">Miền sinh học (dom)</div>
                     <div id="val-dom" class="text-base font-bold text-purple-400 mt-1 font-mono">0x00</div>
@@ -176,24 +187,136 @@
                         Tất cả thông số nằm trong dải sinh thái tối ưu.
                     </div>
                 </div>
-
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Sinh tồn MPU (surv)</div>
                     <div id="val-surv" class="text-base font-bold mt-1 font-mono">OFF</div>
                     <div id="txt-surv-desc" class="text-[10px] text-gray-400 mt-0.5">Bình thường</div>
                 </div>
-
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Thích nghi PINN</div>
                     <div id="val-adapt" class="text-base font-bold text-indigo-400 mt-1 font-mono">0</div>
-                    <div id="txt-adapt-desc" class="text-[10px] text-gray-400 mt-0.5">Chưa có trọng số mới</div>
+                    <div id="txt-adapt-desc" class="text-[10px] text-gray-400 mt-0.5">Chưa có trọng số</div>
                 </div>
-
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[11px] text-gray-400">Khởi động lạnh (cs)</div>
                     <div id="val-cs" class="text-base font-bold text-blue-300 mt-1 font-mono">2</div>
                     <div id="txt-cs-desc" class="text-[10px] text-emerald-400 mt-0.5 font-semibold">CS_NORMAL</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ================= KHỐI MỚI: CHẨN ĐOÁN CẢM BIẾN & DỰ BÁO AI (14 THÔNG SỐ MỞ RỘNG) ================= -->
+        <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">🔬</span>
+                    <h2 class="text-sm font-bold text-gray-200 uppercase tracking-wide">Chẩn Đoán Cảm Biến & Dự Báo Sớm (14 Chỉ Số Nâng Cao)</h2>
+                </div>
+                <span class="text-[11px] text-cyan-400 font-mono">Trích xuất trực tiếp từ Firmware STM32H7</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <!-- Nhóm 1: Dự Báo & Rủi Ro Độc Tố AI -->
+                <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
+                    <div class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                        <span>⚡</span>
+                        <span>Dự Báo Xu Hướng & Rủi Ro AI</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Tốc độ BTRI (rate)</div>
+                            <div id="val-rate" class="text-sm font-bold text-amber-300 mt-0.5">-- /s</div>
+                            <div class="text-[9px] text-gray-500">Xu hướng tăng/giảm</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Dự báo còn lại (eta)</div>
+                            <div id="val-eta" class="text-sm font-bold text-rose-400 mt-0.5">-- phút</div>
+                            <div class="text-[9px] text-gray-500">Cảnh báo sớm cốt lõi</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">BTRI Thô (braw)</div>
+                            <div id="val-braw" class="text-sm font-bold text-gray-200 mt-0.5">--</div>
+                            <div class="text-[9px] text-gray-500">Trước lọc Kalman</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Giờ còn lại 72h (hleft)</div>
+                            <div id="val-hleft" class="text-sm font-bold text-blue-300 mt-0.5">-- h</div>
+                            <div class="text-[9px] text-gray-500">Cửa sổ khởi động</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nhóm 2: Chẩn Đoán Trôi Điện Cực & Bám Bẩn -->
+                <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
+                    <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <span>🧪</span>
+                        <span>Chẩn Đoán Điện Cực & Bám Bẩn</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Trôi pH tức thời (phoff)</div>
+                            <div id="val-phoff" class="text-sm font-bold text-emerald-300 mt-0.5">--</div>
+                            <div class="text-[9px] text-gray-500">Độ lệch offset</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Tốc độ trôi/ngày (slope)</div>
+                            <div id="val-slope" class="text-sm font-bold text-emerald-300 mt-0.5">-- /ngày</div>
+                            <div class="text-[9px] text-gray-500">Biết khi nào cần thay</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Dao động pH 24h (iqrph)</div>
+                            <div id="val-iqrph" class="text-sm font-bold text-cyan-300 mt-0.5">--</div>
+                            <div class="text-[9px] text-gray-500">Tín hiệu tụt kiềm</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded">
+                            <div class="text-[10px] text-gray-400">Dao động DO 24h (iqrdo)</div>
+                            <div id="val-iqrdo" class="text-sm font-bold text-blue-300 mt-0.5">--</div>
+                            <div class="text-[9px] text-gray-500">Tảo yếu / bám bẩn</div>
+                        </div>
+                    </div>
+                    <!-- Cờ bám bẩn il8 -->
+                    <div class="bg-[#152238] p-2 rounded flex items-center justify-between text-xs font-mono">
+                        <span class="text-[11px] text-gray-400">Cờ bám bẩn đầu dò (il8):</span>
+                        <span id="val-il8" class="font-bold text-emerald-400">0x00 (Sạch)</span>
+                    </div>
+                </div>
+
+                <!-- Nhóm 3: Sức Khỏe Phần Cứng & Chu Kỳ CPU -->
+                <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
+                    <div class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                        <span>⚙️</span>
+                        <span>Sức Khỏe Cảm Biến & CPU WCET</span>
+                    </div>
+                    <div class="space-y-2 text-xs font-mono">
+                        <div class="bg-[#152238] p-2 rounded flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] text-gray-400">Độ lệch 3 cảm biến T (tspr)</div>
+                                <div class="text-[9px] text-gray-500">Phát hiện hỏng ngầm</div>
+                            </div>
+                            <div id="val-tspr" class="text-sm font-bold text-orange-400">-- °C</div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] text-gray-400">Đếm lỗi đọc (fail counters)</div>
+                                <div class="text-[9px] text-gray-500">pH / EC / DO chập chờn</div>
+                            </div>
+                            <div class="text-xs font-bold text-gray-300">
+                                pH: <span id="val-fph" class="text-emerald-400">0</span> | 
+                                EC: <span id="val-fec" class="text-cyan-400">0</span> | 
+                                DO: <span id="val-fdo" class="text-blue-400">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-[#152238] p-2 rounded flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] text-gray-400">Chu kỳ CPU tệ nhất (wcet)</div>
+                                <div class="text-[9px] text-gray-500">Bằng chứng H5 (&lt;100µs)</div>
+                            </div>
+                            <div id="val-wcet" class="text-sm font-bold text-indigo-300">-- cycles</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -203,7 +326,6 @@
                 <div>
                     <div class="flex items-center gap-2.5">
                         <h2 class="text-base font-bold text-gray-100">Đồ Thị Biến Thiên Chất Lượng Nước</h2>
-                        
                         <button onclick="refreshChartOnly()" id="btn-refresh-chart" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-blue-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-chart" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-chart">Làm mới đồ thị</span>
@@ -258,10 +380,8 @@
                     <input type="datetime-local" id="chart-to-time" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
                 </div>
                 <button onclick="applyChartRange()" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1 rounded transition font-medium">Vẽ Dải Đồ Thị</button>
-                <span class="text-gray-400 text-[11px] italic ml-auto">* Hệ thống tự động lấy mẫu đều 300 điểm trải dài trên toàn dải</span>
             </div>
 
-            <!-- 4 Biểu đồ -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <h3 class="text-xs font-bold text-orange-400 mb-2">1. Nhiệt Độ Nước T (°C)</h3>
@@ -288,7 +408,6 @@
                 <div>
                     <div class="flex items-center gap-2.5">
                         <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
-                        
                         <button onclick="refreshDbOnly()" id="btn-refresh-db" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-emerald-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-db" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-db">Làm mới dữ liệu</span>
@@ -310,12 +429,11 @@
 
                     <button onclick="openCsvModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-emerald-600 shadow">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Tải CSV (Excel)
+                        Tải CSV (Excel 26 Cột)
                     </button>
                 </div>
             </div>
 
-            <!-- Thanh tìm kiếm theo ngày giờ -->
             <div class="flex flex-wrap items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-xs">
                 <span class="text-blue-400 font-semibold flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -333,7 +451,7 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
-            <!-- Bảng dữ liệu 12 trường -->
+            <!-- Bảng dữ liệu: Mở rộng thêm các cột chẩn đoán -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
@@ -345,20 +463,22 @@
                             <th class="py-2.5 px-2">pH</th>
                             <th class="py-2.5 px-2">DO</th>
                             <th class="py-2.5 px-2">Alk</th>
-                            <th class="py-2.5 px-2">Btri</th>
+                            <th class="py-2.5 px-2">BTRI</th>
+                            <th class="py-2.5 px-2">Rate</th>
+                            <th class="py-2.5 px-2">ETA (m)</th>
                             <th class="py-2.5 px-2">Fan</th>
                             <th class="py-2.5 px-2">IL</th>
+                            <th class="py-2.5 px-2">IL8</th>
                             <th class="py-2.5 px-2">DOM</th>
                             <th class="py-2.5 px-2">Surv</th>
-                            <th class="py-2.5 px-2">Adapt</th>
                             <th class="py-2.5 px-2">CS</th>
+                            <th class="py-2.5 px-2">WCET</th>
                         </tr>
                     </thead>
                     <tbody id="db-table-body" class="divide-y border-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
                 </table>
             </div>
 
-            <!-- Phân trang -->
             <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-700/60">
                 <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded text-white transition flex items-center gap-1">
                     <span>←</span> Trang trước
@@ -412,7 +532,7 @@
         </div>
     </div>
 
-    <!-- Dialog nhập PIN bảo mật -->
+    <!-- Dialog PIN bí mật (Không in mã số) -->
     <div id="pin-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
         <div id="pin-box" class="bg-[#152238] border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-red-950/80 border border-red-600 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl">
@@ -441,7 +561,7 @@
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Tùy Chọn Tải File CSV (Excel)
+                    Tùy Chọn Tải File CSV (Excel 26 Cột)
                 </h3>
                 <button onclick="closeCsvModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
             </div>
@@ -451,7 +571,7 @@
                     <input type="radio" name="export_type" value="all" checked class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div>
                         <div class="font-bold text-gray-100">1. Tải tất cả dữ liệu (Toàn bộ Database)</div>
-                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ lịch sử đo từ trước đến nay (lên tới 100.000 dòng).</div>
+                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 26 trường lịch sử đo từ trước đến nay.</div>
                     </div>
                 </label>
 
@@ -462,7 +582,6 @@
                         <div class="mt-2 flex items-center gap-2">
                             <span>Số dòng:</span>
                             <input type="number" id="csv-limit-val" value="1000" min="10" max="50000" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs w-28 focus:outline-none focus:border-emerald-500">
-                            <span class="text-gray-400">(VD: 1000, 5000, 20000)</span>
                         </div>
                     </div>
                 </label>
@@ -520,7 +639,7 @@
         let allIncidents = [];
         let currentIncTab = 'active';
         let pendingDismissIncidentId = null;
-        let dismissedIncidentIdsOnCloud = []; // Lưu danh sách đã tắt lấy từ Database
+        let dismissedIncidentIdsOnCloud = [];
 
         function formatDbTime(rawTime) {
             if (!rawTime) return '';
@@ -625,6 +744,7 @@
             }
         });
 
+        // ĐỔ DỮ LIỆU TỨC THỜI CẢ 26 THÔNG SỐ
         function renderTelemetryUI(packet) {
             lastDeviceHeartbeat = packet.device_timestamp || Date.now();
             updateDeviceStatus(true);
@@ -642,11 +762,13 @@
 
             const d = packet.data;
             
+            // 4 Cảm biến chính
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
             document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
             document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
             document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
 
+            // Độ kiềm
             document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
             const alkStatusTxt = document.getElementById('txt-alk-status');
             if (Number(d.alk) < 0) {
@@ -665,6 +787,7 @@
                 }
             }
 
+            // BTRI & Quạt
             document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
             const btriTxt = document.getElementById('txt-btri-eval');
             if (d.btri >= 75) {
@@ -682,6 +805,7 @@
             fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
             fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
 
+            // Cờ IL, DOM, SURV, ADAPT, CS
             const ilDecoded = decodeIL(d.il);
             const ilEl = document.getElementById('val-il');
             ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
@@ -733,11 +857,31 @@
             document.getElementById('txt-cs-desc').className = `text-[10px] mt-0.5 font-semibold ${csDecoded.color}`;
 
             const bannerCs = document.getElementById('banner-cs-pending');
-            if (d.cs === 1) {
-                bannerCs.classList.remove('hidden');
-            } else {
-                bannerCs.classList.add('hidden');
+            if (d.cs === 1) bannerCs.classList.remove('hidden');
+            else bannerCs.classList.add('hidden');
+
+            // CẬP NHẬT 14 THÔNG SỐ CHẨN ĐOÁN MỚI
+            if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
+            if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
+            if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
+            if (d.hleft !== undefined) document.getElementById('val-hleft').innerText = `${d.hleft} h`;
+
+            if (d.phoff !== undefined) document.getElementById('val-phoff').innerText = Number(d.phoff).toFixed(3);
+            if (d.slope !== undefined) document.getElementById('val-slope').innerText = `${Number(d.slope).toFixed(4)} /ngày`;
+            if (d.iqrph !== undefined) document.getElementById('val-iqrph').innerText = Number(d.iqrph).toFixed(3);
+            if (d.iqrdo !== undefined) document.getElementById('val-iqrdo').innerText = Number(d.iqrdo).toFixed(3);
+            
+            const il8El = document.getElementById('val-il8');
+            if (d.il8 !== undefined) {
+                il8El.innerText = d.il8 > 0 ? `0x${Number(d.il8).toString(16).toUpperCase()} (BÁM BẨN)` : `0x00 (Sạch)`;
+                il8El.className = d.il8 > 0 ? "font-bold text-rose-400 animate-pulse" : "font-bold text-emerald-400";
             }
+
+            if (d.tspr !== undefined) document.getElementById('val-tspr').innerText = `${Number(d.tspr).toFixed(2)} °C`;
+            if (d.fph !== undefined) document.getElementById('val-fph').innerText = d.fph;
+            if (d.fec !== undefined) document.getElementById('val-fec').innerText = d.fec;
+            if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
+            if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = `${d.wcet} cycles`;
 
             if (currentPage === 1 && !filterFromTime && !filterToTime) {
                 fetchPagedLogs();
@@ -804,9 +948,7 @@
                                     title: function(context) {
                                         const idx = context[0].dataIndex;
                                         const raw = lastChartRawData[idx];
-                                        if (raw && raw.created_at) {
-                                            return `Mốc đo: ${formatDbTime(raw.created_at)}`;
-                                        }
+                                        if (raw && raw.created_at) return `Mốc đo: ${formatDbTime(raw.created_at)}`;
                                         return context[0].label;
                                     },
                                     label: function(context) {
@@ -840,15 +982,10 @@
                     const [dPart, tPart] = clean.split(' ');
                     const [y, m, day] = dPart.split('-');
 
-                    if (currentChartUnit === 'year') {
-                        return `${day}/${m}/${y.slice(2)}`;
-                    } else if (currentChartUnit === 'month' || currentChartUnit === 'week' || currentChartMode === 'range') {
+                    if (currentChartUnit === 'year') return `${day}/${m}/${y.slice(2)}`;
+                    else if (currentChartUnit === 'month' || currentChartUnit === 'week' || currentChartMode === 'range' || currentChartUnit === 'day') {
                         return `${day}/${m} ${tPart.substring(0, 5)}`;
-                    } else if (currentChartUnit === 'day') {
-                        return `${day}/${m} ${tPart.substring(0, 5)}`;
-                    } else {
-                        return tPart;
-                    }
+                    } else return tPart;
                 });
                 
                 charts['chartT'].data.labels = labels;
@@ -950,7 +1087,7 @@
             }, 300);
         }
 
-        // Dữ liệu Database & Phân trang
+        // Bảng Database mở rộng
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -971,7 +1108,7 @@
 
                 const tbody = document.getElementById('db-table-body');
                 if (result.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="14" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="17" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
                     return;
                 }
 
@@ -994,12 +1131,15 @@
                         <td class="py-2 px-2 text-blue-400 font-bold">${Number(item.DO).toFixed(2)}</td>
                         <td class="py-2 px-2 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
                         <td class="py-2 px-2 text-amber-400">${Number(item.btri).toFixed(1)}</td>
+                        <td class="py-2 px-2 text-amber-300">${item.rate ? Number(item.rate).toFixed(3) : '0.000'}</td>
+                        <td class="py-2 px-2 text-rose-300">${item.eta ? Math.round(item.eta) : '0'}</td>
                         <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
                         <td class="py-2 px-2 text-rose-400 font-mono">0x${Number(item.il).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 ${item.il8 > 0 ? 'text-rose-400 font-bold' : 'text-gray-400'}">0x${Number(item.il8 || 0).toString(16).toUpperCase()}</td>
                         <td class="py-2 px-2 text-purple-400 font-mono">0x${Number(item.dom).toString(16).toUpperCase()}</td>
                         <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
-                        <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-indigo-400 font-bold' : 'text-gray-400'}">${item.adapt_acc}</td>
                         <td class="py-2 px-2 text-blue-300 font-bold">${item.cs}</td>
+                        <td class="py-2 px-2 text-indigo-300">${item.wcet || 0}</td>
                     </tr>
                 `).join('');
             } catch (err) {
@@ -1096,7 +1236,7 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM PHÂN TÍCH SỰ CỐ (ĐỒNG BỘ ĐÁM MÂY SUPABASE) =================
+        // ================= TRUNG TÂM SỰ CỐ 72 GIỜ =================
         async function fetchDismissedCloud() {
             try {
                 const res = await fetch('/api/dismissed-incidents');
@@ -1240,6 +1380,7 @@
             document.getElementById('incident-modal').classList.add('hidden');
         }
 
+        // ================= XỬ LÝ NHẬP MÃ PIN (TUYỆT ĐỐI KHÔNG HIỂN THỊ MÃ SỐ RA GIAO DIỆN) =================
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
             document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
@@ -1281,10 +1422,8 @@
                 return;
             }
 
-            // Ghi trạng thái tắt lên Supabase Cloud để đồng bộ mọi thiết bị
             try {
                 let idsToSave = pendingDismissIncidentId ? [pendingDismissIncidentId] : allIncidents.map(i => i.id);
-                
                 for (let id of idsToSave) {
                     await fetch('/api/dismiss-incident', {
                         method: 'POST',
@@ -1292,9 +1431,8 @@
                         body: JSON.stringify({ incident_id: id })
                     });
                 }
-
                 closePinModal();
-                fetchIncidentAudit(); // Cập nhật lại danh sách từ cloud
+                fetchIncidentAudit();
             } catch (err) {
                 alert('Lỗi kết nối lưu trạng thái lên đám mây!');
             }
@@ -1323,7 +1461,6 @@
             }
 
             pendingExpectedAlk = alkFloat;
-
             socket.emit('send_control', `ALK,${alkFloat.toFixed(2)}`);
             document.getElementById('control-feedback').innerHTML = `<span class="text-amber-300">Đang gửi lệnh ALK,${alkFloat.toFixed(2)}... Đang chờ STM32 ghi Flash Sector 127 và phản hồi xác nhận...</span>`;
             document.getElementById('alk-input').value = '';
@@ -1333,6 +1470,15 @@
             if (!verifyPassword()) return;
             if (confirm('Xác nhận xóa trắng lịch sử Flash trên thiết bị?')) {
                 socket.emit('send_control', 'WIPE');
+            }
+        }
+
+        // HÀM GỬI LỆNH RESET CHIP XUỐNG STM32
+        function sendReset() {
+            if (!verifyPassword()) return;
+            if (confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn khởi động lại (Safe Software Reset) vi điều khiển STM32 từ xa không?\n(Dữ liệu Flash cấu hình và neo kiềm vẫn được bảo toàn)')) {
+                socket.emit('send_control', 'RESET');
+                document.getElementById('control-feedback').innerHTML = `<span class="text-red-400 font-bold">Đang gửi lệnh RESET... STM32 sẽ xả hết DMA/UART và khởi động lại an toàn trong 200ms!</span>`;
             }
         }
 
