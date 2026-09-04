@@ -60,7 +60,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink từ STM32
+// Nhận gói tin Uplink từ STM32 chứa 26 trường dữ liệu
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -77,6 +77,7 @@ mqttClient.on('message', async (topic, message) => {
         const { data: insertedRows, error } = await supabase
             .from('telemetry_logs')
             .insert([{
+                // 12 trường cốt lõi ban đầu
                 T: parseFloat(data.T) || 0.0,
                 S: parseFloat(data.S) || 0.0,
                 pH: parseFloat(data.pH) || 0.0,
@@ -88,7 +89,23 @@ mqttClient.on('message', async (topic, message) => {
                 dom: parseInt(data.dom) || 0,
                 surv: parseInt(data.surv) || 0,
                 adapt_acc: parseInt(data.adapt_acc) || 0,
-                cs: parseInt(data.cs) || 0
+                cs: parseInt(data.cs) || 0,
+
+                // 14 trường chẩn đoán & dự báo mở rộng
+                rate: parseFloat(data.rate) || 0.0,
+                eta: parseFloat(data.eta) || 0.0,
+                braw: parseFloat(data.braw) || 0.0,
+                il8: parseInt(data.il8) || 0,
+                phoff: parseFloat(data.phoff) || 0.0,
+                slope: parseFloat(data.slope) || 0.0,
+                iqrph: parseFloat(data.iqrph) || 0.0,
+                iqrdo: parseFloat(data.iqrdo) || 0.0,
+                tspr: parseFloat(data.tspr) || 0.0,
+                fph: parseInt(data.fph) || 0,
+                fec: parseInt(data.fec) || 0,
+                fdo: parseInt(data.fdo) || 0,
+                wcet: parseInt(data.wcet) || 0,
+                hleft: parseInt(data.hleft) || 0
             }])
             .select();
 
@@ -115,7 +132,7 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// API Đồng bộ trạng thái đã tắt lên Supabase Cloud
+// Đồng bộ trạng thái đã tắt cảnh báo lên Supabase Cloud
 app.get('/api/dismissed-incidents', async (req, res) => {
     try {
         const { data, error } = await supabase.from('incident_dismissals').select('incident_id');
@@ -142,7 +159,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// API Rà soát sự cố 72 giờ chuẩn xác
+// API Rà soát 72h sự cố
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -174,7 +191,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             fetchPromises.push(
                 supabase
                     .from('telemetry_logs')
-                    .select('id, created_at, il, dom, fan, surv, btri, cs, adapt_acc')
+                    .select('id, created_at, il, dom, fan, surv, btri, cs, adapt_acc, il8, tspr, rate')
                     .gte('id', fromId)
                     .lte('id', toId)
                     .order('id', { ascending: true })
@@ -184,9 +201,7 @@ app.get('/api/audit-incidents', async (req, res) => {
         const results = await Promise.all(fetchPromises);
         let logs = [];
         for (const r of results) {
-            if (r.data && r.data.length > 0) {
-                logs = logs.concat(r.data);
-            }
+            if (r.data && r.data.length > 0) logs = logs.concat(r.data);
         }
 
         if (logs.length === 0) {
@@ -195,6 +210,7 @@ app.get('/api/audit-incidents', async (req, res) => {
 
         const incidents = [];
 
+        // 1. Mất kết nối / Nghẽn gói tin
         for (let i = 1; i < logs.length; i++) {
             const tPrev = new Date(logs[i - 1].created_at).getTime();
             const tCurr = new Date(logs[i].created_at).getTime();
@@ -211,7 +227,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                     end_time: formatSupabaseTime(logs[i].created_at),
                     duration: formatDurationSeconds(gapSec),
                     start_raw: logs[i - 1].created_at,
-                    details: `Thiết bị không gửi dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}. Nguyên nhân có thể do mất nguồn thiết bị, mất sóng 4G hoặc thiết bị khởi động lại.`
+                    details: `Thiết bị không gửi dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}.`
                 });
             }
         }
@@ -221,22 +237,16 @@ app.get('/api/audit-incidents', async (req, res) => {
             for (let i = 0; i < logs.length; i++) {
                 const row = logs[i];
                 if (conditionFn(row)) {
-                    if (!active) {
-                        active = { start_row: row, end_row: row, rows: [row] };
-                    } else {
-                        active.end_row = row;
-                        active.rows.push(row);
-                    }
+                    if (!active) active = { start_row: row, end_row: row, rows: [row] };
+                    else { active.end_row = row; active.rows.push(row); }
                 } else {
-                    if (active) {
-                        incidents.push(createIncidentFn(active));
-                        active = null;
-                    }
+                    if (active) { incidents.push(createIncidentFn(active)); active = null; }
                 }
             }
             if (active) incidents.push(createIncidentFn(active));
         }
 
+        // Cờ IL
         analyzeContinuousRun('il', (r) => parseInt(r.il) > 0, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -245,13 +255,13 @@ app.get('/api/audit-incidents', async (req, res) => {
             act.rows.forEach(r => unionMask |= parseInt(r.il));
 
             let bitDescs = [];
-            if (unionMask & 0x01) bitDescs.push("Khí độc NH3 vượt ngưỡng");
-            if (unionMask & 0x02) bitDescs.push("Khí độc H2S vượt ngưỡng");
-            if (unionMask & 0x04) bitDescs.push("Oxy tương đối thấp");
-            if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (< 2.0 mg/L) -> Cưỡng bức quạt");
-            if (unionMask & 0x10) bitDescs.push("Độ kiềm sụt giảm (< 50 mg/L)");
-            if (unionMask & 0x20) bitDescs.push("pH nguy hiểm (< 6.0 hoặc > 9.5)");
-            if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến / Mất gói liên tiếp");
+            if (unionMask & 0x01) bitDescs.push("NH3 vượt ngưỡng");
+            if (unionMask & 0x02) bitDescs.push("H2S vượt ngưỡng");
+            if (unionMask & 0x04) bitDescs.push("Oxy thấp");
+            if (unionMask & 0x08) bitDescs.push("Oxy NGUY CẤP (< 2mg/L)");
+            if (unionMask & 0x10) bitDescs.push("Kiềm sụt giảm");
+            if (unionMask & 0x20) bitDescs.push("pH nguy hiểm");
+            if (unionMask & 0x40) bitDescs.push("Lỗi cảm biến");
 
             return {
                 id: `il_${act.start_row.id}_${act.end_row.id}`,
@@ -267,6 +277,26 @@ app.get('/api/audit-incidents', async (req, res) => {
             };
         });
 
+        // Cờ bám bẩn đầu dò IL8 mới
+        analyzeContinuousRun('il8', (r) => parseInt(r.il8) > 0, (act) => {
+            const t1 = new Date(act.start_row.created_at).getTime();
+            const t2 = new Date(act.end_row.created_at).getTime();
+            const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
+            return {
+                id: `il8_${act.start_row.id}_${act.end_row.id}`,
+                type: 'PROBE_DIRT',
+                severity: 'warning',
+                category: 'Cảnh báo bám bẩn đầu dò (il8)',
+                title: `Đầu dò cảm biến bị bám bẩn / trôi điện cực (${formatDurationSeconds(durSec)})`,
+                start_time: formatSupabaseTime(act.start_row.created_at),
+                end_time: formatSupabaseTime(act.end_row.created_at),
+                duration: formatDurationSeconds(durSec),
+                start_raw: act.start_row.created_at,
+                details: `Thuật toán phát hiện bám bẩn kích hoạt cờ il8. Kỹ thuật viên cần vệ sinh đầu dò.`
+            };
+        });
+
+        // Quạt chạy fan
         analyzeContinuousRun('fan', (r) => parseInt(r.fan) === 1, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -281,10 +311,11 @@ app.get('/api/audit-incidents', async (req, res) => {
                 end_time: formatSupabaseTime(act.end_row.created_at),
                 duration: formatDurationSeconds(durSec),
                 start_raw: act.start_row.created_at,
-                details: `Relay quạt sục khí đã đóng và vận hành từ ${formatSupabaseTime(act.start_row.created_at)} đến ${formatSupabaseTime(act.end_row.created_at)}.`
+                details: `Relay quạt sục khí đã đóng để cấp cứu oxy.`
             };
         });
 
+        // Sinh tồn surv
         analyzeContinuousRun('surv', (r) => parseInt(r.surv) === 1, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -299,10 +330,11 @@ app.get('/api/audit-incidents', async (req, res) => {
                 end_time: formatSupabaseTime(act.end_row.created_at),
                 duration: formatDurationSeconds(durSec),
                 start_raw: act.start_row.created_at,
-                details: `Cảm biến hỏng hoặc ngoài biên, firmware STM32 cưỡng bức bật quạt khẩn cấp.`
+                details: `Cảm biến hỏng hoặc ngoài biên, firmware cưỡng bức bật quạt khẩn cấp.`
             };
         });
 
+        // BTRI cao
         analyzeContinuousRun('btri', (r) => parseFloat(r.btri) >= 50.0, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -318,10 +350,11 @@ app.get('/api/audit-incidents', async (req, res) => {
                 end_time: formatSupabaseTime(act.end_row.created_at),
                 duration: formatDurationSeconds(durSec),
                 start_raw: act.start_row.created_at,
-                details: `Chỉ số rủi ro sinh hóa BTRI đạt đỉnh ${maxBtri.toFixed(1)} điểm.`
+                details: `Chỉ số rủi ro độc chất sinh hóa BTRI đạt đỉnh ${maxBtri.toFixed(1)} điểm.`
             };
         });
 
+        // Vi phạm sinh thái DOM
         analyzeContinuousRun('dom', (r) => parseInt(r.dom) > 0, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -338,10 +371,11 @@ app.get('/api/audit-incidents', async (req, res) => {
                 end_time: formatSupabaseTime(act.end_row.created_at),
                 duration: formatDurationSeconds(durSec),
                 start_raw: act.start_row.created_at,
-                details: `Thông số nước nằm ngoài dải sinh thái tối ưu cho cá rô phi.`
+                details: `Thông số nước nằm ngoài dải sinh thái tối ưu.`
             };
         });
 
+        // Khởi động lạnh cs == 1
         analyzeContinuousRun('cs1', (r) => parseInt(r.cs) === 1, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -356,26 +390,9 @@ app.get('/api/audit-incidents', async (req, res) => {
                 end_time: formatSupabaseTime(act.end_row.created_at),
                 duration: formatDurationSeconds(durSec),
                 start_raw: act.start_row.created_at,
-                details: `Hệ thống kết thúc 72h cửa sổ ổn định ban đầu và chờ nạp độ kiềm thực tế.`
+                details: `Hệ thống kết thúc 72h ổn định ban đầu và chờ nạp độ kiềm thực tế.`
             };
         });
-
-        for (let i = 0; i < logs.length; i++) {
-            if (parseInt(logs[i].adapt_acc) === 1 && (i === 0 || parseInt(logs[i - 1].adapt_acc) === 0)) {
-                incidents.push({
-                    id: `adapt_${logs[i].id}`,
-                    type: 'PINN_ADAPT',
-                    severity: 'info',
-                    category: 'Học máy thích nghi PINN (adapt)',
-                    title: `Mạng PINN nạp thành công bộ trọng số thích nghi mới`,
-                    start_time: formatSupabaseTime(logs[i].created_at),
-                    end_time: formatSupabaseTime(logs[i].created_at),
-                    duration: 'Sự kiện tức thời',
-                    start_raw: logs[i].created_at,
-                    details: `Mạng PINN trên STM32 đã cập nhật bộ trọng số thích nghi vào bộ nhớ Flash.`
-                });
-            }
-        }
 
         incidents.sort((a, b) => new Date(b.start_raw).getTime() - new Date(a.start_raw).getTime());
 
@@ -389,7 +406,7 @@ app.get('/api/audit-incidents', async (req, res) => {
     }
 });
 
-// API Lấy biểu đồ Full-Span ID Sampling
+// API Biểu đồ Full-Span ID Sampling
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
@@ -418,14 +435,8 @@ app.get('/api/chart-data', async (req, res) => {
         let minQ = supabase.from('telemetry_logs').select('id').order('id', { ascending: true }).limit(1);
         let maxQ = supabase.from('telemetry_logs').select('id').order('id', { ascending: false }).limit(1);
 
-        if (queryGte) {
-            minQ = minQ.gte('created_at', queryGte);
-            maxQ = maxQ.gte('created_at', queryGte);
-        }
-        if (queryLte) {
-            minQ = minQ.lte('created_at', queryLte);
-            maxQ = maxQ.lte('created_at', queryLte);
-        }
+        if (queryGte) { minQ = minQ.gte('created_at', queryGte); maxQ = maxQ.gte('created_at', queryGte); }
+        if (queryLte) { minQ = minQ.lte('created_at', queryLte); maxQ = maxQ.lte('created_at', queryLte); }
 
         const [minRes, maxRes] = await Promise.all([minQ, maxQ]);
 
@@ -515,7 +526,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// API Xuất CSV
+// API Xuất CSV đầy đủ 26 trường
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -550,24 +561,22 @@ app.get('/api/export-csv', async (req, res) => {
             if (data.length < CHUNK_SIZE) break;
         }
 
-        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS\n";
+        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left\n";
         allData.forEach(r => {
             const timeFormatted = formatSupabaseTime(r.created_at);
-            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs}\n`;
+            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_${Date.now()}.csv"`);
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_26fields_${Date.now()}.csv"`);
         res.status(200).send('\uFEFF' + csv);
     } catch (err) {
         res.status(500).send("Lỗi xuất file: " + err.message);
     }
 });
 
-// ================= BỘ ĐIỀU HƯỚNG THÔNG MINH (CHỐNG LỖI 404 CANNOT GET /api/) =================
+// Chống lỗi 404 /api/
 app.get(['/api', '/api/'], (req, res) => res.redirect('/'));
-
-// Nếu truy cập vào bất kỳ đường dẫn trang web nào không tồn tại -> Đưa ngay về trang chủ
 app.use((req, res, next) => {
     if (req.method === 'GET' && !req.path.startsWith('/socket.io')) {
         return res.redirect('/');
@@ -575,6 +584,7 @@ app.use((req, res, next) => {
     res.status(404).send('Not Found');
 });
 
+// Xử lý Downlink & Socket.io
 io.on('connection', (socket) => {
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
@@ -591,7 +601,11 @@ io.on('connection', (socket) => {
             .update({ last_command: commandStr, updated_at: new Date() })
             .eq('device_id', 'STM32_Tilapia_01');
 
-        io.emit('control_status', `Đã phát lệnh: ${commandStr}`);
+        if (commandStr === 'RESET') {
+            io.emit('control_status', `Đã gửi lệnh RESET chip! Thiết bị đang thực hiện Safe Software Reset...`);
+        } else {
+            io.emit('control_status', `Đã phát lệnh: ${commandStr}`);
+        }
     });
 });
 
