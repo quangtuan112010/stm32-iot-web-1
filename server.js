@@ -60,7 +60,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink chứa trọn vẹn 47 trường dữ liệu từ STM32
+// Nhận gói tin Uplink 47 trường từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -114,7 +114,7 @@ mqttClient.on('message', async (topic, message) => {
             up: parseInt(data.up) || 0,
             flfail: parseInt(data.flfail) || 0,
 
-            // 14 trường AI PINN & NLMS Adapter & FreeRTOS mới
+            // 14 trường Edge-AI PINN, Adapter & FreeRTOS
             dopred: parseFloat(data.dopred) || 0.0,
             dosat: parseFloat(data.dosat) || 0.0,
             aisig: parseFloat(data.aisig) || 0.0,
@@ -141,7 +141,6 @@ mqttClient.on('message', async (topic, message) => {
 
         if (error) {
             console.error('\x1b[31m[SUPABASE INSERT ERROR]:\x1b[0m', error.message);
-            console.error('Chi tiết lỗi:', error.details || error.hint);
         } else if (insertedRows && insertedRows.length > 0) {
             dbId = insertedRows[0].id;
             dbTimeFormatted = formatSupabaseTime(insertedRows[0].created_at);
@@ -540,7 +539,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// Xuất file CSV 49 cột chuẩn xác
+// Xuất file CSV trọn vẹn 49 cột
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
