@@ -77,7 +77,7 @@
             <button onclick="focusAlkInput()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shrink-0">Nạp Kiềm Ngay</button>
         </div>
 
-        <!-- BẢNG ĐIỀU KHIỂN DOWNLINK: CÓ NÚT RESET CHIP & CAL8C -->
+        <!-- BẢNG ĐIỀU KHIỂN DOWNLINK: ĐÚNG 3 LỆNH KHỚP VỚI C (ALK, WIPE, RESET) -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị & Quản trị Vi điều khiển (Downlink Control)</h2>
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -85,16 +85,10 @@
                 <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-1.5 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="flex items-center gap-2 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <input type="text" id="alk-input" placeholder="120.50 / -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-28 focus:outline-none focus:border-blue-500">
-                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2.5 rounded transition flex-1">Nạp Kiềm</button>
-                </div>
-
-                <!-- Bổ sung điều khiển CAL8C hiệu chuẩn trôi pH -->
-                <div class="flex items-center gap-2 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <input type="text" id="cal8c-input" placeholder="0.050" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-24 focus:outline-none focus:border-cyan-500">
-                    <button onclick="sendCal8c()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold px-2.5 py-2.5 rounded transition flex-1">CAL8C (pH)</button>
+                    <input type="text" id="alk-input" placeholder="120.50 / -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-32 focus:outline-none focus:border-blue-500">
+                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2.5 rounded transition flex-1">Nạp Kiềm (Float)</button>
                 </div>
                 
                 <div class="flex items-center justify-between bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -214,7 +208,7 @@
             </div>
         </div>
 
-        <!-- ================= KHỐI: CHẨN ĐOÁN CẢM BIẾN & DỰ BÁO AI (16 THÔNG SỐ MỞ RỘNG + 5 THÔNG SỐ PHẦN CỨNG MỚI) ================= -->
+        <!-- ================= KHỐI: CHẨN ĐOÁN CẢM BIẾN & SỨC KHỎE PHẦN CỨNG STM32 ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex items-center justify-between border-b border-slate-700 pb-3">
                 <div class="flex items-center gap-2">
@@ -285,7 +279,6 @@
                         </div>
                     </div>
                     
-                    <!-- Dòng trạng thái IL8 bám bẩn + IL8CAL + IL8RDY -->
                     <div class="bg-[#152238] p-2 rounded flex flex-wrap items-center justify-between text-xs font-mono gap-1">
                         <span class="text-[11px] text-gray-400">Đầu dò (il8):</span>
                         <span id="val-il8" class="font-bold text-emerald-400">0x00</span>
@@ -332,7 +325,6 @@
                                 <span id="val-wcet">--</span> cyc | FlashErr: <span id="val-flfail" class="text-rose-400 font-bold">0</span>
                             </div>
                         </div>
-                        <!-- Thẻ hiển thị Boot Count, Reset Reason, Uptime -->
                         <div class="bg-[#152238] p-2 rounded flex flex-wrap items-center justify-between text-[11px]">
                             <span class="text-gray-400">Khởi động: <b id="val-boot" class="text-yellow-300">0</b> lần</span>
                             <span class="text-gray-500">|</span>
@@ -434,7 +426,7 @@
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
                     <div class="flex items-center gap-2.5">
-                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Trọn Vẹn 35 Cột Lịch Sử)</h2>
+                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Trọn Vẹn 35 Cột)</h2>
                         <button onclick="refreshDbOnly()" id="btn-refresh-db" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-emerald-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-db" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-db">Làm mới dữ liệu</span>
@@ -478,12 +470,11 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
-            <!-- Bảng hiển thị: 30 cột cũ + 5 cột phần cứng viễn thông mới = 35 cột -->
+            <!-- Bảng hiển thị trọn vẹn 35 cột -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono whitespace-nowrap">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0 z-10 border-b border-slate-700">
                         <tr>
-                            <!-- 19 Cột Cũ -->
                             <th class="py-2.5 px-2">ID</th>
                             <th class="py-2.5 px-2">Thời gian (VN)</th>
                             <th class="py-2.5 px-2">T (°C)</th>
@@ -503,8 +494,6 @@
                             <th class="py-2.5 px-2">Surv</th>
                             <th class="py-2.5 px-2">CS</th>
                             <th class="py-2.5 px-2">WCET</th>
-
-                            <!-- 11 Cột Mở Rộng Trước -->
                             <th class="py-2.5 px-2 text-gray-300">B.Raw</th>
                             <th class="py-2.5 px-2 text-indigo-400">Adapt</th>
                             <th class="py-2.5 px-2 text-emerald-300">pH Off</th>
@@ -516,8 +505,6 @@
                             <th class="py-2.5 px-2 text-cyan-400">F.EC</th>
                             <th class="py-2.5 px-2 text-blue-400">F.DO</th>
                             <th class="py-2.5 px-2 text-blue-300">H.Left</th>
-
-                            <!-- 5 Cột Phần Cứng & Viễn Thông Mới Nhất -->
                             <th class="py-2.5 px-2 text-cyan-400 font-bold">CSQ</th>
                             <th class="py-2.5 px-2 text-yellow-300 font-bold">Boot</th>
                             <th class="py-2.5 px-2 text-purple-300 font-bold">R.Str</th>
@@ -621,7 +608,7 @@
                     <input type="radio" name="export_type" value="all" checked class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div>
                         <div class="font-bold text-gray-100">1. Tải tất cả dữ liệu (Toàn bộ Database)</div>
-                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 35 trường lịch sử đo và thông số phần cứng từ trước đến nay.</div>
+                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 35 trường lịch sử đo từ trước đến nay.</div>
                     </div>
                 </label>
 
@@ -768,8 +755,12 @@
             }
         }
 
+        // Tự động kiểm tra: Nếu quá 25s không có gói tin thực sự -> Chuyển sang MẤT KẾT NỐI
         setInterval(() => {
-            if (lastDeviceHeartbeat === 0) return;
+            if (lastDeviceHeartbeat === 0) {
+                updateDeviceStatus(false);
+                return;
+            }
             const elapsed = Date.now() - lastDeviceHeartbeat;
             updateDeviceStatus(elapsed < 25000);
         }, 2000);
@@ -786,17 +777,23 @@
         });
 
         socket.on('device_heartbeat', (info) => {
-            if (info.lastDeviceTime) lastDeviceHeartbeat = info.lastDeviceTime;
-            updateDeviceStatus(info.isOnline);
+            if (info.lastDeviceTime) {
+                lastDeviceHeartbeat = info.lastDeviceTime;
+                updateDeviceStatus(info.isOnline);
+            } else {
+                updateDeviceStatus(false);
+            }
 
             if (info.latestPacket && info.latestPacket.data) {
-                renderTelemetryUI(info.latestPacket);
+                renderTelemetryUI(info.latestPacket, false);
             }
         });
 
-        function renderTelemetryUI(packet) {
-            lastDeviceHeartbeat = packet.device_timestamp || Date.now();
-            updateDeviceStatus(true);
+        function renderTelemetryUI(packet, isLivePacket = true) {
+            if (isLivePacket) {
+                lastDeviceHeartbeat = Date.now();
+                updateDeviceStatus(true);
+            }
 
             if (packet.db_id && packet.db_id !== '--') {
                 document.getElementById('telemetry-db-id').innerText = `ID: #${packet.db_id}`;
@@ -920,7 +917,6 @@
             if (d.iqrph !== undefined) document.getElementById('val-iqrph').innerText = Number(d.iqrph).toFixed(3);
             if (d.iqrdo !== undefined) document.getElementById('val-iqrdo').innerText = Number(d.iqrdo).toFixed(3);
             
-            // Cụm IL8 + IL8CAL + IL8RDY
             const il8El = document.getElementById('val-il8');
             if (d.il8 !== undefined) {
                 il8El.innerText = d.il8 > 0 ? `0x${Number(d.il8).toString(16).toUpperCase()} (BẨN)` : `0x00 (Sạch)`;
@@ -941,7 +937,7 @@
             if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
             if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = d.wcet;
 
-            // 5 THÔNG SỐ PHẦN CỨNG MỚI NHẤT
+            // 5 THÔNG SỐ PHẦN CỨNG MỚI TỪ CODE C
             if (d.csq !== undefined) {
                 const csqTxt = d.csq === 99 ? '99 (N/A)' : `${d.csq}/31`;
                 document.getElementById('txt-csq').innerText = csqTxt;
@@ -962,7 +958,7 @@
         }
 
         socket.on('new_telemetry', (packet) => {
-            renderTelemetryUI(packet);
+            renderTelemetryUI(packet, true);
         });
 
         // Khởi tạo biểu đồ
@@ -1196,7 +1192,6 @@
 
                 tbody.innerHTML = result.data.map(item => `
                     <tr>
-                        <!-- 19 Cột Cũ -->
                         <td class="py-2 px-2 text-gray-400">${item.id}</td>
                         <td class="py-2 px-2 text-emerald-400 font-mono">${formatDbTime(item.created_at)}</td>
                         <td class="py-2 px-2 text-orange-400 font-bold">${Number(item.T).toFixed(2)}</td>
@@ -1217,7 +1212,6 @@
                         <td class="py-2 px-2 text-blue-300 font-bold">${item.cs}</td>
                         <td class="py-2 px-2 text-indigo-300">${item.wcet || 0}</td>
 
-                        <!-- 11 Cột Mở Rộng Trước -->
                         <td class="py-2 px-2 text-gray-300">${item.braw !== undefined && item.braw !== null ? Number(item.braw).toFixed(1) : '--'}</td>
                         <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.adapt_acc ?? 0}</td>
                         <td class="py-2 px-2 text-emerald-300">${item.phoff !== undefined && item.phoff !== null ? Number(item.phoff).toFixed(3) : '--'}</td>
@@ -1230,7 +1224,6 @@
                         <td class="py-2 px-2 text-blue-400">${item.fdo ?? 0}</td>
                         <td class="py-2 px-2 text-blue-300 font-bold">${item.hleft !== undefined && item.hleft !== null ? item.hleft : '--'}</td>
 
-                        <!-- 5 Cột Phần Cứng & Viễn Thông Mới Nhất -->
                         <td class="py-2 px-2 text-cyan-300 font-bold">${item.csq !== undefined ? item.csq : '--'}</td>
                         <td class="py-2 px-2 text-yellow-300 font-bold">${item.boot ?? 0}</td>
                         <td class="py-2 px-2 text-purple-300 font-mono">0x${Number(item.rstr || 0).toString(16).toUpperCase()}</td>
@@ -1332,7 +1325,6 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM SỰ CỐ 72 GIỜ =================
         async function fetchDismissedCloud() {
             try {
                 const res = await fetch('/api/dismissed-incidents');
@@ -1476,7 +1468,6 @@
             document.getElementById('incident-modal').classList.add('hidden');
         }
 
-        // ================= XỬ LÝ NHẬP MÃ PIN =================
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
             document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
@@ -1560,20 +1551,6 @@
             socket.emit('send_control', `ALK,${alkFloat.toFixed(2)}`);
             document.getElementById('control-feedback').innerHTML = `<span class="text-amber-300">Đang gửi lệnh ALK,${alkFloat.toFixed(2)}... Đang chờ STM32 ghi Flash Sector 127 và phản hồi xác nhận...</span>`;
             document.getElementById('alk-input').value = '';
-        }
-
-        function sendCal8c() {
-            if (!verifyPassword()) return;
-            let rawVal = document.getElementById('cal8c-input').value.trim().replace(',', '.');
-            let th = parseFloat(rawVal);
-            if (isNaN(th) || th <= 0) {
-                alert('Vui lòng nhập ngưỡng pH hợp lệ (VD: 0.050)!');
-                return;
-            }
-
-            socket.emit('send_control', `CAL8C,${th.toFixed(3)}`);
-            document.getElementById('control-feedback').innerHTML = `<span class="text-cyan-300">Đang gửi lệnh CAL8C,${th.toFixed(3)}...</span>`;
-            document.getElementById('cal8c-input').value = '';
         }
 
         function sendWipe() {
