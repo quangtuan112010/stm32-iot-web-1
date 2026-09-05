@@ -60,7 +60,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink từ STM32 chứa 26 trường dữ liệu
+// Nhận gói tin Uplink chứa trọn vẹn 28 trường dữ liệu từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -77,7 +77,7 @@ mqttClient.on('message', async (topic, message) => {
         const { data: insertedRows, error } = await supabase
             .from('telemetry_logs')
             .insert([{
-                // 12 trường cốt lõi ban đầu
+                // 12 trường cốt lõi
                 T: parseFloat(data.T) || 0.0,
                 S: parseFloat(data.S) || 0.0,
                 pH: parseFloat(data.pH) || 0.0,
@@ -91,11 +91,13 @@ mqttClient.on('message', async (topic, message) => {
                 adapt_acc: parseInt(data.adapt_acc) || 0,
                 cs: parseInt(data.cs) || 0,
 
-                // 14 trường chẩn đoán & dự báo mở rộng
+                // 16 trường chẩn đoán & dự báo mở rộng từ code C
                 rate: parseFloat(data.rate) || 0.0,
                 eta: parseFloat(data.eta) || 0.0,
                 braw: parseFloat(data.braw) || 0.0,
                 il8: parseInt(data.il8) || 0,
+                il8cal: parseInt(data.il8cal) || 0,
+                il8rdy: parseInt(data.il8rdy) || 0,
                 phoff: parseFloat(data.phoff) || 0.0,
                 slope: parseFloat(data.slope) || 0.0,
                 iqrph: parseFloat(data.iqrph) || 0.0,
@@ -159,7 +161,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// API Rà soát 72h sự cố
+// API Rà soát 72h sự cố chuẩn xác
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -191,7 +193,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             fetchPromises.push(
                 supabase
                     .from('telemetry_logs')
-                    .select('id, created_at, il, dom, fan, surv, btri, cs, adapt_acc, il8, tspr, rate')
+                    .select('id, created_at, il, dom, fan, surv, btri, cs, adapt_acc, il8')
                     .gte('id', fromId)
                     .lte('id', toId)
                     .order('id', { ascending: true })
@@ -277,7 +279,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             };
         });
 
-        // Cờ bám bẩn đầu dò IL8 mới
+        // Cờ bám bẩn đầu dò IL8
         analyzeContinuousRun('il8', (r) => parseInt(r.il8) > 0, (act) => {
             const t1 = new Date(act.start_row.created_at).getTime();
             const t2 = new Date(act.end_row.created_at).getTime();
@@ -292,7 +294,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 end_time: formatSupabaseTime(act.end_row.created_at),
                 duration: formatDurationSeconds(durSec),
                 start_raw: act.start_row.created_at,
-                details: `Thuật toán phát hiện bám bẩn kích hoạt cờ il8. Kỹ thuật viên cần vệ sinh đầu dò.`
+                details: `Thuật toán phát hiện bám bẩn kích hoạt cờ il8. Kỹ thuật viên cần kiểm tra và vệ sinh đầu dò.`
             };
         });
 
@@ -526,7 +528,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// API Xuất CSV đầy đủ 26 trường
+// API Xuất CSV trọn vẹn 28 cột
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -561,14 +563,14 @@ app.get('/api/export-csv', async (req, res) => {
             if (data.length < CHUNK_SIZE) break;
         }
 
-        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left\n";
+        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left\n";
         allData.forEach(r => {
             const timeFormatted = formatSupabaseTime(r.created_at);
-            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0}\n`;
+            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_26fields_${Date.now()}.csv"`);
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_28fields_${Date.now()}.csv"`);
         res.status(200).send('\uFEFF' + csv);
     } catch (err) {
         res.status(500).send("Lỗi xuất file: " + err.message);
@@ -602,7 +604,7 @@ io.on('connection', (socket) => {
             .eq('device_id', 'STM32_Tilapia_01');
 
         if (commandStr === 'RESET') {
-            io.emit('control_status', `Đã gửi lệnh RESET chip! Thiết bị đang thực hiện Safe Software Reset...`);
+            io.emit('control_status', `Đã gửi lệnh RESET! STM32 đang khởi động lại (giữ Flash). Sẽ kết nối lại sau ~8-12 giây.`);
         } else {
             io.emit('control_status', `Đã phát lệnh: ${commandStr}`);
         }
