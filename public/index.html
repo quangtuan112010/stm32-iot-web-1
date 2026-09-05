@@ -207,7 +207,7 @@
             </div>
         </div>
 
-        <!-- ================= KHỐI MỚI: TRÍ TUỆ NHÂN TẠO EDGE-AI PINN & THÍCH NGHI TRỰC TUYẾN NLMS ================= -->
+        <!-- ================= KHỐI MỚI: TRÍ TUỆ NHÂN TẠO EDGE-AI PINN & THÍCH NGHI NLMS ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex items-center justify-between border-b border-slate-700 pb-3">
                 <div class="flex items-center gap-2">
@@ -218,7 +218,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Nhóm AI PINN -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-purple-400 flex items-center justify-between">
                         <span>🤖 Dự Báo DO & Vật Lý PINN</span>
@@ -245,7 +244,6 @@
                     </div>
                 </div>
 
-                <!-- Nhóm Thích Nghi NLMS -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-indigo-400 flex items-center justify-between">
                         <span>🔄 Thích Nghi Trực Tuyến (NLMS)</span>
@@ -270,7 +268,6 @@
                     </div>
                 </div>
 
-                <!-- Nhóm Hệ Thống & Bộ Nhớ -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                         <span>💾</span>
@@ -307,8 +304,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
-                <!-- Nhóm 1: Dự Báo Sớm & Rủi Ro AI -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                         <span>⚡</span>
@@ -338,7 +333,6 @@
                     </div>
                 </div>
 
-                <!-- Nhóm 2: Chẩn Đoán Trôi Điện Cực & Bám Bẩn -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                         <span>🧪</span>
@@ -379,7 +373,6 @@
                     </div>
                 </div>
 
-                <!-- Nhóm 3: Sức Khỏe Phần Cứng & Viễn Thông -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
                         <span>⚙️</span>
@@ -1291,7 +1284,6 @@
             }, 300);
         }
 
-        // Bảng Database: 49 cột
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
