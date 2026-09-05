@@ -60,7 +60,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink khớp 1:1 với telemetry_task.c mới
+// Nhận gói tin Uplink chứa trọn vẹn 47 trường dữ liệu từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -107,12 +107,28 @@ mqttClient.on('message', async (topic, message) => {
             wcet: parseInt(data.wcet) || 0,
             hleft: parseInt(data.hleft) || 0,
 
-            // 5 trường phần cứng & viễn thông mới từ code C
+            // 5 trường phần cứng & viễn thông
             csq: data.csq !== undefined ? parseInt(data.csq) : 99,
             rstr: parseInt(data.rstr) || 0,
             boot: parseInt(data.boot) || 0,
             up: parseInt(data.up) || 0,
-            flfail: parseInt(data.flfail) || 0
+            flfail: parseInt(data.flfail) || 0,
+
+            // 14 trường AI PINN & NLMS Adapter & FreeRTOS mới
+            dopred: parseFloat(data.dopred) || 0.0,
+            dosat: parseFloat(data.dosat) || 0.0,
+            aisig: parseFloat(data.aisig) || 0.0,
+            aivalid: parseInt(data.aivalid) || 0,
+            aistruct: parseInt(data.aistruct) || 0,
+            aistep: parseInt(data.aistep) || 0,
+            adwk: parseInt(data.adwk) || 0,
+            adacc: parseInt(data.adacc) || 0,
+            adrej: parseInt(data.adrej) || 0,
+            admseb: parseFloat(data.admseb) || 0.0,
+            admsea: parseFloat(data.admsea) || 0.0,
+            adlast: parseInt(data.adlast) || 0,
+            nvlog: parseInt(data.nvlog) || 0,
+            stackmin: parseInt(data.stackmin) || 0
         };
 
         const { data: insertedRows, error } = await supabase
@@ -142,7 +158,6 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// Đồng bộ trạng thái đã tắt cảnh báo lên Supabase Cloud
 app.get('/api/dismissed-incidents', async (req, res) => {
     try {
         const { data, error } = await supabase.from('incident_dismissals').select('incident_id');
@@ -169,7 +184,6 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// API Rà soát 72h sự cố
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -408,7 +422,6 @@ app.get('/api/audit-incidents', async (req, res) => {
     }
 });
 
-// API Biểu đồ Full-Span ID Sampling
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
@@ -496,7 +509,6 @@ app.get('/api/chart-data', async (req, res) => {
     }
 });
 
-// API Phân trang xem Database
 app.get('/api/logs-paged', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -528,7 +540,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// API Xuất CSV trọn vẹn 35 cột
+// Xuất file CSV 49 cột chuẩn xác
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -563,14 +575,14 @@ app.get('/api/export-csv', async (req, res) => {
             if (data.length < CHUNK_SIZE) break;
         }
 
-        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail\n";
+        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail,DO_Pred,DO_Sat,AI_Sigma,AI_Valid,AI_Struct,AI_Step,Adapt_Week,Adapt_Acc,Adapt_Rej,MSE_Before,MSE_After,Adapt_Last,NV_Log,Stack_Min_Pct\n";
         allData.forEach(r => {
             const timeFormatted = formatSupabaseTime(r.created_at);
-            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0},${r.csq ?? 99},${r.rstr || 0},${r.boot || 0},${r.up || 0},${r.flfail || 0}\n`;
+            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0},${r.csq ?? 99},${r.rstr || 0},${r.boot || 0},${r.up || 0},${r.flfail || 0},${r.dopred || 0},${r.dosat || 0},${r.aisig || 0},${r.aivalid || 0},${r.aistruct || 0},${r.aistep || 0},${r.adwk || 0},${r.adacc || 0},${r.adrej || 0},${r.admseb || 0},${r.admsea || 0},${r.adlast || 0},${r.nvlog || 0},${r.stackmin || 0}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_35fields_${Date.now()}.csv"`);
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_49fields_${Date.now()}.csv"`);
         res.status(200).send('\uFEFF' + csv);
     } catch (err) {
         res.status(500).send("Lỗi xuất file: " + err.message);
@@ -585,7 +597,6 @@ app.use((req, res, next) => {
     res.status(404).send('Not Found');
 });
 
-// Xử lý Downlink chỉ 3 lệnh: ALK, WIPE, RESET (Khớp 100% handleDownlinkMessage trong C)
 io.on('connection', (socket) => {
     socket.emit('device_heartbeat', {
         lastDeviceTime: lastDeviceTime,
