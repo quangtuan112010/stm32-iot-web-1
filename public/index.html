@@ -27,6 +27,12 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Badge CSQ sóng 4G -->
+                <div id="badge-csq" class="flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-cyan-400 font-mono">
+                    <span>📶 Sóng:</span>
+                    <span id="txt-csq" class="font-bold">--</span>
+                </div>
+
                 <button onclick="openIncidentModal()" id="btn-incident-badge" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 transition shadow">
                     <span class="text-base">🛡️</span>
                     <span id="txt-incident-count" class="font-bold text-gray-300">Đang quét 72h...</span>
@@ -71,7 +77,7 @@
             <button onclick="focusAlkInput()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shrink-0">Nạp Kiềm Ngay</button>
         </div>
 
-        <!-- BẢNG ĐIỀU KHIỂN DOWNLINK: CÓ NÚT RESET CHIP -->
+        <!-- BẢNG ĐIỀU KHIỂN DOWNLINK: CÓ NÚT RESET CHIP & CAL8C -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Điều khiển thiết bị & Quản trị Vi điều khiển (Downlink Control)</h2>
             <div class="flex items-center gap-3 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -79,10 +85,16 @@
                 <input type="password" id="ctrl-password" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-600 rounded px-3 py-1.5 text-white font-mono text-sm w-64 focus:outline-none focus:border-blue-500">
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="flex items-center gap-2 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
-                    <input type="text" id="alk-input" placeholder="120.50 / -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-32 focus:outline-none focus:border-blue-500">
-                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2.5 rounded transition flex-1">Nạp Kiềm (Float)</button>
+                    <input type="text" id="alk-input" placeholder="120.50 / -1" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-28 focus:outline-none focus:border-blue-500">
+                    <button onclick="sendAlkalinity()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2.5 rounded transition flex-1">Nạp Kiềm</button>
+                </div>
+
+                <!-- Bổ sung điều khiển CAL8C hiệu chuẩn trôi pH -->
+                <div class="flex items-center gap-2 bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                    <input type="text" id="cal8c-input" placeholder="0.050" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white font-mono text-sm w-24 focus:outline-none focus:border-cyan-500">
+                    <button onclick="sendCal8c()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold px-2.5 py-2.5 rounded transition flex-1">CAL8C (pH)</button>
                 </div>
                 
                 <div class="flex items-center justify-between bg-[#0b1329] p-3 rounded-lg border border-slate-700">
@@ -202,14 +214,14 @@
             </div>
         </div>
 
-        <!-- ================= KHỐI: CHẨN ĐOÁN CẢM BIẾN & DỰ BÁO AI (16 THÔNG SỐ MỞ RỘNG) ================= -->
+        <!-- ================= KHỐI: CHẨN ĐOÁN CẢM BIẾN & DỰ BÁO AI (16 THÔNG SỐ MỞ RỘNG + 5 THÔNG SỐ PHẦN CỨNG MỚI) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex items-center justify-between border-b border-slate-700 pb-3">
                 <div class="flex items-center gap-2">
                     <span class="text-lg">🔬</span>
-                    <h2 class="text-sm font-bold text-gray-200 uppercase tracking-wide">Chẩn Đoán Cảm Biến & Dự Báo Sớm (16 Chỉ Số Mở Rộng)</h2>
+                    <h2 class="text-sm font-bold text-gray-200 uppercase tracking-wide">Chẩn Đoán Cảm Biến & Sức Khỏe Phần Cứng STM32</h2>
                 </div>
-                <span class="text-[11px] text-cyan-400 font-mono">Ánh xạ 1:1 từ telemetry_task.c</span>
+                <span class="text-[11px] text-cyan-400 font-mono">Đồng bộ 1:1 Firmware telemetry_task.c</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -244,7 +256,7 @@
                     </div>
                 </div>
 
-                <!-- Nhóm 2: Chẩn Đoán Trôi Điện Cực & Bám Bẩn (Có il8cal & il8rdy) -->
+                <!-- Nhóm 2: Chẩn Đoán Trôi Điện Cực & Bám Bẩn -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                         <span>🧪</span>
@@ -286,11 +298,11 @@
                     </div>
                 </div>
 
-                <!-- Nhóm 3: Sức Khỏe Phần Cứng & Chu Kỳ CPU WCET -->
+                <!-- Nhóm 3: Sức Khỏe Phần Cứng, 4G LTE, Uptime, Flash -->
                 <div class="bg-[#0b1329] p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
                     <div class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
                         <span>⚙️</span>
-                        <span>Sức Khỏe Cảm Biến & CPU WCET</span>
+                        <span>Phần Cứng, CPU WCET & Viễn Thông</span>
                     </div>
                     <div class="space-y-2 text-xs font-mono">
                         <div class="bg-[#152238] p-2 rounded flex items-center justify-between">
@@ -313,10 +325,20 @@
                         </div>
                         <div class="bg-[#152238] p-2 rounded flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] text-gray-400">Chu kỳ CPU tệ nhất (wcet)</div>
-                                <div class="text-[9px] text-gray-500">Bằng chứng H5 (&lt;100µs)</div>
+                                <div class="text-[10px] text-gray-400">Chu kỳ CPU WCET & Flash Fail</div>
+                                <div class="text-[9px] text-gray-500">WCET (&lt;100µs) | Lỗi Flash</div>
                             </div>
-                            <div id="val-wcet" class="text-sm font-bold text-indigo-300">-- cycles</div>
+                            <div class="text-xs font-bold text-indigo-300">
+                                <span id="val-wcet">--</span> cyc | FlashErr: <span id="val-flfail" class="text-rose-400 font-bold">0</span>
+                            </div>
+                        </div>
+                        <!-- Thẻ hiển thị Boot Count, Reset Reason, Uptime -->
+                        <div class="bg-[#152238] p-2 rounded flex flex-wrap items-center justify-between text-[11px]">
+                            <span class="text-gray-400">Khởi động: <b id="val-boot" class="text-yellow-300">0</b> lần</span>
+                            <span class="text-gray-500">|</span>
+                            <span class="text-gray-400">Reset Code: <b id="val-rstr" class="text-purple-300">0x00</b></span>
+                            <span class="text-gray-500">|</span>
+                            <span class="text-gray-400">Uptime: <b id="val-uptime" class="text-emerald-300">0s</b></span>
                         </div>
                     </div>
                 </div>
@@ -407,12 +429,12 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE ================= -->
+        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE (HIỂN THỊ ĐỦ 35 CỘT) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
                     <div class="flex items-center gap-2.5">
-                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database</h2>
+                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Trọn Vẹn 35 Cột Lịch Sử)</h2>
                         <button onclick="refreshDbOnly()" id="btn-refresh-db" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-emerald-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-db" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-db">Làm mới dữ liệu</span>
@@ -434,7 +456,7 @@
 
                     <button onclick="openCsvModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-emerald-600 shadow">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Tải CSV (Excel 28 Cột)
+                        Tải CSV (Excel 35 Cột)
                     </button>
                 </div>
             </div>
@@ -456,11 +478,12 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
-            <!-- Bảng hiển thị -->
+            <!-- Bảng hiển thị: 30 cột cũ + 5 cột phần cứng viễn thông mới = 35 cột -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
-                <table class="w-full text-left text-xs font-mono">
-                    <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0">
+                <table class="w-full text-left text-xs font-mono whitespace-nowrap">
+                    <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0 z-10 border-b border-slate-700">
                         <tr>
+                            <!-- 19 Cột Cũ -->
                             <th class="py-2.5 px-2">ID</th>
                             <th class="py-2.5 px-2">Thời gian (VN)</th>
                             <th class="py-2.5 px-2">T (°C)</th>
@@ -480,6 +503,26 @@
                             <th class="py-2.5 px-2">Surv</th>
                             <th class="py-2.5 px-2">CS</th>
                             <th class="py-2.5 px-2">WCET</th>
+
+                            <!-- 11 Cột Mở Rộng Trước -->
+                            <th class="py-2.5 px-2 text-gray-300">B.Raw</th>
+                            <th class="py-2.5 px-2 text-indigo-400">Adapt</th>
+                            <th class="py-2.5 px-2 text-emerald-300">pH Off</th>
+                            <th class="py-2.5 px-2 text-emerald-300">Slope</th>
+                            <th class="py-2.5 px-2 text-cyan-300">IQR pH</th>
+                            <th class="py-2.5 px-2 text-blue-300">IQR DO</th>
+                            <th class="py-2.5 px-2 text-orange-400">TSpr (°C)</th>
+                            <th class="py-2.5 px-2 text-emerald-400">F.pH</th>
+                            <th class="py-2.5 px-2 text-cyan-400">F.EC</th>
+                            <th class="py-2.5 px-2 text-blue-400">F.DO</th>
+                            <th class="py-2.5 px-2 text-blue-300">H.Left</th>
+
+                            <!-- 5 Cột Phần Cứng & Viễn Thông Mới Nhất -->
+                            <th class="py-2.5 px-2 text-cyan-400 font-bold">CSQ</th>
+                            <th class="py-2.5 px-2 text-yellow-300 font-bold">Boot</th>
+                            <th class="py-2.5 px-2 text-purple-300 font-bold">R.Str</th>
+                            <th class="py-2.5 px-2 text-emerald-300 font-bold">Uptime(s)</th>
+                            <th class="py-2.5 px-2 text-rose-400 font-bold">Fl.Fail</th>
                         </tr>
                     </thead>
                     <tbody id="db-table-body" class="divide-y border-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
@@ -568,7 +611,7 @@
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Tùy Chọn Tải File CSV (Excel 28 Cột)
+                    Tùy Chọn Tải File CSV (Excel 35 Cột)
                 </h3>
                 <button onclick="closeCsvModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
             </div>
@@ -578,7 +621,7 @@
                     <input type="radio" name="export_type" value="all" checked class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div>
                         <div class="font-bold text-gray-100">1. Tải tất cả dữ liệu (Toàn bộ Database)</div>
-                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 28 trường lịch sử đo từ trước đến nay.</div>
+                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 35 trường lịch sử đo và thông số phần cứng từ trước đến nay.</div>
                     </div>
                 </label>
 
@@ -866,7 +909,7 @@
             if (d.cs === 1) bannerCs.classList.remove('hidden');
             else bannerCs.classList.add('hidden');
 
-            // CẬP NHẬT 16 THÔNG SỐ CHẨN ĐOÁN MỞ RỘNG
+            // 16 THÔNG SỐ CHẨN ĐOÁN
             if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
             if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
             if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
@@ -896,7 +939,22 @@
             if (d.fph !== undefined) document.getElementById('val-fph').innerText = d.fph;
             if (d.fec !== undefined) document.getElementById('val-fec').innerText = d.fec;
             if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
-            if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = `${d.wcet} cycles`;
+            if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = d.wcet;
+
+            // 5 THÔNG SỐ PHẦN CỨNG MỚI NHẤT
+            if (d.csq !== undefined) {
+                const csqTxt = d.csq === 99 ? '99 (N/A)' : `${d.csq}/31`;
+                document.getElementById('txt-csq').innerText = csqTxt;
+            }
+            if (d.boot !== undefined) document.getElementById('val-boot').innerText = d.boot;
+            if (d.rstr !== undefined) document.getElementById('val-rstr').innerText = `0x${Number(d.rstr).toString(16).toUpperCase()}`;
+            if (d.flfail !== undefined) document.getElementById('val-flfail').innerText = d.flfail;
+            if (d.up !== undefined) {
+                const s = Number(d.up);
+                const hrs = Math.floor(s / 3600);
+                const m = Math.floor((s % 3600) / 60);
+                document.getElementById('val-uptime').innerText = `${hrs}h ${m}m`;
+            }
 
             if (currentPage === 1 && !filterFromTime && !filterToTime) {
                 fetchPagedLogs();
@@ -1102,7 +1160,7 @@
             }, 300);
         }
 
-        // Bảng Database
+        // Bảng Database: Hiển thị đầy đủ trọn vẹn 35 cột
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -1123,7 +1181,7 @@
 
                 const tbody = document.getElementById('db-table-body');
                 if (result.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="19" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="35" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
                     return;
                 }
 
@@ -1138,6 +1196,7 @@
 
                 tbody.innerHTML = result.data.map(item => `
                     <tr>
+                        <!-- 19 Cột Cũ -->
                         <td class="py-2 px-2 text-gray-400">${item.id}</td>
                         <td class="py-2 px-2 text-emerald-400 font-mono">${formatDbTime(item.created_at)}</td>
                         <td class="py-2 px-2 text-orange-400 font-bold">${Number(item.T).toFixed(2)}</td>
@@ -1157,6 +1216,26 @@
                         <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
                         <td class="py-2 px-2 text-blue-300 font-bold">${item.cs}</td>
                         <td class="py-2 px-2 text-indigo-300">${item.wcet || 0}</td>
+
+                        <!-- 11 Cột Mở Rộng Trước -->
+                        <td class="py-2 px-2 text-gray-300">${item.braw !== undefined && item.braw !== null ? Number(item.braw).toFixed(1) : '--'}</td>
+                        <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.adapt_acc ?? 0}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.phoff !== undefined && item.phoff !== null ? Number(item.phoff).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.slope !== undefined && item.slope !== null ? Number(item.slope).toFixed(4) : '--'}</td>
+                        <td class="py-2 px-2 text-cyan-300">${item.iqrph !== undefined && item.iqrph !== null ? Number(item.iqrph).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-blue-300">${item.iqrdo !== undefined && item.iqrdo !== null ? Number(item.iqrdo).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-orange-400">${item.tspr !== undefined && item.tspr !== null ? Number(item.tspr).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-400">${item.fph ?? 0}</td>
+                        <td class="py-2 px-2 text-cyan-400">${item.fec ?? 0}</td>
+                        <td class="py-2 px-2 text-blue-400">${item.fdo ?? 0}</td>
+                        <td class="py-2 px-2 text-blue-300 font-bold">${item.hleft !== undefined && item.hleft !== null ? item.hleft : '--'}</td>
+
+                        <!-- 5 Cột Phần Cứng & Viễn Thông Mới Nhất -->
+                        <td class="py-2 px-2 text-cyan-300 font-bold">${item.csq !== undefined ? item.csq : '--'}</td>
+                        <td class="py-2 px-2 text-yellow-300 font-bold">${item.boot ?? 0}</td>
+                        <td class="py-2 px-2 text-purple-300 font-mono">0x${Number(item.rstr || 0).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.up ? `${item.up}s` : '0s'}</td>
+                        <td class="py-2 px-2 ${item.flfail > 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-gray-400'}">${item.flfail ?? 0}</td>
                     </tr>
                 `).join('');
             } catch (err) {
@@ -1481,6 +1560,20 @@
             socket.emit('send_control', `ALK,${alkFloat.toFixed(2)}`);
             document.getElementById('control-feedback').innerHTML = `<span class="text-amber-300">Đang gửi lệnh ALK,${alkFloat.toFixed(2)}... Đang chờ STM32 ghi Flash Sector 127 và phản hồi xác nhận...</span>`;
             document.getElementById('alk-input').value = '';
+        }
+
+        function sendCal8c() {
+            if (!verifyPassword()) return;
+            let rawVal = document.getElementById('cal8c-input').value.trim().replace(',', '.');
+            let th = parseFloat(rawVal);
+            if (isNaN(th) || th <= 0) {
+                alert('Vui lòng nhập ngưỡng pH hợp lệ (VD: 0.050)!');
+                return;
+            }
+
+            socket.emit('send_control', `CAL8C,${th.toFixed(3)}`);
+            document.getElementById('control-feedback').innerHTML = `<span class="text-cyan-300">Đang gửi lệnh CAL8C,${th.toFixed(3)}...</span>`;
+            document.getElementById('cal8c-input').value = '';
         }
 
         function sendWipe() {
