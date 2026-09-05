@@ -60,7 +60,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink chứa trọn vẹn 28 trường dữ liệu từ STM32
+// Nhận gói tin Uplink chứa trọn vẹn 33 trường dữ liệu từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -91,7 +91,7 @@ mqttClient.on('message', async (topic, message) => {
                 adapt_acc: parseInt(data.adapt_acc) || 0,
                 cs: parseInt(data.cs) || 0,
 
-                // 16 trường chẩn đoán & dự báo mở rộng từ code C
+                // 16 trường chẩn đoán & dự báo mở rộng
                 rate: parseFloat(data.rate) || 0.0,
                 eta: parseFloat(data.eta) || 0.0,
                 braw: parseFloat(data.braw) || 0.0,
@@ -107,7 +107,14 @@ mqttClient.on('message', async (topic, message) => {
                 fec: parseInt(data.fec) || 0,
                 fdo: parseInt(data.fdo) || 0,
                 wcet: parseInt(data.wcet) || 0,
-                hleft: parseInt(data.hleft) || 0
+                hleft: parseInt(data.hleft) || 0,
+
+                // 5 trường phần cứng & viễn thông mới
+                csq: data.csq !== undefined ? parseInt(data.csq) : 99,
+                rstr: parseInt(data.rstr) || 0,
+                boot: parseInt(data.boot) || 0,
+                up: parseInt(data.up) || 0,
+                flfail: parseInt(data.flfail) || 0
             }])
             .select();
 
@@ -161,7 +168,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// API Rà soát 72h sự cố chuẩn xác
+// API Rà soát 72h sự cố
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -528,7 +535,7 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// API Xuất CSV trọn vẹn 28 cột
+// API Xuất CSV trọn vẹn 35 cột (12 cốt lõi + 16 chẩn đoán + 5 phần cứng mới + ID + Thời gian)
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -563,14 +570,14 @@ app.get('/api/export-csv', async (req, res) => {
             if (data.length < CHUNK_SIZE) break;
         }
 
-        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left\n";
+        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail\n";
         allData.forEach(r => {
             const timeFormatted = formatSupabaseTime(r.created_at);
-            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0}\n`;
+            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0},${r.csq ?? 99},${r.rstr || 0},${r.boot || 0},${r.up || 0},${r.flfail || 0}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_28fields_${Date.now()}.csv"`);
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_35fields_${Date.now()}.csv"`);
         res.status(200).send('\uFEFF' + csv);
     } catch (err) {
         res.status(500).send("Lỗi xuất file: " + err.message);
@@ -605,6 +612,8 @@ io.on('connection', (socket) => {
 
         if (commandStr === 'RESET') {
             io.emit('control_status', `Đã gửi lệnh RESET! STM32 đang khởi động lại (giữ Flash). Sẽ kết nối lại sau ~8-12 giây.`);
+        } else if (commandStr.startsWith('CAL8C,')) {
+            io.emit('control_status', `Đã phát lệnh hiệu chuẩn IL8C: ${commandStr}`);
         } else {
             io.emit('control_status', `Đã phát lệnh: ${commandStr}`);
         }
