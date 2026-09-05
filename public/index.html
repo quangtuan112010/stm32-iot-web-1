@@ -202,7 +202,7 @@
             </div>
         </div>
 
-        <!-- ================= KHỐI MỚI: CHẨN ĐOÁN CẢM BIẾN & DỰ BÁO AI (16 THÔNG SỐ MỞ RỘNG) ================= -->
+        <!-- ================= KHỐI: CHẨN ĐOÁN CẢM BIẾN & DỰ BÁO AI (16 THÔNG SỐ MỞ RỘNG) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex items-center justify-between border-b border-slate-700 pb-3">
                 <div class="flex items-center gap-2">
@@ -407,7 +407,7 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE (28 TRƯỜNG) ================= -->
+        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
@@ -474,6 +474,8 @@
                             <th class="py-2.5 px-2">Fan</th>
                             <th class="py-2.5 px-2">IL</th>
                             <th class="py-2.5 px-2">IL8</th>
+                            <th class="py-2.5 px-2 text-cyan-400 font-bold">IL8CAL</th>
+                            <th class="py-2.5 px-2 text-indigo-400 font-bold">IL8RDY</th>
                             <th class="py-2.5 px-2">DOM</th>
                             <th class="py-2.5 px-2">Surv</th>
                             <th class="py-2.5 px-2">CS</th>
@@ -864,7 +866,7 @@
             if (d.cs === 1) bannerCs.classList.remove('hidden');
             else bannerCs.classList.add('hidden');
 
-            // CẬP NHẬT 16 THÔNG SỐ CHẨN ĐOÁN MỞ RỘNG (Ánh xạ 1:1 từ C code)
+            // CẬP NHẬT 16 THÔNG SỐ CHẨN ĐOÁN MỞ RỘNG
             if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
             if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
             if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
@@ -1121,7 +1123,7 @@
 
                 const tbody = document.getElementById('db-table-body');
                 if (result.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="17" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="19" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
                     return;
                 }
 
@@ -1149,6 +1151,8 @@
                         <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
                         <td class="py-2 px-2 text-rose-400 font-mono">0x${Number(item.il).toString(16).toUpperCase()}</td>
                         <td class="py-2 px-2 ${item.il8 > 0 ? 'text-rose-400 font-bold' : 'text-gray-400'}">0x${Number(item.il8 || 0).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 ${item.il8cal == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.il8cal ?? 0}</td>
+                        <td class="py-2 px-2 ${item.il8rdy == 1 ? 'text-emerald-400 font-bold' : 'text-amber-400'}">${item.il8rdy ?? 0}</td>
                         <td class="py-2 px-2 text-purple-400 font-mono">0x${Number(item.dom).toString(16).toUpperCase()}</td>
                         <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
                         <td class="py-2 px-2 text-blue-300 font-bold">${item.cs}</td>
@@ -1393,7 +1397,7 @@
             document.getElementById('incident-modal').classList.add('hidden');
         }
 
-        // ================= XỬ LÝ NHẬP MÃ PIN (KHÔNG HIỂN THỊ MÃ SỐ RA GIAO DIỆN) =================
+        // ================= XỬ LÝ NHẬP MÃ PIN =================
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
             document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
