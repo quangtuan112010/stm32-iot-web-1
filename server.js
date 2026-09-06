@@ -54,11 +54,19 @@ function formatDurationSeconds(totalSeconds) {
     return remMin > 0 ? `${hours} giờ ${remMin} phút ${sec} giây` : `${hours} giờ ${sec} giây`;
 }
 
-// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ XUÂN ĐỊNH =================
+function formatMinutesToHours(totalMin) {
+    if (totalMin <= 0) return 'Đợt đầu tiên trong ngày';
+    const hrs = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (hrs === 0) return `Cách đợt trước ${m} phút`;
+    return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
+}
+
+// ================= THUẬT TOÁN TÁCH TỪNG ĐỢT MƯA THỰC TẾ (CLUSTERING) =================
 async function syncRainHistoryFromSatellite() {
     try {
-        // Quét thực tế 2 ngày gần nhất (không lấy dự báo tương lai) theo bước nhảy 15 phút
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=2&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
+        // Quét thực tế 3 ngày gần nhất (past_days=3) theo bước nhảy 15 phút
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=3&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -71,46 +79,96 @@ async function syncRainHistoryFromSatellite() {
         let startIdx = 0;
         let peakVal = 0.0;
         let totalVal = 0.0;
+        let dryCounter = 0; // Đếm số khoảng 15 phút tạnh liên tiếp
         const parsedEvents = [];
+
+        // Ngưỡng: Tạnh liên tiếp >= 30 phút (2 ticks x 15m) -> Chốt sổ cơn mưa hiện tại
+        const DRY_THRESHOLD_TICKS = 2; 
 
         for (let i = 0; i < times.length; i++) {
             const p = parseFloat(precips[i]) || 0.0;
             const isRaining = p >= 0.1;
 
-            if (isRaining && !inRain) {
-                inRain = true;
-                startIdx = i;
-                peakVal = p;
-                totalVal = p;
-            } else if (inRain) {
-                if (p > peakVal) peakVal = p;
-                totalVal += p;
+            if (isRaining) {
+                if (!inRain) {
+                    inRain = true;
+                    startIdx = i;
+                    peakVal = p;
+                    totalVal = p;
+                    dryCounter = 0;
+                } else {
+                    if (p > peakVal) peakVal = p;
+                    totalVal += p;
+                    dryCounter = 0;
+                }
+            } else {
+                if (inRain) {
+                    dryCounter++;
+                    // Nếu tạnh đủ 30 phút hoặc đã đến điểm cuối của dữ liệu
+                    if (dryCounter >= DRY_THRESHOLD_TICKS || i === times.length - 1) {
+                        inRain = false;
+                        const actualEndIdx = i - dryCounter;
+                        const startIso = times[startIdx];
+                        const endIso = times[actualEndIdx >= startIdx ? actualEndIdx : startIdx];
+                        const durMin = Math.max(15, (actualEndIdx - startIdx + 1) * 15);
 
-                if (!isRaining || i === times.length - 1) {
-                    inRain = false;
-                    const startTimeStr = formatSupabaseTime(times[startIdx]);
-                    const endTimeStr = formatSupabaseTime(times[i]);
-                    const durMin = Math.max(15, (i - startIdx) * 15);
+                        const datePart = startIso.split('T')[0]; // "YYYY-MM-DD"
+                        const [y, m, d] = datePart.split('-');
+                        const rainDateStr = `${d}/${m}/${y}`;
 
-                    parsedEvents.push({
-                        start_time: startTimeStr,
-                        end_time: endTimeStr,
-                        duration_min: durMin,
-                        peak_mm: parseFloat(peakVal.toFixed(2)),
-                        total_mm: parseFloat(totalVal.toFixed(2))
-                    });
+                        parsedEvents.push({
+                            rain_date: rainDateStr,
+                            start_iso: startIso,
+                            end_iso: endIso,
+                            start_time: formatSupabaseTime(startIso),
+                            end_time: formatSupabaseTime(endIso),
+                            duration_min: durMin,
+                            peak_mm: parseFloat(peakVal.toFixed(2)),
+                            total_mm: parseFloat(totalVal.toFixed(2))
+                        });
+
+                        dryCounter = 0;
+                    }
                 }
             }
         }
 
-        // Lưu vào bảng Supabase rain_history (chống trùng lặp qua start_time & end_time)
-        if (parsedEvents.length > 0) {
-            for (const ev of parsedEvents) {
-                await supabase.from('rain_history').upsert([ev], { onConflict: 'start_time,end_time' });
-            }
+        // Đánh số thứ tự Đợt 1, Đợt 2... trong ngày và tính khoảng cách (gap)
+        let lastEventPerDate = {};
+        for (let idx = 0; idx < parsedEvents.length; idx++) {
+            const ev = parsedEvents[idx];
+            const dKey = ev.rain_date;
 
+            if (!lastEventPerDate[dKey]) {
+                ev.episode_no = 1;
+                ev.gap_desc = 'Đợt đầu tiên trong ngày';
+            } else {
+                const prev = lastEventPerDate[dKey];
+                ev.episode_no = prev.episode_no + 1;
+                
+                const tPrevEnd = new Date(prev.end_iso).getTime();
+                const tCurrStart = new Date(ev.start_iso).getTime();
+                const diffMin = Math.max(0, Math.floor((tCurrStart - tPrevEnd) / (60 * 1000)));
+                ev.gap_desc = formatMinutesToHours(diffMin);
+            }
+            lastEventPerDate[dKey] = ev;
+
+            // Lưu vào bảng Supabase rain_history
+            await supabase.from('rain_history').upsert([{
+                rain_date: ev.rain_date,
+                episode_no: ev.episode_no,
+                gap_desc: ev.gap_desc,
+                start_time: ev.start_time,
+                end_time: ev.end_time,
+                duration_min: ev.duration_min,
+                peak_mm: ev.peak_mm,
+                total_mm: ev.total_mm
+            }], { onConflict: 'start_time,end_time' });
+        }
+
+        // Cập nhật trạng thái thời gian thực
+        if (parsedEvents.length > 0) {
             const latest = parsedEvents[parsedEvents.length - 1];
-            // Kiểm tra mốc 15 phút cuối cùng có đang mưa không
             const lastP = parseFloat(precips[precips.length - 1]) || 0.0;
             const isCurrentlyRaining = lastP >= 0.1;
 
@@ -118,14 +176,14 @@ async function syncRainHistoryFromSatellite() {
                 isRaining: isCurrentlyRaining,
                 lastRainEvent: latest,
                 text: isCurrentlyRaining 
-                    ? `Trời đang mưa thực tế tại Xuân Định từ ${latest.start_time}` 
-                    : `Trời tạnh ráo. Cơn mưa gần nhất: ${latest.start_time} ➔ ${latest.end_time} (${latest.duration_min} phút)`
+                    ? `Trời đang mưa (Đợt ${latest.episode_no} ngày ${latest.rain_date}, bắt đầu lúc ${latest.start_time.split(' ')[0]})` 
+                    : `Trời tạnh ráo. Đợt mưa gần nhất: Đợt ${latest.episode_no} (${latest.start_time.split(' ')[0]} ➔ ${latest.end_time.split(' ')[0]} | ${latest.duration_min} phút | ${latest.gap_desc})`
             };
         } else {
             currentRainStatus = {
                 isRaining: false,
                 lastRainEvent: null,
-                text: 'Xuân Định 48 giờ qua hoàn toàn tạnh ráo, không có mưa.'
+                text: 'Xuân Định 72 giờ qua hoàn toàn tạnh ráo, không có đợt mưa nào.'
             };
         }
 
@@ -139,7 +197,7 @@ async function syncRainHistoryFromSatellite() {
 syncRainHistoryFromSatellite();
 setInterval(syncRainHistoryFromSatellite, 10 * 60 * 1000);
 
-// API xuất danh sách dải rộng các cơn mưa
+// API trả về lịch sử phân tách từng đợt mưa
 app.get('/api/rain-history', async (req, res) => {
     try {
         const { data, error } = await supabase
