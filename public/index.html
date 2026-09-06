@@ -49,6 +49,23 @@
             </div>
         </header>
 
+        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (ĐỒNG NAI) -->
+        <div id="banner-rain-tracker" class="bg-gradient-to-r from-blue-950/80 via-slate-900 to-[#152238] border border-blue-600/60 rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span id="rain-icon" class="text-2xl">🌦️</span>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Quan trắc mưa thực tế: Xã Xuân Định (Đồng Nai)</h3>
+                        <span id="rain-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-gray-300 font-mono">Đang kiểm tra...</span>
+                    </div>
+                    <p id="rain-desc" class="text-xs text-gray-300 mt-0.5">Đang tải lịch sử các cơn mưa từ vệ tinh khí tượng...</p>
+                </div>
+            </div>
+            <button onclick="openRainModal()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow flex items-center gap-1.5 border border-blue-500">
+                <span>🌧️</span> Xem Lịch Sử Mưa Dải Rộng
+            </button>
+        </div>
+
         <!-- Banner cảnh báo 72h -->
         <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
@@ -591,7 +608,6 @@
                             <th class="py-2.5 px-2 text-purple-300 font-bold">R.Str</th>
                             <th class="py-2.5 px-2 text-emerald-300 font-bold">Uptime(s)</th>
                             <th class="py-2.5 px-2 text-rose-400 font-bold">Fl.Fail</th>
-                            <!-- 14 Cột Mới Nhất -->
                             <th class="py-2.5 px-2 text-blue-400 font-bold">DO.Pred</th>
                             <th class="py-2.5 px-2 text-cyan-300 font-bold">DO.Sat</th>
                             <th class="py-2.5 px-2 text-amber-300 font-bold">AI.Sig</th>
@@ -630,6 +646,42 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- MODAL TRA CỨU DẢI RỘNG LỊCH SỬ CÁC CƠN MƯA -->
+    <div id="rain-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
+        <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🌧️</span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-100">Dải Rộng Lịch Sử Các Cơn Mưa Thực Tế (Xã Xuân Định)</h3>
+                        <p class="text-xs text-gray-400">Dữ liệu quan trắc thực tế từ radar vệ tinh Open-Meteo | Lưu trữ tự động trên Supabase</p>
+                    </div>
+                </div>
+                <button onclick="closeRainModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-1">
+                <div class="border border-slate-700 rounded-lg overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-[#0b1329] text-gray-400 uppercase">
+                            <tr>
+                                <th class="py-2.5 px-3">STT</th>
+                                <th class="py-2.5 px-3">Mưa lúc (Bắt đầu)</th>
+                                <th class="py-2.5 px-3">Tạnh lúc (Kết thúc)</th>
+                                <th class="py-2.5 px-3">Thời lượng</th>
+                                <th class="py-2.5 px-3 text-cyan-300">Đỉnh mưa (mm/15p)</th>
+                                <th class="py-2.5 px-3 text-blue-300">Tổng lượng mưa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rain-table-body" class="divide-y border-slate-700 text-gray-300">
+                            <tr><td colspan="6" class="py-6 text-center text-gray-400">Đang tải lịch sử mưa...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal trung tâm sự cố 72h -->
@@ -784,6 +836,55 @@
             } catch (e) {
                 return rawTime;
             }
+        }
+
+        // Cập nhật trạng thái mưa Xuân Định
+        socket.on('rain_status_update', (st) => {
+            const badge = document.getElementById('rain-badge');
+            const desc = document.getElementById('rain-desc');
+            const icon = document.getElementById('rain-icon');
+
+            if (st.isRaining) {
+                badge.innerText = "ĐANG CÓ MƯA";
+                badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white animate-pulse font-mono";
+                icon.innerText = "🌧️";
+            } else {
+                badge.innerText = "TẠNH RÁO";
+                badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-700 font-mono";
+                icon.innerText = "☀️";
+            }
+            desc.innerText = st.text;
+        });
+
+        async function openRainModal() {
+            document.getElementById('rain-modal').classList.remove('hidden');
+            try {
+                const res = await fetch('/api/rain-history');
+                const data = await res.json();
+                const tbody = document.getElementById('rain-table-body');
+
+                if (!data.history || data.history.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-400">Chưa ghi nhận cơn mưa nào trong 48h qua tại xã Xuân Định.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.history.map((r, idx) => `
+                    <tr>
+                        <td class="py-2.5 px-3 text-gray-400">#${idx + 1}</td>
+                        <td class="py-2.5 px-3 text-cyan-400 font-bold">${r.start_time}</td>
+                        <td class="py-2.5 px-3 text-emerald-400 font-bold">${r.end_time}</td>
+                        <td class="py-2.5 px-3 text-amber-300 font-semibold">${r.duration_min} phút</td>
+                        <td class="py-2.5 px-3 text-cyan-300">${r.peak_mm} mm</td>
+                        <td class="py-2.5 px-3 text-blue-300 font-bold">${r.total_mm} mm</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Lỗi tải lịch sử mưa:", err);
+            }
+        }
+
+        function closeRainModal() {
+            document.getElementById('rain-modal').classList.add('hidden');
         }
 
         function decodeIL(ilVal) {
@@ -1357,7 +1458,6 @@
                         <td class="py-2 px-2 text-emerald-300">${item.up ? `${item.up}s` : '0s'}</td>
                         <td class="py-2 px-2 ${item.flfail > 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-gray-400'}">${item.flfail ?? 0}</td>
 
-                        <!-- 14 Cột AI & Adapter & Stack Mới -->
                         <td class="py-2 px-2 text-blue-400 font-bold">${item.dopred !== undefined && item.dopred !== null ? Number(item.dopred).toFixed(3) : '--'}</td>
                         <td class="py-2 px-2 text-cyan-300 font-bold">${item.dosat !== undefined && item.dosat !== null ? Number(item.dosat).toFixed(3) : '--'}</td>
                         <td class="py-2 px-2 text-amber-300">${item.aisig !== undefined && item.aisig !== null ? Number(item.aisig).toFixed(4) : '--'}</td>
