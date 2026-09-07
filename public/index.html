@@ -49,7 +49,7 @@
             </div>
         </header>
 
-        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (TỪ 01/09/2026) -->
+        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (TỪ 01/09 ĐẾN NAY) -->
         <div id="banner-rain-tracker" class="bg-gradient-to-r from-blue-950/80 via-slate-900 to-[#152238] border border-blue-600/60 rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span id="rain-icon" class="text-2xl">🌦️</span>
@@ -605,7 +605,7 @@
                             <th class="py-2.5 px-2 text-blue-300">H.Left</th>
                             <th class="py-2.5 px-2 text-cyan-400 font-bold">CSQ</th>
                             <th class="py-2.5 px-2 text-yellow-300 font-bold">Boot</th>
-                            <th class="py-2.5 px-2 text-purple-300 font-bold">R.Str</th>
+                            <th class="py-2.5 px-2 text-purple-300 font-mono">R.Str</th>
                             <th class="py-2.5 px-2 text-emerald-300 font-bold">Uptime(s)</th>
                             <th class="py-2.5 px-2 text-rose-400 font-bold">Fl.Fail</th>
                             <th class="py-2.5 px-2 text-blue-400 font-bold">DO.Pred</th>
@@ -840,17 +840,17 @@
             desc.innerText = st.text;
         });
 
-        // ================= HIỂN THỊ ĐỦ TẤT CẢ CÁC NGÀY TỪ 01/09/2026 ĐẾN NAY =================
+        // ================= HIỂN THỊ ĐẦY ĐỦ CÁC NGÀY TỪ 01/09/2026 ĐẾN NAY =================
         async function openRainModal() {
             document.getElementById('rain-modal').classList.remove('hidden');
             const container = document.getElementById('rain-grouped-container');
-            container.innerHTML = `<div class="text-center py-12 text-gray-400">Đang tải và gom nhóm dữ liệu các đợt mưa từ 01/09/2026...</div>`;
+            container.innerHTML = `<div class="text-center py-12 text-gray-400">Đang tải và đồng bộ dữ liệu mưa từ 01/09/2026...</div>`;
 
             try {
                 const res = await fetch('/api/rain-history');
                 const data = await res.json();
 
-                // Gom nhóm các bản ghi nhận được theo ngày
+                // Gom nhóm các bản ghi mưa nhận được từ Supabase
                 const groups = {};
                 (data.history || []).forEach(r => {
                     let d = r.rain_date;
@@ -864,9 +864,9 @@
                     }
                 });
 
-                // Tạo danh sách toàn bộ ngày từ 01/09/2026 đến ngày hôm nay
+                // Tạo mảng toàn bộ ngày từ 01/09/2026 đến ngày hiện tại
                 const allCalendarDates = [];
-                let cur = new Date(2026, 8, 1); // Tháng 9 năm 2026
+                let cur = new Date(2026, 8, 1); // 01/09/2026
                 const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
                 const end = new Date(nowVN.getFullYear(), nowVN.getMonth(), nowVN.getDate());
 
@@ -874,18 +874,18 @@
                     const d = String(cur.getDate()).padStart(2, '0');
                     const m = String(cur.getMonth() + 1).padStart(2, '0');
                     const y = cur.getFullYear();
-                    allCalendarDates.unshift(`${d}/${m}/${y}`); // Đưa ngày mới nhất lên đầu
+                    allCalendarDates.unshift(`${d}/${m}/${y}`); // Đưa ngày mới nhất lên đầu (08/09 -> 07/09 -> ...)
                     cur.setDate(cur.getDate() + 1);
                 }
 
                 const todayStr = `${String(nowVN.getDate()).padStart(2, '0')}/${String(nowVN.getMonth() + 1).padStart(2, '0')}/${nowVN.getFullYear()}`;
 
-                // Duyệt qua tất cả các ngày: có mưa thì in chi tiết, không mưa thì in thanh tạnh ráo
+                // Duyệt qua từng ngày: có đợt mưa thì in bảng chi tiết, không mưa thì in thanh tạnh ráo
                 container.innerHTML = allCalendarDates.map(dateKey => {
                     const dayEvents = groups[dateKey];
                     const isToday = (dateKey === todayStr);
 
-                    // Trường hợp NGÀY TẠNH RÁO HOÀN TOÀN (0.0 mm)
+                    // NGÀY TẠNH RÁO HOÀN TOÀN
                     if (!dayEvents || dayEvents.length === 0) {
                         return `
                             <div class="bg-[#152238]/60 border border-slate-800 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
@@ -896,13 +896,13 @@
                                 </div>
                                 <div class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
                                     <span>☀️</span>
-                                    <span>Tạnh ráo cả ngày (0.0 mm)</span>
+                                    <span>${isToday ? 'Tạnh ráo (tính đến hiện tại)' : 'Tạnh ráo cả ngày (0.0 mm)'}</span>
                                 </div>
                             </div>
                         `;
                     }
 
-                    // Trường hợp NGÀY CÓ MƯA: Dựng thẻ chi tiết từng đợt
+                    // NGÀY CÓ MƯA: Dựng thẻ chi tiết từng đợt
                     dayEvents.sort((a, b) => (a.episode_no || 1) - (b.episode_no || 1));
                     const totalMmDay = dayEvents.reduce((sum, item) => sum + (parseFloat(item.total_mm) || 0), 0);
 
