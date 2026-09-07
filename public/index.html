@@ -863,17 +863,28 @@
                 // Nhóm các đợt mưa theo ngày
                 const groups = {};
                 data.history.forEach(r => {
-                    const d = r.rain_date || 'Không rõ ngày';
+                    let d = r.rain_date;
+                    if (!d && r.start_time) {
+                        const parts = r.start_time.split(' ');
+                        if (parts.length > 1) d = parts[1];
+                    }
+                    if (!d) d = 'Không rõ ngày';
                     if (!groups[d]) groups[d] = [];
                     groups[d].push(r);
+                });
+
+                // Sắp xếp ngày mới nhất lên trên cùng (6/9 -> 3/9)
+                const sortedDates = Object.keys(groups).sort((a, b) => {
+                    const [d1, m1, y1] = a.split('/').map(Number);
+                    const [d2, m2, y2] = b.split('/').map(Number);
+                    return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
                 });
 
                 const todayStr = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
                 // Dựng từng khối riêng cho mỗi ngày
-                container.innerHTML = Object.keys(groups).map(dateKey => {
+                container.innerHTML = sortedDates.map(dateKey => {
                     const dayEvents = groups[dateKey];
-                    // Sắp xếp các đợt trong ngày từ sáng tới tối (Đợt 1 -> 2 -> 3)
                     dayEvents.sort((a, b) => (a.episode_no || 1) - (b.episode_no || 1));
 
                     const totalMmDay = dayEvents.reduce((sum, item) => sum + (parseFloat(item.total_mm) || 0), 0);
@@ -1060,13 +1071,11 @@
 
             const d = packet.data;
             
-            // 4 Cảm biến chính
             document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
             document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
             document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
             document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
 
-            // Độ kiềm
             document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
             const alkStatusTxt = document.getElementById('txt-alk-status');
             if (Number(d.alk) < 0) {
@@ -1085,7 +1094,6 @@
                 }
             }
 
-            // BTRI & Quạt
             document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
             const btriTxt = document.getElementById('txt-btri-eval');
             if (d.btri >= 75) {
@@ -1103,7 +1111,6 @@
             fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
             fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
 
-            // Cờ IL, DOM, SURV, ADAPT, CS
             const ilDecoded = decodeIL(d.il);
             const ilEl = document.getElementById('val-il');
             ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
@@ -1158,7 +1165,6 @@
             if (d.cs === 1) bannerCs.classList.remove('hidden');
             else bannerCs.classList.add('hidden');
 
-            // 16 THÔNG SỐ CHẨN ĐOÁN
             if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
             if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
             if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
@@ -1189,7 +1195,6 @@
             if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
             if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = d.wcet;
 
-            // 5 THÔNG SỐ PHẦN CỨNG
             if (d.csq !== undefined) {
                 const csqTxt = d.csq === 99 ? '99 (N/A)' : `${d.csq}/31`;
                 document.getElementById('txt-csq').innerText = csqTxt;
@@ -1204,7 +1209,6 @@
                 document.getElementById('val-uptime').innerText = `${hrs}h ${m}m`;
             }
 
-            // 14 THÔNG SỐ AI PINN & ADAPTER & HỆ THỐNG
             if (d.dopred !== undefined) document.getElementById('val-dopred').innerText = `${Number(d.dopred).toFixed(3)} mg/L`;
             if (d.dosat !== undefined) document.getElementById('val-dosat').innerText = `${Number(d.dosat).toFixed(3)} mg/L`;
             if (d.aisig !== undefined) document.getElementById('val-aisig').innerText = Number(d.aisig).toFixed(4);
