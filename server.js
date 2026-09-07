@@ -65,8 +65,8 @@ function formatMinutesToHours(totalMin) {
 // ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ XUÂN ĐỊNH (TÁCH ĐỢT) =================
 async function syncRainHistoryFromSatellite() {
     try {
-        // Quét thực tế 7 ngày gần nhất từ vệ tinh theo bước nhảy 15 phút
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=7&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
+        // forecast_days=1 để lấy trọn vẹn cả ngày 6/9 và hôm nay, không bị cắt
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=3&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -87,7 +87,8 @@ async function syncRainHistoryFromSatellite() {
 
         for (let i = 0; i < times.length; i++) {
             const p = parseFloat(precips[i]) || 0.0;
-            const isRaining = p >= 0.1;
+            // Hạ ngưỡng bắt mưa xuống 0.05mm để không sót cơn mưa nhỏ
+            const isRaining = p >= 0.05;
 
             if (isRaining) {
                 if (!inRain) {
@@ -132,7 +133,7 @@ async function syncRainHistoryFromSatellite() {
             }
         }
 
-        // Đánh số Đợt 1, Đợt 2 theo từng ngày độc lập
+        // Đánh số thứ tự Đợt 1, Đợt 2 theo từng ngày độc lập
         let lastEventPerDate = {};
         for (let idx = 0; idx < parsedEvents.length; idx++) {
             const ev = parsedEvents[idx];
@@ -167,7 +168,7 @@ async function syncRainHistoryFromSatellite() {
         if (parsedEvents.length > 0) {
             const latest = parsedEvents[parsedEvents.length - 1];
             const lastP = parseFloat(precips[precips.length - 1]) || 0.0;
-            const isCurrentlyRaining = lastP >= 0.1;
+            const isCurrentlyRaining = lastP >= 0.05;
 
             currentRainStatus = {
                 isRaining: isCurrentlyRaining,
@@ -233,7 +234,6 @@ mqttClient.on('message', async (topic, message) => {
         }
 
         const insertPayload = {
-            // 12 trường cốt lõi
             T: parseFloat(data.T) || 0.0,
             S: parseFloat(data.S) || 0.0,
             pH: parseFloat(data.pH) || 0.0,
@@ -247,7 +247,6 @@ mqttClient.on('message', async (topic, message) => {
             adapt_acc: parseInt(data.adapt_acc) || 0,
             cs: parseInt(data.cs) || 0,
 
-            // 16 trường chẩn đoán & dự báo mở rộng
             rate: parseFloat(data.rate) || 0.0,
             eta: parseFloat(data.eta) || 0.0,
             braw: parseFloat(data.braw) || 0.0,
@@ -265,14 +264,12 @@ mqttClient.on('message', async (topic, message) => {
             wcet: parseInt(data.wcet) || 0,
             hleft: parseInt(data.hleft) || 0,
 
-            // 5 trường phần cứng & viễn thông
             csq: data.csq !== undefined ? parseInt(data.csq) : 99,
             rstr: parseInt(data.rstr) || 0,
             boot: parseInt(data.boot) || 0,
             up: parseInt(data.up) || 0,
             flfail: parseInt(data.flfail) || 0,
 
-            // 14 trường Edge-AI PINN, Adapter & FreeRTOS
             dopred: parseFloat(data.dopred) || 0.0,
             dosat: parseFloat(data.dosat) || 0.0,
             aisig: parseFloat(data.aisig) || 0.0,
