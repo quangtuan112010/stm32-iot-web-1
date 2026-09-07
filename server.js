@@ -29,7 +29,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let lastDeviceTime = 0;
 let lastTelemetryPacket = null;
-let currentRainStatus = { isRaining: false, lastRainEvent: null, text: 'Đang kiểm tra thời tiết Xuân Định...' };
+let currentRainStatus = { 
+    isRainingNow: false, 
+    hasRainedToday: false, 
+    todayRainCount: 0,
+    currentMm: 0,
+    text: 'Đang kiểm tra thời tiết hôm nay tại Xuân Định...' 
+};
 
 function formatSupabaseTime(rawTime) {
     if (!rawTime) return '';
@@ -54,31 +60,27 @@ function formatDurationSeconds(totalSeconds) {
     return remMin > 0 ? `${hours} giờ ${remMin} phút ${sec} giây` : `${hours} giờ ${sec} giây`;
 }
 
-function formatMinutesToHours(totalMin) {
-    if (totalMin <= 0) return 'Đợt đầu tiên trong ngày';
-    const hrs = Math.floor(totalMin / 60);
-    const m = totalMin % 60;
-    if (hrs === 0) return `Cách đợt trước ${m} phút`;
-    return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
-}
-
-// ================= THUẬT TOÁN QUAN TRẮC MƯA CHUẨN TỪ 01/09/2026 ĐẾN NAY =================
-async function syncRainHistoryFromSatellite() {
+// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ HÔM NAY (KHÔNG DỰ BÁO) =================
+async function checkTodayRainOnly() {
     try {
         const now = Date.now();
-        // past_days=7 lấy trọn vẹn từ 01/09 đến 07/09, forecast_days=1 lấy ngày 08/09
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&hourly=precipitation,rain&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
+        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+        const pad = (n) => String(n).padStart(2, '0');
+        const todayStr = `${pad(nowVN.getDate())}/${pad(nowVN.getMonth() + 1)}/${nowVN.getFullYear()}`;
+
+        // Chỉ lấy dữ liệu thời gian thực hiện tại (current) và các giờ của ngày hôm nay (forecast_days=1)
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
         
-        const res = await fetch(url, {
-            headers: { 'User-Agent': 'STM32-IoT-Tilapia/1.0' }
-        });
+        const res = await fetch(url, { headers: { 'User-Agent': 'STM32-Tilapia-IoT/1.0' } });
         const data = await res.json();
 
-        if (data.error || !data.hourly || !data.hourly.time) {
-            console.error('[OPEN-METEO ERROR]:', data.reason || 'Không nhận được dữ liệu hourly');
-            return;
-        }
+        if (data.error || !data.hourly || !data.hourly.time) return;
 
+        // 1. Kiểm tra chính xác NGAY LÚC NÀY có đang mưa không
+        const currentP = parseFloat(data.current.precipitation) || 0.0;
+        const isRainingNow = currentP >= 0.1;
+
+        // 2. Quét từ 00:00 sáng nay ĐẾN ĐÚNG THỜI ĐIỂM HIỆN TẠI (Loại bỏ 100% tương lai)
         const times = data.hourly.time;
         const precips = data.hourly.precipitation;
 
@@ -86,27 +88,19 @@ async function syncRainHistoryFromSatellite() {
         let startIdx = 0;
         let peakVal = 0.0;
         let totalVal = 0.0;
-        const parsedEvents = [];
+        const todayEvents = [];
 
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // CHẶN CỨNG TƯƠNG LAI: Dừng ngay khi chạm tới các giờ chưa xảy ra
+            // CHẶN CỨNG: Nếu giờ này chưa đến -> DỪNG NGAY
             if (itemTimestamp > now) {
                 if (inRain) {
-                    const actualEndIdx = i - 1;
-                    const startIso = times[startIdx];
-                    const endIso = times[actualEndIdx];
-                    const durMin = Math.max(60, (actualEndIdx - startIdx + 1) * 60);
-                    const datePart = startIso.split('T')[0];
-                    const [y, m, d] = datePart.split('-');
-
-                    parsedEvents.push({
-                        rain_date: `${d}/${m}/${y}`,
-                        start_iso: startIso,
-                        end_iso: endIso,
-                        start_time: formatSupabaseTime(startIso),
-                        end_time: formatSupabaseTime(endIso) + ' (Đang mưa)',
+                    const durMin = Math.max(60, (i - startIdx) * 60);
+                    todayEvents.push({
+                        rain_date: todayStr,
+                        start_time: times[startIdx].split('T')[1],
+                        end_time: 'Đang mưa',
                         duration_min: durMin,
                         peak_mm: parseFloat(peakVal.toFixed(2)),
                         total_mm: parseFloat(totalVal.toFixed(2))
@@ -117,9 +111,7 @@ async function syncRainHistoryFromSatellite() {
             }
 
             const p = parseFloat(precips[i]) || 0.0;
-            const isRaining = p >= 0.1; // Mưa từ 0.1 mm trở lên
-
-            if (isRaining) {
+            if (p >= 0.1) {
                 if (!inRain) {
                     inRain = true;
                     startIdx = i;
@@ -132,19 +124,11 @@ async function syncRainHistoryFromSatellite() {
             } else {
                 if (inRain) {
                     inRain = false;
-                    const actualEndIdx = i;
-                    const startIso = times[startIdx];
-                    const endIso = times[actualEndIdx];
-                    const durMin = Math.max(60, (actualEndIdx - startIdx) * 60);
-                    const datePart = startIso.split('T')[0];
-                    const [y, m, d] = datePart.split('-');
-
-                    parsedEvents.push({
-                        rain_date: `${d}/${m}/${y}`,
-                        start_iso: startIso,
-                        end_iso: endIso,
-                        start_time: formatSupabaseTime(startIso),
-                        end_time: formatSupabaseTime(endIso),
+                    const durMin = Math.max(60, (i - startIdx) * 60);
+                    todayEvents.push({
+                        rain_date: todayStr,
+                        start_time: times[startIdx].split('T')[1],
+                        end_time: times[i].split('T')[1],
                         duration_min: durMin,
                         peak_mm: parseFloat(peakVal.toFixed(2)),
                         total_mm: parseFloat(totalVal.toFixed(2))
@@ -153,95 +137,58 @@ async function syncRainHistoryFromSatellite() {
             }
         }
 
-        // Đánh số thứ tự Đợt 1, Đợt 2 theo từng ngày độc lập
-        let lastEventPerDate = {};
-        for (let idx = 0; idx < parsedEvents.length; idx++) {
-            const ev = parsedEvents[idx];
-            const dKey = ev.rain_date;
+        // 3. Đánh số đợt và lưu vào Database Supabase
+        if (todayEvents.length > 0) {
+            // Xóa dữ liệu cũ của ngày hôm nay để cập nhật danh sách đợt mới nhất
+            await supabase.from('rain_history').delete().eq('rain_date', todayStr);
 
-            if (!lastEventPerDate[dKey]) {
-                ev.episode_no = 1;
-                ev.gap_desc = 'Đợt đầu tiên trong ngày';
-            } else {
-                const prev = lastEventPerDate[dKey];
-                ev.episode_no = prev.episode_no + 1;
-                const tPrevEnd = new Date(prev.end_iso + ":00+07:00").getTime();
-                const tCurrStart = new Date(ev.start_iso + ":00+07:00").getTime();
-                const diffMin = Math.max(0, Math.floor((tCurrStart - tPrevEnd) / (60 * 1000)));
-                ev.gap_desc = formatMinutesToHours(diffMin);
-            }
-            lastEventPerDate[dKey] = ev;
-        }
-
-        // Lưu vào Supabase: Xóa sạch cache cũ và nạp lại chuẩn xác
-        if (parsedEvents.length > 0) {
-            await supabase.from('rain_history').delete().neq('id', 0);
-
-            const rowsToInsert = parsedEvents.map(ev => ({
-                rain_date: ev.rain_date,
-                episode_no: ev.episode_no,
-                gap_desc: ev.gap_desc,
-                start_time: ev.start_time,
-                end_time: ev.end_time,
+            const rowsToInsert = todayEvents.map((ev, idx) => ({
+                rain_date: todayStr,
+                episode_no: idx + 1,
+                start_time: `${ev.start_time} ${todayStr}`,
+                end_time: ev.end_time === 'Đang mưa' ? 'Đang mưa' : `${ev.end_time} ${todayStr}`,
                 duration_min: ev.duration_min,
                 peak_mm: ev.peak_mm,
-                total_mm: ev.total_mm
+                total_mm: ev.total_mm,
+                gap_desc: idx === 0 ? 'Đợt đầu tiên hôm nay' : `Đợt thứ ${idx + 1}`
             }));
 
-            const { error: insErr } = await supabase.from('rain_history').insert(rowsToInsert);
-            if (insErr) {
-                console.error('[SUPABASE RAIN INSERT ERROR]:', insErr.message);
-            }
+            await supabase.from('rain_history').insert(rowsToInsert);
         }
 
-        if (parsedEvents.length > 0) {
-            const latest = parsedEvents[parsedEvents.length - 1];
-            const isCurrentlyRaining = latest.end_time.includes('(Đang mưa)');
-
-            currentRainStatus = {
-                isRaining: isCurrentlyRaining,
-                lastRainEvent: latest,
-                text: isCurrentlyRaining 
-                    ? `Trời đang mưa tại Xuân Định (Đợt ${latest.episode_no} ngày ${latest.rain_date}, bắt đầu lúc ${latest.start_time.split(' ')[0]})` 
-                    : `Trời tạnh ráo. Đợt mưa gần nhất: Ngày ${latest.rain_date} [Đợt ${latest.episode_no}] (${latest.start_time.split(' ')[0]} ➔ ${latest.end_time.split(' ')[0]} | ${latest.duration_min} phút)`
-            };
+        // 4. Cập nhật thông điệp hiển thị
+        const hasRainedToday = todayEvents.length > 0 || isRainingNow;
+        let textMsg = '';
+        if (isRainingNow) {
+            textMsg = `🌧️ HIỆN TẠI ĐANG CÓ MƯA (Lượng mưa: ${currentP.toFixed(1)} mm)`;
+        } else if (hasRainedToday) {
+            const last = todayEvents[todayEvents.length - 1];
+            textMsg = `☀️ Hiện tại tạnh ráo. Hôm nay đã có ${todayEvents.length} đợt mưa (gần nhất: ${last.start_time} - ${last.end_time})`;
         } else {
-            currentRainStatus = {
-                isRaining: false,
-                lastRainEvent: null,
-                text: 'Xuân Định tuần qua hoàn toàn tạnh ráo, không có đợt mưa nào.'
-            };
+            textMsg = `☀️ Hôm nay chưa có mưa tại xã Xuân Định.`;
         }
 
-        console.log(`[RAIN SYNC OK] Đã đồng bộ ${parsedEvents.length} đợt mưa thực tế từ 01/09/2026 đến nay.`);
+        currentRainStatus = {
+            isRainingNow: isRainingNow,
+            hasRainedToday: hasRainedToday,
+            todayRainCount: todayEvents.length,
+            currentMm: currentP,
+            text: textMsg,
+            events: todayEvents
+        };
+
         io.emit('rain_status_update', currentRainStatus);
     } catch (err) {
-        console.error('[RAIN SYNC ERROR]:', err.message);
+        console.error('[RAIN ERROR]:', err.message);
     }
 }
 
-// Đồng bộ định kỳ 10 phút một lần
-syncRainHistoryFromSatellite();
-setInterval(syncRainHistoryFromSatellite, 10 * 60 * 1000);
+// Kiểm tra ngay khi bật server và tự động chạy ngầm mỗi 10 phút
+checkTodayRainOnly();
+setInterval(checkTodayRainOnly, 10 * 60 * 1000);
 
-// Endpoint làm mới ngay theo yêu cầu từ web
-app.get('/api/refresh-rain', async (req, res) => {
-    await syncRainHistoryFromSatellite();
-    const { data } = await supabase.from('rain_history').select('*').order('id', { ascending: true });
-    res.json({ current: currentRainStatus, history: data || [] });
-});
-
-app.get('/api/rain-history', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('rain_history')
-            .select('*')
-            .order('id', { ascending: true });
-        if (error) return res.status(500).json({ error: error.message });
-        res.json({ current: currentRainStatus, history: data || [] });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+app.get('/api/rain-today', async (req, res) => {
+    res.json(currentRainStatus);
 });
 
 // ================= KẾT NỐI MQTT HIVEMQ CLOUD =================
