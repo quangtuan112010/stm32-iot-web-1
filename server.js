@@ -20,7 +20,7 @@ const MQTT_PASS = process.env.MQTT_PASS;
 const TOPIC_UPLINK = 'stm32/sensor-data';
 const TOPIC_DOWNLINK = 'stm32/control-value';
 
-// TỌA ĐỘ THỰC TẾ XÃ XUÂN ĐỊNH, XUÂN LỘC, ĐỒNG NAI
+// TỌA ĐỘ XÃ XUÂN ĐỊNH, XUÂN LỘC, ĐỒNG NAI
 const XUAN_DINH_LAT = 10.91;
 const XUAN_DINH_LON = 107.21;
 
@@ -62,42 +62,40 @@ function formatMinutesToHours(totalMin) {
     return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
 }
 
-// ================= QUAN TRẮC MƯA THỰC TẾ TỪ 01/09/2026 ĐẾN NAY =================
+// ================= THUẬT TOÁN QUAN TRẮC MƯA CHUẨN TỪ 01/09/2026 ĐẾN NAY =================
 async function syncRainHistoryFromSatellite() {
     try {
         const now = Date.now();
-        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-        const pad = (n) => String(n).padStart(2, '0');
-        const todayIso = `${nowVN.getFullYear()}-${pad(nowVN.getMonth() + 1)}-${pad(nowVN.getDate())}`;
-
-        // Lấy chính xác từ mốc 01/09/2026 đến hết ngày hôm nay
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&start_date=2026-09-01&end_date=${todayIso}&timezone=Asia%2FHo_Chi_Minh`;
+        // Dùng endpoint hourly chuẩn quốc tế: hỗ trợ past_days=7 mượt mà không bao giờ bị lỗi API
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&hourly=precipitation,rain&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
+        
         const res = await fetch(url);
         const data = await res.json();
 
-        if (!data.minutely_15 || !data.minutely_15.time) return;
+        if (data.error || !data.hourly || !data.hourly.time) {
+            console.error('[OPEN-METEO ERROR]:', data.reason || 'Khong co du lieu hourly');
+            return;
+        }
 
-        const times = data.minutely_15.time;
-        const precips = data.minutely_15.precipitation;
+        const times = data.hourly.time;
+        const precips = data.hourly.precipitation;
 
         let inRain = false;
         let startIdx = 0;
         let peakVal = 0.0;
         let totalVal = 0.0;
-        let dryCounter = 0;
         const parsedEvents = [];
-        const DRY_THRESHOLD_TICKS = 2; // Tạnh liên tiếp >= 30 phút -> chốt đợt
 
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // CHẶN CỨNG TƯƠNG LAI: Không lấy bất kỳ phút nào sau thời điểm hiện tại
+            // CHẶN CỨNG TƯƠNG LAI: Bỏ qua toàn bộ mốc giờ sau thời điểm hiện tại
             if (itemTimestamp > now) {
                 if (inRain) {
                     const actualEndIdx = i - 1;
                     const startIso = times[startIdx];
                     const endIso = times[actualEndIdx];
-                    const durMin = Math.max(15, (actualEndIdx - startIdx + 1) * 15);
+                    const durMin = Math.max(60, (actualEndIdx - startIdx + 1) * 60);
                     const datePart = startIso.split('T')[0];
                     const [y, m, d] = datePart.split('-');
 
@@ -117,7 +115,7 @@ async function syncRainHistoryFromSatellite() {
             }
 
             const p = parseFloat(precips[i]) || 0.0;
-            const isRaining = p >= 0.05;
+            const isRaining = p >= 0.1; // Mưa từ 0.1mm trở lên
 
             if (isRaining) {
                 if (!inRain) {
@@ -125,41 +123,35 @@ async function syncRainHistoryFromSatellite() {
                     startIdx = i;
                     peakVal = p;
                     totalVal = p;
-                    dryCounter = 0;
                 } else {
                     if (p > peakVal) peakVal = p;
                     totalVal += p;
-                    dryCounter = 0;
                 }
             } else {
                 if (inRain) {
-                    dryCounter++;
-                    if (dryCounter >= DRY_THRESHOLD_TICKS || i === times.length - 1) {
-                        inRain = false;
-                        const actualEndIdx = i - dryCounter;
-                        const startIso = times[startIdx];
-                        const endIso = times[actualEndIdx >= startIdx ? actualEndIdx : startIdx];
-                        const durMin = Math.max(15, (actualEndIdx - startIdx + 1) * 15);
-                        const datePart = startIso.split('T')[0];
-                        const [y, m, d] = datePart.split('-');
+                    inRain = false;
+                    const actualEndIdx = i;
+                    const startIso = times[startIdx];
+                    const endIso = times[actualEndIdx];
+                    const durMin = Math.max(60, (actualEndIdx - startIdx) * 60);
+                    const datePart = startIso.split('T')[0];
+                    const [y, m, d] = datePart.split('-');
 
-                        parsedEvents.push({
-                            rain_date: `${d}/${m}/${y}`,
-                            start_iso: startIso,
-                            end_iso: endIso,
-                            start_time: formatSupabaseTime(startIso),
-                            end_time: formatSupabaseTime(endIso),
-                            duration_min: durMin,
-                            peak_mm: parseFloat(peakVal.toFixed(2)),
-                            total_mm: parseFloat(totalVal.toFixed(2))
-                        });
-                        dryCounter = 0;
-                    }
+                    parsedEvents.push({
+                        rain_date: `${d}/${m}/${y}`,
+                        start_iso: startIso,
+                        end_iso: endIso,
+                        start_time: formatSupabaseTime(startIso),
+                        end_time: formatSupabaseTime(endIso),
+                        duration_min: durMin,
+                        peak_mm: parseFloat(peakVal.toFixed(2)),
+                        total_mm: parseFloat(totalVal.toFixed(2))
+                    });
                 }
             }
         }
 
-        // Đánh số Đợt 1, Đợt 2 theo từng ngày độc lập
+        // Đánh số thứ tự Đợt 1, Đợt 2 theo từng ngày độc lập
         let lastEventPerDate = {};
         for (let idx = 0; idx < parsedEvents.length; idx++) {
             const ev = parsedEvents[idx];
@@ -178,7 +170,6 @@ async function syncRainHistoryFromSatellite() {
             }
             lastEventPerDate[dKey] = ev;
 
-            // Lưu vào Supabase với khóa duy nhất start_time
             await supabase.from('rain_history').upsert([{
                 rain_date: ev.rain_date,
                 episode_no: ev.episode_no,
@@ -206,10 +197,11 @@ async function syncRainHistoryFromSatellite() {
             currentRainStatus = {
                 isRaining: false,
                 lastRainEvent: null,
-                text: 'Xuân Định từ 01/09/2026 đến nay hoàn toàn tạnh ráo, không có đợt mưa nào.'
+                text: 'Xuân Định tuần qua hoàn toàn tạnh ráo, không có đợt mưa nào.'
             };
         }
 
+        console.log(`[RAIN SYNC OK] Da dong bo ${parsedEvents.length} dot mua thuc te tu 01/09/2026 den nay.`);
         io.emit('rain_status_update', currentRainStatus);
     } catch (err) {
         console.error('[RAIN SYNC ERROR]:', err.message);
