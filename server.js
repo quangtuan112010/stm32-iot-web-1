@@ -66,14 +66,16 @@ function formatMinutesToHours(totalMin) {
 async function syncRainHistoryFromSatellite() {
     try {
         const now = Date.now();
-        // Dùng endpoint hourly chuẩn quốc tế: hỗ trợ past_days=7 mượt mà không bao giờ bị lỗi API
+        // past_days=7 lấy trọn vẹn từ 01/09 đến 07/09, forecast_days=1 lấy ngày 08/09
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&hourly=precipitation,rain&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
         
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: { 'User-Agent': 'STM32-IoT-Tilapia/1.0' }
+        });
         const data = await res.json();
 
         if (data.error || !data.hourly || !data.hourly.time) {
-            console.error('[OPEN-METEO ERROR]:', data.reason || 'Khong co du lieu hourly');
+            console.error('[OPEN-METEO ERROR]:', data.reason || 'Không nhận được dữ liệu hourly');
             return;
         }
 
@@ -89,7 +91,7 @@ async function syncRainHistoryFromSatellite() {
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // CHẶN CỨNG TƯƠNG LAI: Bỏ qua toàn bộ mốc giờ sau thời điểm hiện tại
+            // CHẶN CỨNG TƯƠNG LAI: Dừng ngay khi chạm tới các giờ chưa xảy ra
             if (itemTimestamp > now) {
                 if (inRain) {
                     const actualEndIdx = i - 1;
@@ -115,7 +117,7 @@ async function syncRainHistoryFromSatellite() {
             }
 
             const p = parseFloat(precips[i]) || 0.0;
-            const isRaining = p >= 0.1; // Mưa từ 0.1mm trở lên
+            const isRaining = p >= 0.1; // Mưa từ 0.1 mm trở lên
 
             if (isRaining) {
                 if (!inRain) {
@@ -169,8 +171,13 @@ async function syncRainHistoryFromSatellite() {
                 ev.gap_desc = formatMinutesToHours(diffMin);
             }
             lastEventPerDate[dKey] = ev;
+        }
 
-            await supabase.from('rain_history').upsert([{
+        // Lưu vào Supabase: Xóa sạch cache cũ và nạp lại chuẩn xác
+        if (parsedEvents.length > 0) {
+            await supabase.from('rain_history').delete().neq('id', 0);
+
+            const rowsToInsert = parsedEvents.map(ev => ({
                 rain_date: ev.rain_date,
                 episode_no: ev.episode_no,
                 gap_desc: ev.gap_desc,
@@ -179,7 +186,12 @@ async function syncRainHistoryFromSatellite() {
                 duration_min: ev.duration_min,
                 peak_mm: ev.peak_mm,
                 total_mm: ev.total_mm
-            }], { onConflict: 'start_time' });
+            }));
+
+            const { error: insErr } = await supabase.from('rain_history').insert(rowsToInsert);
+            if (insErr) {
+                console.error('[SUPABASE RAIN INSERT ERROR]:', insErr.message);
+            }
         }
 
         if (parsedEvents.length > 0) {
@@ -201,23 +213,30 @@ async function syncRainHistoryFromSatellite() {
             };
         }
 
-        console.log(`[RAIN SYNC OK] Da dong bo ${parsedEvents.length} dot mua thuc te tu 01/09/2026 den nay.`);
+        console.log(`[RAIN SYNC OK] Đã đồng bộ ${parsedEvents.length} đợt mưa thực tế từ 01/09/2026 đến nay.`);
         io.emit('rain_status_update', currentRainStatus);
     } catch (err) {
         console.error('[RAIN SYNC ERROR]:', err.message);
     }
 }
 
+// Đồng bộ định kỳ 10 phút một lần
 syncRainHistoryFromSatellite();
 setInterval(syncRainHistoryFromSatellite, 10 * 60 * 1000);
+
+// Endpoint làm mới ngay theo yêu cầu từ web
+app.get('/api/refresh-rain', async (req, res) => {
+    await syncRainHistoryFromSatellite();
+    const { data } = await supabase.from('rain_history').select('*').order('id', { ascending: true });
+    res.json({ current: currentRainStatus, history: data || [] });
+});
 
 app.get('/api/rain-history', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('rain_history')
             .select('*')
-            .order('id', { ascending: false })
-            .limit(200);
+            .order('id', { ascending: true });
         if (error) return res.status(500).json({ error: error.message });
         res.json({ current: currentRainStatus, history: data || [] });
     } catch (e) {
