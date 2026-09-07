@@ -62,11 +62,11 @@ function formatMinutesToHours(totalMin) {
     return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
 }
 
-// ================= THUẬT TOÁN TÁCH TỪNG ĐỢT MƯA THỰC TẾ (CLUSTERING) =================
+// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ XUÂN ĐỊNH (TÁCH ĐỢT) =================
 async function syncRainHistoryFromSatellite() {
     try {
-        // Quét thực tế 3 ngày gần nhất (past_days=3) theo bước nhảy 15 phút
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=3&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
+        // Quét thực tế 7 ngày gần nhất từ vệ tinh theo bước nhảy 15 phút
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=7&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -79,10 +79,10 @@ async function syncRainHistoryFromSatellite() {
         let startIdx = 0;
         let peakVal = 0.0;
         let totalVal = 0.0;
-        let dryCounter = 0; // Đếm số khoảng 15 phút tạnh liên tiếp
+        let dryCounter = 0;
         const parsedEvents = [];
 
-        // Ngưỡng: Tạnh liên tiếp >= 30 phút (2 ticks x 15m) -> Chốt sổ cơn mưa hiện tại
+        // Ngưỡng: Tạnh liên tiếp >= 30 phút (2 ticks x 15p) -> Tách thành đợt mới
         const DRY_THRESHOLD_TICKS = 2; 
 
         for (let i = 0; i < times.length; i++) {
@@ -104,7 +104,6 @@ async function syncRainHistoryFromSatellite() {
             } else {
                 if (inRain) {
                     dryCounter++;
-                    // Nếu tạnh đủ 30 phút hoặc đã đến điểm cuối của dữ liệu
                     if (dryCounter >= DRY_THRESHOLD_TICKS || i === times.length - 1) {
                         inRain = false;
                         const actualEndIdx = i - dryCounter;
@@ -112,7 +111,7 @@ async function syncRainHistoryFromSatellite() {
                         const endIso = times[actualEndIdx >= startIdx ? actualEndIdx : startIdx];
                         const durMin = Math.max(15, (actualEndIdx - startIdx + 1) * 15);
 
-                        const datePart = startIso.split('T')[0]; // "YYYY-MM-DD"
+                        const datePart = startIso.split('T')[0];
                         const [y, m, d] = datePart.split('-');
                         const rainDateStr = `${d}/${m}/${y}`;
 
@@ -133,7 +132,7 @@ async function syncRainHistoryFromSatellite() {
             }
         }
 
-        // Đánh số thứ tự Đợt 1, Đợt 2... trong ngày và tính khoảng cách (gap)
+        // Đánh số Đợt 1, Đợt 2 theo từng ngày độc lập
         let lastEventPerDate = {};
         for (let idx = 0; idx < parsedEvents.length; idx++) {
             const ev = parsedEvents[idx];
@@ -153,7 +152,6 @@ async function syncRainHistoryFromSatellite() {
             }
             lastEventPerDate[dKey] = ev;
 
-            // Lưu vào bảng Supabase rain_history
             await supabase.from('rain_history').upsert([{
                 rain_date: ev.rain_date,
                 episode_no: ev.episode_no,
@@ -166,7 +164,6 @@ async function syncRainHistoryFromSatellite() {
             }], { onConflict: 'start_time,end_time' });
         }
 
-        // Cập nhật trạng thái thời gian thực
         if (parsedEvents.length > 0) {
             const latest = parsedEvents[parsedEvents.length - 1];
             const lastP = parseFloat(precips[precips.length - 1]) || 0.0;
@@ -176,14 +173,14 @@ async function syncRainHistoryFromSatellite() {
                 isRaining: isCurrentlyRaining,
                 lastRainEvent: latest,
                 text: isCurrentlyRaining 
-                    ? `Trời đang mưa (Đợt ${latest.episode_no} ngày ${latest.rain_date}, bắt đầu lúc ${latest.start_time.split(' ')[0]})` 
-                    : `Trời tạnh ráo. Đợt mưa gần nhất: Đợt ${latest.episode_no} (${latest.start_time.split(' ')[0]} ➔ ${latest.end_time.split(' ')[0]} | ${latest.duration_min} phút | ${latest.gap_desc})`
+                    ? `Trời đang mưa tại Xuân Định (Đợt ${latest.episode_no} ngày ${latest.rain_date}, bắt đầu lúc ${latest.start_time.split(' ')[0]})` 
+                    : `Trời tạnh ráo. Đợt mưa gần nhất: Ngày ${latest.rain_date} [Đợt ${latest.episode_no}] (${latest.start_time.split(' ')[0]} ➔ ${latest.end_time.split(' ')[0]} | ${latest.duration_min} phút)`
             };
         } else {
             currentRainStatus = {
                 isRaining: false,
                 lastRainEvent: null,
-                text: 'Xuân Định 72 giờ qua hoàn toàn tạnh ráo, không có đợt mưa nào.'
+                text: 'Xuân Định tuần qua hoàn toàn tạnh ráo, không có đợt mưa nào.'
             };
         }
 
@@ -193,11 +190,9 @@ async function syncRainHistoryFromSatellite() {
     }
 }
 
-// Chạy quét mưa ngay khi khởi động và định kỳ 10 phút một lần
 syncRainHistoryFromSatellite();
 setInterval(syncRainHistoryFromSatellite, 10 * 60 * 1000);
 
-// API trả về lịch sử phân tách từng đợt mưa
 app.get('/api/rain-history', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -224,7 +219,6 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe(TOPIC_UPLINK);
 });
 
-// Nhận gói tin Uplink 47 trường từ STM32
 mqttClient.on('message', async (topic, message) => {
     if (topic === TOPIC_UPLINK) {
         const rawStr = message.toString().trim();
@@ -703,7 +697,6 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// Xuất file CSV trọn vẹn 49 cột
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
