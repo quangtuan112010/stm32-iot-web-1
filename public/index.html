@@ -49,20 +49,20 @@
             </div>
         </header>
 
-        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (PHÂN BIỆT THEO NGÀY) -->
+        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (TỪ 01/09/2026) -->
         <div id="banner-rain-tracker" class="bg-gradient-to-r from-blue-950/80 via-slate-900 to-[#152238] border border-blue-600/60 rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span id="rain-icon" class="text-2xl">🌦️</span>
                 <div>
                     <div class="flex items-center gap-2">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Quan trắc mưa thực tế: Xã Xuân Định (Tách riêng theo ngày)</h3>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Quan trắc mưa thực tế: Xã Xuân Định (Từ 01/09 đến nay)</h3>
                         <span id="rain-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-gray-300 font-mono">Đang kiểm tra...</span>
                     </div>
                     <p id="rain-desc" class="text-xs text-gray-300 mt-0.5">Đang phân tích các đợt mưa độc lập theo từng ngày...</p>
                 </div>
             </div>
             <button onclick="openRainModal()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow flex items-center gap-1.5 border border-blue-500">
-                <span>📅</span> Bảng Mưa Tách Riêng Theo Ngày
+                <span>📅</span> Bảng Mưa Tách Riêng Từ 01/09
             </button>
         </div>
 
@@ -648,7 +648,7 @@
 
     </div>
 
-    <!-- MODAL TRA CỨU DẢI RỘNG TỪNG ĐỢT MƯA - CHIA KHỐI THEO TỪNG NGÀY ĐỘC LẬP -->
+    <!-- MODAL TRA CỨU DẢI RỘNG TỪNG ĐỢT MƯA - DUYỆT ĐỦ TỪNG NGÀY TỪ 01/09/2026 -->
     <div id="rain-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -656,15 +656,15 @@
                     <span class="text-2xl">🌧️</span>
                     <div>
                         <h3 class="text-base font-bold text-gray-100">Bảng Phân Tách Chi Tiết Từng Đợt Mưa Theo Ngày (Xã Xuân Định)</h3>
-                        <p class="text-xs text-gray-400">Phân loại riêng từng ngày | Tự động ngắt đợt khi tạnh ≥ 30 phút | Thể hiện khoảng cách giữa các đợt</p>
+                        <p class="text-xs text-gray-400">Duyệt đầy đủ từ 01/09/2026 đến nay | Không bỏ sót ngày nào | Chặn triệt để giờ tương lai</p>
                     </div>
                 </div>
                 <button onclick="closeRainModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
             </div>
 
             <!-- Vùng hiển thị các khối ngày độc lập -->
-            <div id="rain-grouped-container" class="p-5 overflow-y-auto space-y-5 flex-1 bg-[#0b1329]/40">
-                <div class="text-center py-12 text-gray-400">Đang tải và gom nhóm dữ liệu các đợt mưa...</div>
+            <div id="rain-grouped-container" class="p-5 overflow-y-auto space-y-4 flex-1 bg-[#0b1329]/40">
+                <div class="text-center py-12 text-gray-400">Đang tải và đồng bộ dữ liệu mưa từ 01/09/2026...</div>
             </div>
         </div>
     </div>
@@ -840,62 +840,77 @@
             desc.innerText = st.text;
         });
 
-        // ================= HIỂN THỊ TÁCH BIỆT TỪNG NGÀY TRONG MODAL =================
+        // ================= HIỂN THỊ ĐỦ TẤT CẢ CÁC NGÀY TỪ 01/09/2026 ĐẾN NAY =================
         async function openRainModal() {
             document.getElementById('rain-modal').classList.remove('hidden');
             const container = document.getElementById('rain-grouped-container');
-            container.innerHTML = `<div class="text-center py-12 text-gray-400">Đang tải và gom nhóm dữ liệu các đợt mưa...</div>`;
+            container.innerHTML = `<div class="text-center py-12 text-gray-400">Đang tải và gom nhóm dữ liệu các đợt mưa từ 01/09/2026...</div>`;
 
             try {
                 const res = await fetch('/api/rain-history');
                 const data = await res.json();
 
-                if (!data.history || data.history.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center py-12 text-gray-400 space-y-2">
-                            <div class="text-4xl">☀️</div>
-                            <div class="font-bold text-sm text-gray-300">Xuân Định tuần qua tạnh ráo, không có đợt mưa nào!</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Nhóm các đợt mưa theo ngày
+                // Gom nhóm các bản ghi nhận được theo ngày
                 const groups = {};
-                data.history.forEach(r => {
+                (data.history || []).forEach(r => {
                     let d = r.rain_date;
                     if (!d && r.start_time) {
                         const parts = r.start_time.split(' ');
                         if (parts.length > 1) d = parts[1];
                     }
-                    if (!d) d = 'Không rõ ngày';
-                    if (!groups[d]) groups[d] = [];
-                    groups[d].push(r);
+                    if (d) {
+                        if (!groups[d]) groups[d] = [];
+                        groups[d].push(r);
+                    }
                 });
 
-                // Sắp xếp ngày mới nhất lên trên cùng (6/9 -> 3/9)
-                const sortedDates = Object.keys(groups).sort((a, b) => {
-                    const [d1, m1, y1] = a.split('/').map(Number);
-                    const [d2, m2, y2] = b.split('/').map(Number);
-                    return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
-                });
+                // Tạo danh sách toàn bộ ngày từ 01/09/2026 đến ngày hôm nay
+                const allCalendarDates = [];
+                let cur = new Date(2026, 8, 1); // Tháng 9 năm 2026
+                const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+                const end = new Date(nowVN.getFullYear(), nowVN.getMonth(), nowVN.getDate());
 
-                const todayStr = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+                while (cur <= end) {
+                    const d = String(cur.getDate()).padStart(2, '0');
+                    const m = String(cur.getMonth() + 1).padStart(2, '0');
+                    const y = cur.getFullYear();
+                    allCalendarDates.unshift(`${d}/${m}/${y}`); // Đưa ngày mới nhất lên đầu
+                    cur.setDate(cur.getDate() + 1);
+                }
 
-                // Dựng từng khối riêng cho mỗi ngày
-                container.innerHTML = sortedDates.map(dateKey => {
+                const todayStr = `${String(nowVN.getDate()).padStart(2, '0')}/${String(nowVN.getMonth() + 1).padStart(2, '0')}/${nowVN.getFullYear()}`;
+
+                // Duyệt qua tất cả các ngày: có mưa thì in chi tiết, không mưa thì in thanh tạnh ráo
+                container.innerHTML = allCalendarDates.map(dateKey => {
                     const dayEvents = groups[dateKey];
-                    dayEvents.sort((a, b) => (a.episode_no || 1) - (b.episode_no || 1));
-
-                    const totalMmDay = dayEvents.reduce((sum, item) => sum + (parseFloat(item.total_mm) || 0), 0);
                     const isToday = (dateKey === todayStr);
+
+                    // Trường hợp NGÀY TẠNH RÁO HOÀN TOÀN (0.0 mm)
+                    if (!dayEvents || dayEvents.length === 0) {
+                        return `
+                            <div class="bg-[#152238]/60 border border-slate-800 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="text-base">📅</span>
+                                    <span class="font-bold text-xs text-gray-300">NGÀY: ${dateKey}</span>
+                                    ${isToday ? '<span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] animate-pulse">HÔM NAY</span>' : ''}
+                                </div>
+                                <div class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
+                                    <span>☀️</span>
+                                    <span>Tạnh ráo cả ngày (0.0 mm)</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Trường hợp NGÀY CÓ MƯA: Dựng thẻ chi tiết từng đợt
+                    dayEvents.sort((a, b) => (a.episode_no || 1) - (b.episode_no || 1));
+                    const totalMmDay = dayEvents.reduce((sum, item) => sum + (parseFloat(item.total_mm) || 0), 0);
 
                     return `
                         <div class="bg-[#152238] border border-slate-700 rounded-xl overflow-hidden shadow-md space-y-0">
-                            <!-- THANH TIÊU ĐỀ RIÊNG CỦA NGÀY NÀY -->
                             <div class="bg-[#0e1726] px-4 py-3 border-b border-slate-700 flex flex-wrap items-center justify-between gap-2">
                                 <div class="flex items-center gap-2.5">
-                                    <span class="text-lg">📅</span>
+                                    <span class="text-lg">🌧️</span>
                                     <span class="font-bold text-sm text-cyan-300 tracking-wide">NGÀY: ${dateKey}</span>
                                     ${isToday ? '<span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] animate-pulse">HÔM NAY</span>' : ''}
                                 </div>
@@ -906,7 +921,6 @@
                                 </div>
                             </div>
 
-                            <!-- BẢNG CÁC ĐỢT MƯA TRONG RIÊNG NGÀY NÀY -->
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left text-xs font-mono">
                                     <thead class="bg-[#111c30] text-gray-400 uppercase text-[11px] border-b border-slate-700/60">
