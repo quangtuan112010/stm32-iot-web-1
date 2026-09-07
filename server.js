@@ -62,11 +62,11 @@ function formatMinutesToHours(totalMin) {
     return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
 }
 
-// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ XUÂN ĐỊNH (TÁCH ĐỢT) =================
+// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ XUÂN ĐỊNH =================
 async function syncRainHistoryFromSatellite() {
     try {
-        // forecast_days=1 để lấy trọn vẹn cả ngày 6/9 và hôm nay, không bị cắt
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=3&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
+        // Quét 7 ngày qua và ngày hôm nay
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&minutely_15=precipitation&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -75,6 +75,7 @@ async function syncRainHistoryFromSatellite() {
         const times = data.minutely_15.time;
         const precips = data.minutely_15.precipitation;
 
+        const now = Date.now(); // Mốc thời gian thực tế hiện tại
         let inRain = false;
         let startIdx = 0;
         let peakVal = 0.0;
@@ -82,12 +83,42 @@ async function syncRainHistoryFromSatellite() {
         let dryCounter = 0;
         const parsedEvents = [];
 
-        // Ngưỡng: Tạnh liên tiếp >= 30 phút (2 ticks x 15p) -> Tách thành đợt mới
+        // Ngưỡng tạnh liên tục >= 30 phút để chốt ngắt đợt mưa
         const DRY_THRESHOLD_TICKS = 2; 
 
         for (let i = 0; i < times.length; i++) {
+            // Chuyển chuỗi thời gian của Open-Meteo về timestamp chuẩn giờ Việt Nam (UTC+7)
+            const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
+            
+            // BỘ LỌC CHẶN CỨNG: Bỏ qua toàn bộ các mốc thời gian tương lai
+            if (itemTimestamp > now) {
+                // Nếu đang mưa dở dang tính đến thời điểm hiện tại
+                if (inRain) {
+                    const actualEndIdx = i - 1;
+                    const startIso = times[startIdx];
+                    const endIso = times[actualEndIdx];
+                    const durMin = Math.max(15, (actualEndIdx - startIdx + 1) * 15);
+
+                    const datePart = startIso.split('T')[0];
+                    const [y, m, d] = datePart.split('-');
+                    const rainDateStr = `${d}/${m}/${y}`;
+
+                    parsedEvents.push({
+                        rain_date: rainDateStr,
+                        start_iso: startIso,
+                        end_iso: endIso,
+                        start_time: formatSupabaseTime(startIso),
+                        end_time: formatSupabaseTime(endIso) + ' (Đang mưa)',
+                        duration_min: durMin,
+                        peak_mm: parseFloat(peakVal.toFixed(2)),
+                        total_mm: parseFloat(totalVal.toFixed(2))
+                    });
+                    inRain = false;
+                }
+                break; // Dừng vòng lặp ngay khi chạm tới tương lai
+            }
+
             const p = parseFloat(precips[i]) || 0.0;
-            // Hạ ngưỡng bắt mưa xuống 0.05mm để không sót cơn mưa nhỏ
             const isRaining = p >= 0.05;
 
             if (isRaining) {
@@ -105,7 +136,7 @@ async function syncRainHistoryFromSatellite() {
             } else {
                 if (inRain) {
                     dryCounter++;
-                    if (dryCounter >= DRY_THRESHOLD_TICKS || i === times.length - 1) {
+                    if (dryCounter >= DRY_THRESHOLD_TICKS) {
                         inRain = false;
                         const actualEndIdx = i - dryCounter;
                         const startIso = times[startIdx];
@@ -146,8 +177,8 @@ async function syncRainHistoryFromSatellite() {
                 const prev = lastEventPerDate[dKey];
                 ev.episode_no = prev.episode_no + 1;
                 
-                const tPrevEnd = new Date(prev.end_iso).getTime();
-                const tCurrStart = new Date(ev.start_iso).getTime();
+                const tPrevEnd = new Date(prev.end_iso + ":00+07:00").getTime();
+                const tCurrStart = new Date(ev.start_iso + ":00+07:00").getTime();
                 const diffMin = Math.max(0, Math.floor((tCurrStart - tPrevEnd) / (60 * 1000)));
                 ev.gap_desc = formatMinutesToHours(diffMin);
             }
@@ -167,8 +198,8 @@ async function syncRainHistoryFromSatellite() {
 
         if (parsedEvents.length > 0) {
             const latest = parsedEvents[parsedEvents.length - 1];
-            const lastP = parseFloat(precips[precips.length - 1]) || 0.0;
-            const isCurrentlyRaining = lastP >= 0.05;
+            // Kiểm tra mốc 15 phút gần nhất đã qua xem có đang mưa không
+            const isCurrentlyRaining = latest.end_time.includes('(Đang mưa)');
 
             currentRainStatus = {
                 isRaining: isCurrentlyRaining,
