@@ -49,21 +49,22 @@
             </div>
         </header>
 
-        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH -->
-        <div id="banner-rain-tracker" class="bg-gradient-to-r from-blue-950/80 via-slate-900 to-[#152238] border border-blue-600/60 rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
+        <!-- KHỐI QUAN TRẮC MƯA HÔM NAY (XÃ XUÂN ĐỊNH) -->
+        <div class="bg-[#152238] border border-blue-600/60 rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <span id="rain-icon" class="text-2xl">🌦️</span>
+                <span id="rain-icon" class="text-3xl">🌦️</span>
                 <div>
                     <div class="flex items-center gap-2">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Quan trắc mưa thực tế: Xã Xuân Định (Từ 01/09 đến nay)</h3>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Thời tiết thực tế hôm nay tại Xã Xuân Định</h3>
                         <span id="rain-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-gray-300 font-mono">Đang kiểm tra...</span>
                     </div>
-                    <p id="rain-desc" class="text-xs text-gray-300 mt-0.5">Đang phân tích các đợt mưa độc lập theo từng ngày...</p>
+                    <p id="rain-desc" class="text-xs text-gray-200 mt-1 font-medium font-mono">Đang kiểm tra dữ liệu quan trắc thực tế...</p>
                 </div>
             </div>
-            <button onclick="openRainModal()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow flex items-center gap-1.5 border border-blue-500">
-                <span>📅</span> Bảng Mưa Tách Riêng Từ 01/09
-            </button>
+            
+            <div id="today-rain-list" class="text-xs font-mono text-cyan-300 flex items-center gap-2">
+                <!-- Danh sách các đợt mưa hôm nay -->
+            </div>
         </div>
 
         <!-- Banner cảnh báo 72h -->
@@ -648,33 +649,6 @@
 
     </div>
 
-    <!-- MODAL TRA CỨU DẢI RỘNG TỪNG ĐỢT MƯA -->
-    <div id="rain-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
-        <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
-                <div class="flex items-center gap-3">
-                    <span class="text-2xl">🌧️</span>
-                    <div>
-                        <h3 class="text-base font-bold text-gray-100">Bảng Phân Tách Chi Tiết Từng Đợt Mưa Theo Ngày (Xã Xuân Định)</h3>
-                        <p class="text-xs text-gray-400">Dữ liệu quan trắc thực tế từ Open-Meteo | Tách riêng theo ngày</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <!-- Nút làm mới tức thì từ vệ tinh -->
-                    <button onclick="refreshRainDataNow()" id="btn-refresh-rain" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-400 text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow">
-                        <svg id="spinner-rain" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        <span id="txt-refresh-rain">Làm mới từ vệ tinh</span>
-                    </button>
-                    <button onclick="closeRainModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
-                </div>
-            </div>
-
-            <div id="rain-grouped-container" class="p-5 overflow-y-auto space-y-4 flex-1 bg-[#0b1329]/40">
-                <div class="text-center py-12 text-gray-400">Đang tải và gom nhóm dữ liệu mưa từ 01/09/2026...</div>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal trung tâm sự cố 72h -->
     <div id="incident-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -829,177 +803,38 @@
             }
         }
 
+        // Cập nhật trạng thái mưa hôm nay
         socket.on('rain_status_update', (st) => {
             const badge = document.getElementById('rain-badge');
             const desc = document.getElementById('rain-desc');
             const icon = document.getElementById('rain-icon');
+            const listEl = document.getElementById('today-rain-list');
 
-            if (st.isRaining) {
+            if (st.isRainingNow) {
                 badge.innerText = "ĐANG CÓ MƯA";
                 badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white animate-pulse font-mono";
                 icon.innerText = "🌧️";
+            } else if (st.hasRainedToday) {
+                badge.innerText = "HÔM NAY ĐÃ CÓ MƯA";
+                badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-700 font-mono";
+                icon.innerText = "🌦️";
             } else {
                 badge.innerText = "TẠNH RÁO";
                 badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-700 font-mono";
                 icon.innerText = "☀️";
             }
             desc.innerText = st.text;
+
+            if (st.events && st.events.length > 0) {
+                listEl.innerHTML = st.events.map((ev, idx) => `
+                    <span class="bg-[#0b1329] border border-slate-700 px-2 py-1 rounded">
+                        Đợt ${idx + 1}: <b class="text-white">${ev.start_time} - ${ev.end_time}</b> (${ev.total_mm}mm)
+                    </span>
+                `).join('');
+            } else {
+                listEl.innerHTML = `<span class="text-gray-400 text-[11px]">(Chưa có đợt mưa nào hôm nay)</span>`;
+            }
         });
-
-        // Hàm dựng giao diện từng khối ngày riêng biệt
-        function renderRainBlocks(historyList) {
-            const container = document.getElementById('rain-grouped-container');
-            const groups = {};
-            (historyList || []).forEach(r => {
-                let d = r.rain_date;
-                if (!d && r.start_time) {
-                    const parts = r.start_time.split(' ');
-                    if (parts.length > 1) d = parts[1];
-                }
-                if (d) {
-                    if (!groups[d]) groups[d] = [];
-                    groups[d].push(r);
-                }
-            });
-
-            // Tạo danh sách toàn bộ ngày từ 01/09/2026 đến ngày hiện tại
-            const allCalendarDates = [];
-            let cur = new Date(2026, 8, 1);
-            const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-            const end = new Date(nowVN.getFullYear(), nowVN.getMonth(), nowVN.getDate());
-
-            while (cur <= end) {
-                const d = String(cur.getDate()).padStart(2, '0');
-                const m = String(cur.getMonth() + 1).padStart(2, '0');
-                const y = cur.getFullYear();
-                allCalendarDates.unshift(`${d}/${m}/${y}`);
-                cur.setDate(cur.getDate() + 1);
-            }
-
-            const todayStr = `${String(nowVN.getDate()).padStart(2, '0')}/${String(nowVN.getMonth() + 1).padStart(2, '0')}/${nowVN.getFullYear()}`;
-
-            container.innerHTML = allCalendarDates.map(dateKey => {
-                const dayEvents = groups[dateKey];
-                const isToday = (dateKey === todayStr);
-
-                if (!dayEvents || dayEvents.length === 0) {
-                    return `
-                        <div class="bg-[#152238]/60 border border-slate-800 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-base">📅</span>
-                                <span class="font-bold text-xs text-gray-300">NGÀY: ${dateKey}</span>
-                                ${isToday ? '<span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] animate-pulse">HÔM NAY</span>' : ''}
-                            </div>
-                            <div class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
-                                <span>☀️</span>
-                                <span>${isToday ? 'Tạnh ráo (tính đến hiện tại)' : 'Tạnh ráo cả ngày (0.0 mm)'}</span>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                dayEvents.sort((a, b) => (a.episode_no || 1) - (b.episode_no || 1));
-                const totalMmDay = dayEvents.reduce((sum, item) => sum + (parseFloat(item.total_mm) || 0), 0);
-
-                return `
-                    <div class="bg-[#152238] border border-slate-700 rounded-xl overflow-hidden shadow-md space-y-0">
-                        <div class="bg-[#0e1726] px-4 py-3 border-b border-slate-700 flex flex-wrap items-center justify-between gap-2">
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-lg">🌧️</span>
-                                <span class="font-bold text-sm text-cyan-300 tracking-wide">NGÀY: ${dateKey}</span>
-                                ${isToday ? '<span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] animate-pulse">HÔM NAY</span>' : ''}
-                            </div>
-                            <div class="text-xs font-mono text-gray-300 flex items-center gap-3">
-                                <span>Tổng: <b class="text-amber-400">${dayEvents.length} đợt mưa</b></span>
-                                <span class="text-gray-500">|</span>
-                                <span>Lượng mưa cả ngày: <b class="text-blue-400">${totalMmDay.toFixed(2)} mm</b></span>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs font-mono">
-                                <thead class="bg-[#111c30] text-gray-400 uppercase text-[11px] border-b border-slate-700/60">
-                                    <tr>
-                                        <th class="py-2.5 px-3">Tên Đợt</th>
-                                        <th class="py-2.5 px-3 text-cyan-400 font-bold">Mưa lúc (Bắt đầu)</th>
-                                        <th class="py-2.5 px-3 text-emerald-400 font-bold">Tạnh lúc (Kết thúc)</th>
-                                        <th class="py-2.5 px-3 text-amber-300">Thời lượng</th>
-                                        <th class="py-2.5 px-3 text-indigo-300">Khoảng cách với đợt trước</th>
-                                        <th class="py-2.5 px-3 text-blue-300">Đỉnh mưa / Tổng</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y border-slate-700/60 text-gray-300">
-                                    ${dayEvents.map(ev => `
-                                        <tr class="hover:bg-slate-800/40 transition">
-                                            <td class="py-2.5 px-3">
-                                                <span class="px-2 py-0.5 rounded bg-blue-950 text-cyan-300 border border-blue-700 font-bold text-[10px]">
-                                                    Đợt ${ev.episode_no || 1}
-                                                </span>
-                                            </td>
-                                            <td class="py-2.5 px-3 text-cyan-400 font-bold text-sm">${ev.start_time.split(' ')[0]}</td>
-                                            <td class="py-2.5 px-3 text-emerald-400 font-bold text-sm">${ev.end_time.split(' ')[0]}</td>
-                                            <td class="py-2.5 px-3 text-amber-300 font-bold">⏱️ ${ev.duration_min} phút</td>
-                                            <td class="py-2.5 px-3 text-indigo-300 font-medium">
-                                                ${ev.episode_no === 1 ? '<span class="text-gray-500">Đợt đầu tiên trong ngày</span>' : `💤 ${ev.gap_desc}`}
-                                            </td>
-                                            <td class="py-2.5 px-3 text-blue-300 font-bold">
-                                                ${ev.peak_mm} mm <span class="text-gray-500 font-normal">/</span> ${ev.total_mm} mm
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        async function openRainModal() {
-            document.getElementById('rain-modal').classList.remove('hidden');
-            const container = document.getElementById('rain-grouped-container');
-            container.innerHTML = `<div class="text-center py-12 text-gray-400">Đang tải và gom nhóm dữ liệu mưa từ 01/09/2026...</div>`;
-
-            try {
-                let res = await fetch('/api/rain-history');
-                let data = await res.json();
-
-                // Nếu cơ sở dữ liệu chưa kịp đồng bộ, tự động kích hoạt nạp từ vệ tinh
-                if (!data.history || data.history.length === 0) {
-                    res = await fetch('/api/refresh-rain');
-                    data = await res.json();
-                }
-
-                renderRainBlocks(data.history || []);
-            } catch (err) {
-                console.error("Lỗi tải lịch sử mưa:", err);
-            }
-        }
-
-        async function refreshRainDataNow() {
-            const spinner = document.getElementById('spinner-rain');
-            const txt = document.getElementById('txt-refresh-rain');
-            spinner.classList.add('animate-spin');
-            txt.innerText = 'Đang đồng bộ...';
-
-            try {
-                const res = await fetch('/api/refresh-rain');
-                const data = await res.json();
-                renderRainBlocks(data.history || []);
-                txt.innerText = 'Đã cập nhật!';
-            } catch (e) {
-                txt.innerText = 'Lỗi cập nhật';
-            }
-
-            setTimeout(() => {
-                spinner.classList.remove('animate-spin');
-                txt.innerText = 'Làm mới từ vệ tinh';
-            }, 1000);
-        }
-
-        function closeRainModal() {
-            document.getElementById('rain-modal').classList.add('hidden');
-        }
 
         function decodeIL(ilVal) {
             const val = parseInt(ilVal) || 0;
