@@ -49,7 +49,7 @@
             </div>
         </header>
 
-        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (CÓ NÚT XEM LỊCH SỬ) -->
+        <!-- BANNER QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH -->
         <div class="bg-[#152238] border border-blue-600/60 rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span id="rain-icon" class="text-3xl">🌦️</span>
@@ -71,17 +71,17 @@
             </div>
         </div>
 
-        <!-- Banner cảnh báo 72h -->
+        <!-- Banner cảnh báo thông minh: ƯU TIÊN SỰ CỐ ĐANG XẢY RA -->
         <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <span class="text-2xl animate-bounce">🚨</span>
+                <span class="text-2xl animate-bounce" id="banner-incident-icon">🚨</span>
                 <div>
-                    <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN SỰ CỐ TRONG 72 GIỜ VỪA QUA</h3>
-                    <p class="text-xs text-gray-300" id="banner-incident-desc">Hệ thống phát hiện có gián đoạn kết nối hoặc biến động sinh hóa. Yêu cầu quyền Chủ Ao để xác nhận xử lý.</p>
+                    <h3 class="font-bold text-sm text-red-400" id="banner-incident-title">PHÁT HIỆN BIẾN CỐ</h3>
+                    <p class="text-xs text-gray-300" id="banner-incident-desc">Nhấn để xem phân loại sự cố đang diễn ra và lịch sử.</p>
                 </div>
             </div>
             <button onclick="openIncidentModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 shadow flex items-center gap-1.5">
-                <span>Xem Chi Tiết Sự Cố</span>
+                <span>Xem Cảnh Báo</span>
                 <span>➔</span>
             </button>
         </div>
@@ -502,7 +502,6 @@
                 <button onclick="applyChartRange()" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1 rounded transition font-medium">Vẽ Dải Đồ Thị</button>
             </div>
 
-            <!-- 4 Biểu đồ -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <h3 class="text-xs font-bold text-orange-400 mb-2">1. Nhiệt Độ Nước T (°C)</h3>
@@ -572,7 +571,6 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
-            <!-- Bảng hiển thị: 49 cột -->
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono whitespace-nowrap">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0 z-10 border-b border-slate-700">
@@ -652,7 +650,7 @@
 
     </div>
 
-    <!-- MODAL TRA CỨU DẢI RỘNG TỪNG ĐỢT MƯA THEO NGÀY (CHẠM VÙNG MỜ ĐỂ ĐÓNG) -->
+    <!-- MODAL LỊCH SỬ MƯA -->
     <div id="rain-modal" onclick="if(event.target===this) closeRainModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -672,7 +670,7 @@
         </div>
     </div>
 
-    <!-- Modal trung tâm sự cố 72h (Chạm vùng mờ để đóng) -->
+    <!-- ================= MODAL SỰ CỐ: ĐÃ TÁCH BIỆT 3 CỬA SỔ/TAB RIÊNG BIỆT ================= -->
     <div id="incident-modal" onclick="if(event.target===this) closeIncidentModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -686,13 +684,26 @@
                 <button onclick="closeIncidentModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
             </div>
 
+            <!-- THANH ĐIỀU HƯỚNG 3 TAB: TÁCH BẠCH ĐANG DIỄN RA VÀ QUÁ KHỨ -->
             <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-[#111c30] border-b border-slate-700 text-xs">
-                <div class="flex items-center gap-2">
-                    <button onclick="setIncidentTab('active')" id="tab-inc-active" class="px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow">
-                        ⚠️ Cần xử lý (<span id="count-tab-active">0</span>)
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Tab 1: Đang diễn ra -->
+                    <button onclick="setIncidentTab('ongoing')" id="tab-inc-ongoing" class="px-3 py-1.5 rounded-lg font-bold transition bg-red-600 text-white shadow flex items-center gap-1.5">
+                        <span class="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                        <span>🚨 Đang diễn ra</span>
+                        <span class="bg-red-950 px-1.5 py-0.2 rounded text-[10px]" id="count-tab-ongoing">0</span>
                     </button>
-                    <button onclick="setIncidentTab('dismissed')" id="tab-inc-dismissed" class="px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200">
-                        ✅ Lịch sử đã tắt (<span id="count-tab-dismissed">0</span>)
+
+                    <!-- Tab 2: Lịch sử 72h đã kết thúc -->
+                    <button onclick="setIncidentTab('history')" id="tab-inc-history" class="px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5">
+                        <span>📜 Lịch sử 72h (Đã xong)</span>
+                        <span class="bg-slate-800 px-1.5 py-0.2 rounded text-[10px]" id="count-tab-history">0</span>
+                    </button>
+
+                    <!-- Tab 3: Đã xác nhận / Đã tắt -->
+                    <button onclick="setIncidentTab('dismissed')" id="tab-inc-dismissed" class="px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5">
+                        <span>✅ Đã tắt</span>
+                        <span class="bg-slate-800 px-1.5 py-0.2 rounded text-[10px]" id="count-tab-dismissed">0</span>
                     </button>
                 </div>
 
@@ -810,7 +821,7 @@
         let pendingExpectedAlk = null;
 
         let allIncidents = [];
-        let currentIncTab = 'active';
+        let currentIncTab = 'ongoing'; // Mặc định mở Tab Đang diễn ra
         let pendingDismissIncidentId = null;
         let dismissedIncidentIdsOnCloud = [];
 
@@ -1096,7 +1107,7 @@
 
             const d = packet.data;
             
-            // 4 Cảm biến chính
+            // 4 Cảm biến
             if (d.T !== undefined) document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
             if (d.S !== undefined) document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
             if (d.pH !== undefined) document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
@@ -1210,7 +1221,7 @@
                 else bannerCs.classList.add('hidden');
             }
 
-            // Cập nhật các trường mở rộng
+            // Cập nhật các trường chẩn đoán
             if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
             if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
             if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
@@ -1241,7 +1252,7 @@
             if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
             if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = d.wcet;
 
-            // Đổi màu vạch sóng 4G thông minh
+            // Vạch sóng 4G
             if (d.csq !== undefined) {
                 const csqVal = parseInt(d.csq);
                 const txtEl = document.getElementById('txt-csq');
@@ -1275,7 +1286,7 @@
                 document.getElementById('val-uptime').innerText = `${hrs}h ${m}m`;
             }
 
-            // Trường AI & PINN
+            // AI PINN
             if (d.dopred !== undefined) document.getElementById('val-dopred').innerText = `${Number(d.dopred).toFixed(3)} mg/L`;
             if (d.dosat !== undefined) document.getElementById('val-dosat').innerText = `${Number(d.dosat).toFixed(3)} mg/L`;
             if (d.aisig !== undefined) document.getElementById('val-aisig').innerText = Number(d.aisig).toFixed(4);
@@ -1318,7 +1329,7 @@
             renderTelemetryUI(packet, true);
         });
 
-        // ================= BIỂU ĐỒ =================
+        // Biểu đồ
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
@@ -1538,7 +1549,7 @@
                     return;
                 }
 
-                // TỰ ĐỘNG ĐỔ NGAY BẢN GHI MỚI NHẤT LÊN MÀN HÌNH TỨC THỜI (TRÁNH HIỆN -- KHI MỚI VÀO)
+                // TỰ ĐỘNG ĐỔ DỮ LIỆU TỨC THÌ NẾU MÀN HÌNH ĐANG LÀ --
                 if (currentPage === 1 && !filterFromTime && !filterToTime && result.data[0]) {
                     const topRow = result.data[0];
                     const topRowTime = formatDbTime(topRow.created_at);
@@ -1697,7 +1708,7 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM SỰ CỐ 72 GIỜ =================
+        // ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ: TÁCH BIỆT 3 CỬA SỔ =================
         async function fetchDismissedCloud() {
             try {
                 const res = await fetch('/api/dismissed-incidents');
@@ -1721,22 +1732,49 @@
         }
 
         function updateIncidentUI() {
-            const activeList = allIncidents.filter(inc => !dismissedIncidentIdsOnCloud.includes(inc.id));
+            // 1. Phân loại sự cố ĐANG DIỄN RA
+            const ongoingList = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
+            // 2. Phân loại sự cố LỊCH SỬ 72H ĐÃ KẾT THÚC
+            const historyList = allIncidents.filter(inc => !inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
+            // 3. Phân loại sự cố ĐÃ TẮT
             const dismissedList = allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
 
-            document.getElementById('count-tab-active').innerText = activeList.length;
+            document.getElementById('count-tab-ongoing').innerText = ongoingList.length;
+            document.getElementById('count-tab-history').innerText = historyList.length;
             document.getElementById('count-tab-dismissed').innerText = dismissedList.length;
             
             const badgeBtn = document.getElementById('btn-incident-badge');
             const countTxt = document.getElementById('txt-incident-count');
             const banner = document.getElementById('banner-active-incidents');
+            const bTitle = document.getElementById('banner-incident-title');
+            const bDesc = document.getElementById('banner-incident-desc');
+            const bIcon = document.getElementById('banner-incident-icon');
 
-            if (activeList.length > 0) {
-                badgeBtn.className = "flex items-center gap-2 bg-red-950/80 hover:bg-red-900 text-xs px-3.5 py-1.5 rounded-lg border border-red-500 text-red-300 transition shadow animate-pulse";
-                countTxt.innerText = `${activeList.length} sự cố (72h)`;
+            if (ongoingList.length > 0) {
+                // ƯU TIÊN SỐ 1: BÁO ĐỎ RỰC KHI CÓ SỰ CỐ TRỰC TIẾP
+                badgeBtn.className = "flex items-center gap-2 bg-red-600 hover:bg-red-500 text-xs px-3.5 py-1.5 rounded-lg border border-red-400 text-white transition shadow animate-bounce";
+                countTxt.innerText = `🚨 ${ongoingList.length} SỰ CỐ ĐANG XẢY RA!`;
+                
+                banner.className = "bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500 text-white p-4 rounded-xl shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-pulse";
+                bIcon.innerText = "🚨";
+                bTitle.innerText = `CẢNH BÁO KHẨN: CÓ ${ongoingList.length} SỰ CỐ ĐANG DIỄN RA TRỰC TIẾP!`;
+                bDesc.innerText = "Hệ thống phát hiện ao đang có sự cố ngay tại thời điểm này. Nhấn để kiểm tra và xử lý ngay!";
                 banner.classList.remove('hidden');
-                document.getElementById('banner-incident-title').innerText = `PHÁT HIỆN ${activeList.length} SỰ CỐ TRONG 72 GIỜ VỪA QUA`;
+
+                // Tự động chuyển người dùng sang xem Tab Đang diễn ra
+                currentIncTab = 'ongoing';
+            } else if (historyList.length > 0) {
+                // ƯU TIÊN SỐ 2: BÁO VÀNG CHO LỊCH SỬ ĐÃ XONG
+                badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-amber-300 transition shadow";
+                countTxt.innerText = `${historyList.length} đợt trong 72h`;
+
+                banner.className = "bg-gradient-to-r from-slate-900 via-amber-950/60 to-slate-900 border border-amber-500/60 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3";
+                bIcon.innerText = "📜";
+                bTitle.innerText = `NHẬT KÝ 72H: CÓ ${historyList.length} ĐỢT SỰ CỐ ĐÃ QUA`;
+                bDesc.innerText = "Hiện tại nước ao đã tạm ổn định. Bạn có thể nhấn để xem lại lịch sử các đợt biến động vừa rồi.";
+                banner.classList.remove('hidden');
             } else {
+                // AN TOÀN TUYỆT ĐỐI
                 badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-emerald-400 transition shadow";
                 countTxt.innerText = "72h qua an toàn";
                 banner.classList.add('hidden');
@@ -1747,18 +1785,41 @@
 
         function renderIncidentList() {
             const container = document.getElementById('incident-list-container');
-            const listToShow = currentIncTab === 'active' 
-                ? allIncidents.filter(inc => !dismissedIncidentIdsOnCloud.includes(inc.id))
-                : allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
+            
+            let listToShow = [];
+            if (currentIncTab === 'ongoing') {
+                listToShow = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
+            } else if (currentIncTab === 'history') {
+                listToShow = allIncidents.filter(inc => !inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
+            } else {
+                listToShow = allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
+            }
 
             if (listToShow.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-12 text-gray-400 space-y-2">
-                        <div class="text-4xl">🎉</div>
-                        <div class="font-bold text-sm text-gray-300">Không có sự cố nào trong danh mục này!</div>
-                        <p class="text-xs text-gray-500">Toàn bộ dữ liệu đo đạc và kết nối trong 72 giờ qua đều ổn định.</p>
-                    </div>
-                `;
+                if (currentIncTab === 'ongoing') {
+                    container.innerHTML = `
+                        <div class="text-center py-12 text-gray-400 space-y-2">
+                            <div class="text-5xl">🎉</div>
+                            <div class="font-bold text-base text-emerald-400">HIỆN TẠI KHÔNG CÓ SỰ CỐ NÀO ĐANG DIỄN RA!</div>
+                            <p class="text-xs text-gray-400">Mọi thông số chất lượng nước của ao cá đang hoạt động ổn định và an toàn.</p>
+                        </div>
+                    `;
+                } else if (currentIncTab === 'history') {
+                    container.innerHTML = `
+                        <div class="text-center py-12 text-gray-400 space-y-2">
+                            <div class="text-5xl">✨</div>
+                            <div class="font-bold text-sm text-gray-300">Không có sự cố lịch sử nào chưa xác nhận!</div>
+                            <p class="text-xs text-gray-500">Toàn bộ 72 giờ qua đã được bạn kiểm tra và xử lý sạch sẽ.</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12 text-gray-400 space-y-2">
+                            <div class="text-5xl">📁</div>
+                            <div class="font-bold text-sm text-gray-300">Chưa có sự cố nào được tắt!</div>
+                        </div>
+                    `;
+                }
                 return;
             }
 
@@ -1776,14 +1837,17 @@
                 const isDismissed = dismissedIncidentIdsOnCloud.includes(inc.id);
 
                 return `
-                    <div class="bg-[#0b1329] border border-slate-700 hover:border-slate-500 rounded-xl p-4.5 space-y-3 transition shadow-md">
+                    <div class="bg-[#0b1329] border ${inc.is_ongoing ? 'border-red-500/90 shadow-red-950/40 shadow-lg' : 'border-slate-700 hover:border-slate-500 shadow-md'} rounded-xl p-4.5 space-y-3 transition">
                         <div class="flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 pb-2.5">
                             <div class="flex items-center gap-2.5">
                                 <span class="text-xl">${icon}</span>
                                 <div>
-                                    <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${badgeColor}">
-                                        ${inc.category}
-                                    </span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${badgeColor}">
+                                            ${inc.category}
+                                        </span>
+                                        ${inc.is_ongoing ? '<span class="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] animate-pulse">🔥 ĐANG TIẾP DIỄN</span>' : '<span class="px-2 py-0.5 rounded bg-slate-800 text-gray-400 text-[10px]">⏳ ĐÃ XONG</span>'}
+                                    </div>
                                     <h4 class="font-bold text-sm text-gray-100 mt-1">${inc.title}</h4>
                                 </div>
                             </div>
@@ -1805,11 +1869,11 @@
                             <div class="text-gray-300">
                                 <span class="text-gray-500">Mốc thời gian (Database):</span><br>
                                 <span class="text-cyan-400 font-bold">Từ: ${inc.start_time}</span><br>
-                                <span class="text-emerald-400 font-bold">Đến: ${inc.end_time}</span>
+                                <span class="${inc.is_ongoing ? 'text-amber-400 font-bold animate-pulse' : 'text-emerald-400 font-bold'}">Đến: ${inc.end_time}</span>
                             </div>
                             <div class="text-gray-300 sm:text-right flex flex-col justify-center">
                                 <span class="text-gray-500">Thời lượng xuất hiện / gián đoạn:</span>
-                                <span class="text-amber-400 font-bold text-sm mt-0.5">⏱️ ${inc.duration}</span>
+                                <span class="${inc.is_ongoing ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'} text-sm mt-0.5">⏱️ ${inc.duration}</span>
                             </div>
                         </div>
                     </div>
@@ -1819,15 +1883,21 @@
 
         function setIncidentTab(tab) {
             currentIncTab = tab;
-            const btnActive = document.getElementById('tab-inc-active');
+            const btnOngoing = document.getElementById('tab-inc-ongoing');
+            const btnHistory = document.getElementById('tab-inc-history');
             const btnDismissed = document.getElementById('tab-inc-dismissed');
 
-            if (tab === 'active') {
-                btnActive.className = "px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow";
-                btnDismissed.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200";
+            // Reset style
+            btnOngoing.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5";
+            btnHistory.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5";
+            btnDismissed.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5";
+
+            if (tab === 'ongoing') {
+                btnOngoing.className = "px-3 py-1.5 rounded-lg font-bold transition bg-red-600 text-white shadow flex items-center gap-1.5";
+            } else if (tab === 'history') {
+                btnHistory.className = "px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow flex items-center gap-1.5";
             } else {
-                btnDismissed.className = "px-3 py-1.5 rounded-lg font-bold transition bg-blue-600 text-white shadow";
-                btnActive.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200";
+                btnDismissed.className = "px-3 py-1.5 rounded-lg font-bold transition bg-emerald-700 text-white shadow flex items-center gap-1.5";
             }
             renderIncidentList();
         }
@@ -1870,7 +1940,6 @@
             pendingDismissIncidentId = null;
         }
 
-        // TỐI ƯU HÓA: GỬI SONG SONG QUA PROMISE.ALL CHỐNG NGHẼN TRÌNH DUYỆT
         async function verifyAndExecuteDismiss() {
             const enteredPin = document.getElementById('input-owner-pin').value.trim();
             const pinBox = document.getElementById('pin-box');
@@ -1938,7 +2007,6 @@
             }
         }
 
-        // ĐÃ BỔ SUNG HÀM SENDRESET CHỐNG LỖI LIỆT NÚT BẤM
         function sendReset() {
             if (!verifyPassword()) return;
             if (confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn khởi động lại vi điều khiển STM32 từ xa?\n(Dữ liệu Flash cấu hình và neo kiềm vẫn được bảo toàn an toàn)')) {
