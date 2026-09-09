@@ -27,8 +27,8 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
-                <div id="badge-csq" class="flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-cyan-400 font-mono">
-                    <span>📶 Sóng:</span>
+                <div id="badge-csq" class="flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-cyan-400 font-mono transition">
+                    <span>📶 Sóng 4G:</span>
                     <span id="txt-csq" class="font-bold">--</span>
                 </div>
 
@@ -247,15 +247,15 @@
                     </div>
                     <div class="grid grid-cols-3 gap-2 text-xs font-mono">
                         <div class="bg-[#152238] p-2 rounded">
-                            <div class="text-[10px] text-gray-400">DO Dự báo (dopred)</div>
+                            <div class="text-[10px] text-gray-400">DO Dự báo</div>
                             <div id="val-dopred" class="text-sm font-bold text-blue-400 mt-0.5">-- mg/L</div>
                         </div>
                         <div class="bg-[#152238] p-2 rounded">
-                            <div class="text-[10px] text-gray-400">DO Bão hòa (dosat)</div>
+                            <div class="text-[10px] text-gray-400">DO Bão hòa</div>
                             <div id="val-dosat" class="text-sm font-bold text-cyan-300 mt-0.5">-- mg/L</div>
                         </div>
                         <div class="bg-[#152238] p-2 rounded">
-                            <div class="text-[10px] text-gray-400">Độ bất định (aisig)</div>
+                            <div class="text-[10px] text-gray-400">Độ bất định</div>
                             <div id="val-aisig" class="text-sm font-bold text-amber-300 mt-0.5">--</div>
                         </div>
                     </div>
@@ -425,7 +425,7 @@
                                 <div class="text-[9px] text-gray-500">WCET (&lt;100µs) | Lỗi Flash</div>
                             </div>
                             <div class="text-xs font-bold text-indigo-300">
-                                <span id="val-wcet">--</span> cyc | FlashErr: <span id="val-flfail" class="text-rose-400 font-bold">0</span>
+                                <span id="val-wcet">--</span> cyc | FlashErr: <span id="val-flfail" class="text-gray-300">0</span>
                             </div>
                         </div>
                         <div class="bg-[#152238] p-2 rounded flex flex-wrap items-center justify-between text-[11px]">
@@ -437,7 +437,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -634,7 +633,7 @@
             </div>
 
             <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-700/60">
-                <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded text-white transition flex items-center gap-1">
+                <button onclick="prevPage()" id="btn-prev" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded-lg text-white transition flex items-center gap-1">
                     <span>←</span> Trang trước
                 </button>
 
@@ -645,7 +644,7 @@
                     <button onclick="jumpToPage()" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-0.5 rounded transition text-xs font-semibold ml-1">Đến</button>
                 </div>
 
-                <button onclick="nextPage()" id="btn-next" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded text-white transition flex items-center gap-1">
+                <button onclick="nextPage()" id="btn-next" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3.5 py-1.5 rounded-lg text-white transition flex items-center gap-1">
                     Trang sau <span>→</span>
                 </button>
             </div>
@@ -653,15 +652,15 @@
 
     </div>
 
-    <!-- MODAL TRA CỨU DẢI RỘNG TỪNG ĐỢT MƯA THEO NGÀY -->
-    <div id="rain-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
+    <!-- MODAL TRA CỨU DẢI RỘNG TỪNG ĐỢT MƯA THEO NGÀY (CHẠM VÙNG MỜ ĐỂ ĐÓNG) -->
+    <div id="rain-modal" onclick="if(event.target===this) closeRainModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
                 <div class="flex items-center gap-3">
                     <span class="text-2xl">🌧️</span>
                     <div>
                         <h3 class="text-base font-bold text-gray-100">Lịch Sử Các Đợt Mưa Theo Ngày (Xã Xuân Định)</h3>
-                        <p class="text-xs text-gray-400">Dữ liệu từ Database Supabase | Phân loại độc lập từng ngày</p>
+                        <p class="text-xs text-gray-400">Dữ liệu lưu trữ vĩnh viễn trên Supabase Cloud</p>
                     </div>
                 </div>
                 <button onclick="closeRainModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -673,8 +672,8 @@
         </div>
     </div>
 
-    <!-- Modal trung tâm sự cố 72h -->
-    <div id="incident-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
+    <!-- Modal trung tâm sự cố 72h (Chạm vùng mờ để đóng) -->
+    <div id="incident-modal" onclick="if(event.target===this) closeIncidentModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
                 <div class="flex items-center gap-3">
@@ -707,7 +706,7 @@
     </div>
 
     <!-- Dialog nhập PIN bí mật -->
-    <div id="pin-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
+    <div id="pin-modal" onclick="if(event.target===this) closePinModal()" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center hidden p-4">
         <div id="pin-box" class="bg-[#152238] border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-red-950/80 border border-red-600 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl">
                 🔒
@@ -730,7 +729,7 @@
     </div>
 
     <!-- Modal tải CSV -->
-    <div id="csv-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div id="csv-modal" onclick="if(event.target===this) closeCsvModal()" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
@@ -859,7 +858,6 @@
             }
         });
 
-        // Hàm mở Modal và hiển thị các ngày mưa đã lưu trong Database
         async function openRainModal() {
             document.getElementById('rain-modal').classList.remove('hidden');
             const container = document.getElementById('rain-grouped-container');
@@ -880,7 +878,6 @@
                     return;
                 }
 
-                // Gom nhóm các đợt mưa theo ngày
                 const groups = {};
                 data.history.forEach(r => {
                     let d = r.rain_date;
@@ -897,17 +894,16 @@
                 const pad = (n) => String(n).padStart(2, '0');
                 const todayStr = `${pad(nowVN.getDate())}/${pad(nowVN.getMonth() + 1)}/${nowVN.getFullYear()}`;
 
-                // Sắp xếp ngày mới nhất lên trên cùng
                 const sortedDates = Object.keys(groups).sort((a, b) => {
-                    const [d1, m1, y1] = a.split('/').map(Number);
-                    const [d2, m2, y2] = b.split('/').map(Number);
-                    return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
+                    const p1 = a.split('/').map(Number);
+                    const p2 = b.split('/').map(Number);
+                    if (p1.length < 3 || p2.length < 3) return 0;
+                    return new Date(p2[2], p2[1] - 1, p2[0]) - new Date(p1[2], p1[1] - 1, p1[0]);
                 });
 
                 container.innerHTML = sortedDates.map(dateKey => {
                     const dayEvents = groups[dateKey];
                     dayEvents.sort((a, b) => (a.episode_no || 1) - (b.episode_no || 1));
-
                     const totalMmDay = dayEvents.reduce((sum, item) => sum + (parseFloat(item.total_mm) || 0), 0);
                     const isToday = (dateKey === todayStr);
 
@@ -940,10 +936,10 @@
                                     </thead>
                                     <tbody class="divide-y border-slate-700/60 text-gray-300">
                                         ${dayEvents.map(ev => {
-                                            const isOngoing = ev.end_time.includes('Đang');
+                                            const isOngoing = String(ev.end_time).includes('Đang');
                                             const endDisplay = isOngoing 
                                                 ? '<span class="text-amber-400 font-bold animate-pulse">Đang mưa</span>' 
-                                                : ev.end_time.split(' ')[0];
+                                                : String(ev.end_time).split(' ')[0];
 
                                             return `
                                                 <tr class="hover:bg-slate-800/40 transition">
@@ -952,7 +948,7 @@
                                                             Đợt ${ev.episode_no || 1}
                                                         </span>
                                                     </td>
-                                                    <td class="py-2.5 px-3 text-cyan-400 font-bold text-sm">${ev.start_time.split(' ')[0]}</td>
+                                                    <td class="py-2.5 px-3 text-cyan-400 font-bold text-sm">${String(ev.start_time).split(' ')[0]}</td>
                                                     <td class="py-2.5 px-3 text-emerald-400 font-bold text-sm">${endDisplay}</td>
                                                     <td class="py-2.5 px-3 text-amber-300 font-bold">⏱️ ${ev.duration_min} phút</td>
                                                     <td class="py-2.5 px-3 text-indigo-300 font-medium">
@@ -970,7 +966,6 @@
                         </div>
                     `;
                 }).join('');
-
             } catch (err) {
                 console.error("Lỗi tải lịch sử mưa:", err);
             }
@@ -1066,19 +1061,21 @@
         });
 
         socket.on('device_heartbeat', (info) => {
-            if (info.lastDeviceTime) {
+            if (info && info.lastDeviceTime) {
                 lastDeviceHeartbeat = info.lastDeviceTime;
                 updateDeviceStatus(info.isOnline);
             } else {
                 updateDeviceStatus(false);
             }
 
-            if (info.latestPacket && info.latestPacket.data) {
+            if (info && info.latestPacket && info.latestPacket.data) {
                 renderTelemetryUI(info.latestPacket, false);
             }
         });
 
         function renderTelemetryUI(packet, isLivePacket = true) {
+            if (!packet || !packet.data) return;
+
             if (isLivePacket) {
                 lastDeviceHeartbeat = Date.now();
                 updateDeviceStatus(true);
@@ -1092,27 +1089,33 @@
             }
 
             const pingDot = document.getElementById('telemetry-dot');
-            pingDot.classList.add('scale-150');
-            setTimeout(() => pingDot.classList.remove('scale-150'), 300);
+            if (pingDot) {
+                pingDot.classList.add('scale-150');
+                setTimeout(() => pingDot.classList.remove('scale-150'), 300);
+            }
 
             const d = packet.data;
             
-            document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
-            document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
-            document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
-            document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
+            // 4 Cảm biến chính
+            if (d.T !== undefined) document.getElementById('val-t').innerText = `${Number(d.T).toFixed(2)} °C`;
+            if (d.S !== undefined) document.getElementById('val-s').innerText = `${Number(d.S).toFixed(2)} ‰`;
+            if (d.pH !== undefined) document.getElementById('val-ph').innerText = Number(d.pH).toFixed(2);
+            if (d.DO !== undefined) document.getElementById('val-do').innerText = `${Number(d.DO).toFixed(2)} mg/L`;
 
-            document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
-            const alkStatusTxt = document.getElementById('txt-alk-status');
-            if (Number(d.alk) < 0) {
-                alkStatusTxt.innerText = "Chưa nạp (-1.00)";
-                alkStatusTxt.className = "text-[10px] text-amber-400 mt-0.5";
-            } else {
-                alkStatusTxt.innerText = "Đã lưu Flash";
-                alkStatusTxt.className = "text-[10px] text-emerald-400 mt-0.5";
+            // Độ kiềm
+            if (d.alk !== undefined) {
+                document.getElementById('val-alk').innerText = Number(d.alk).toFixed(2);
+                const alkStatusTxt = document.getElementById('txt-alk-status');
+                if (Number(d.alk) < 0) {
+                    alkStatusTxt.innerText = "Chưa nạp (-1.00)";
+                    alkStatusTxt.className = "text-[10px] text-amber-400 mt-0.5";
+                } else {
+                    alkStatusTxt.innerText = "Đã lưu Flash";
+                    alkStatusTxt.className = "text-[10px] text-emerald-400 mt-0.5";
+                }
             }
 
-            if (pendingExpectedAlk !== null) {
+            if (pendingExpectedAlk !== null && d.alk !== undefined) {
                 if (Math.abs(Number(d.alk) - pendingExpectedAlk) < 0.05) {
                     const fb = document.getElementById('control-feedback');
                     fb.innerHTML = `<span class="text-emerald-400 font-bold">✅ CẬP NHẬT THÀNH CÔNG: STM32 đã lưu Flash Sector 127 = ${Number(d.alk).toFixed(2)} mg/L</span>`;
@@ -1120,77 +1123,94 @@
                 }
             }
 
-            document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
-            const btriTxt = document.getElementById('txt-btri-eval');
-            if (d.btri >= 75) {
-                btriTxt.innerText = "Rủi ro Nguy kịch";
-                btriTxt.className = "text-[10px] text-red-500 font-bold mt-0.5";
-            } else if (d.btri >= 50) {
-                btriTxt.innerText = "Rủi ro Cao";
-                btriTxt.className = "text-[10px] text-amber-400 mt-0.5";
-            } else {
-                btriTxt.innerText = "An toàn";
-                btriTxt.className = "text-[10px] text-emerald-400 mt-0.5";
+            // BTRI & Quạt
+            if (d.btri !== undefined) {
+                document.getElementById('val-btri').innerText = Number(d.btri).toFixed(1);
+                const btriTxt = document.getElementById('txt-btri-eval');
+                if (d.btri >= 75) {
+                    btriTxt.innerText = "Rủi ro Nguy kịch";
+                    btriTxt.className = "text-[10px] text-red-500 font-bold mt-0.5";
+                } else if (d.btri >= 50) {
+                    btriTxt.innerText = "Rủi ro Cao";
+                    btriTxt.className = "text-[10px] text-amber-400 mt-0.5";
+                } else {
+                    btriTxt.innerText = "An toàn";
+                    btriTxt.className = "text-[10px] text-emerald-400 mt-0.5";
+                }
             }
 
-            const fanEl = document.getElementById('val-fan');
-            fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
-            fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
-
-            const ilDecoded = decodeIL(d.il);
-            const ilEl = document.getElementById('val-il');
-            ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
-            ilEl.className = `text-base font-bold mt-1 font-mono ${d.il > 0 ? 'text-rose-400 animate-pulse' : 'text-gray-400'}`;
-            document.getElementById('txt-il-desc').innerText = ilDecoded.shortText;
-            document.getElementById('txt-il-desc').className = `text-[10px] mt-0.5 truncate ${d.il > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}`;
-            document.getElementById('tooltip-il').innerHTML = ilDecoded.fullHtml;
-
-            const domDecoded = decodeDOM(d.dom);
-            const domEl = document.getElementById('val-dom');
-            domEl.innerText = `0x${Number(d.dom).toString(16).toUpperCase()}`;
-            domEl.className = `text-base font-bold mt-1 font-mono ${d.dom > 0 ? 'text-purple-400 animate-pulse' : 'text-gray-400'}`;
-            document.getElementById('txt-dom-desc').innerText = domDecoded.shortText;
-            document.getElementById('txt-dom-desc').className = `text-[10px] mt-0.5 truncate ${d.dom > 0 ? 'text-purple-400 font-bold' : 'text-emerald-400'}`;
-            document.getElementById('tooltip-dom').innerHTML = domDecoded.fullHtml;
-
-            const survEl = document.getElementById('val-surv');
-            const survTxt = document.getElementById('txt-surv-desc');
-            if (d.surv == 1) {
-                survEl.innerText = "CƯỠNG BỨC";
-                survEl.className = "text-base font-bold mt-1 font-mono text-red-500 animate-pulse";
-                survTxt.innerText = "MPU Sinh tồn: Bật quạt";
-                survTxt.className = "text-[10px] text-red-400 font-bold mt-0.5";
-            } else {
-                survEl.innerText = "OFF";
-                survEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
-                survTxt.innerText = "Bình thường";
-                survTxt.className = "text-[10px] text-gray-400 mt-0.5";
+            if (d.fan !== undefined) {
+                const fanEl = document.getElementById('val-fan');
+                fanEl.innerText = d.fan == 1 ? "BẬT (ON)" : "TẮT (OFF)";
+                fanEl.className = `text-base font-bold mt-1 font-mono ${d.fan == 1 ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`;
             }
 
-            const adaptEl = document.getElementById('val-adapt');
-            const adaptTxt = document.getElementById('txt-adapt-desc');
-            if (d.adapt_acc == 1) {
-                adaptEl.innerText = "MỚI (1)";
-                adaptEl.className = "text-base font-bold mt-1 font-mono text-emerald-400";
-                adaptTxt.innerText = "Đã nạp trọng số mới";
-                adaptTxt.className = "text-[10px] text-emerald-400 font-bold mt-0.5";
-            } else {
-                adaptEl.innerText = "0";
-                adaptEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
-                adaptTxt.innerText = "Chưa có trọng số";
-                adaptTxt.className = "text-[10px] text-gray-400 mt-0.5";
+            // Cờ IL, DOM, SURV, ADAPT, CS
+            if (d.il !== undefined) {
+                const ilDecoded = decodeIL(d.il);
+                const ilEl = document.getElementById('val-il');
+                ilEl.innerText = `0x${Number(d.il).toString(16).toUpperCase()}`;
+                ilEl.className = `text-base font-bold mt-1 font-mono ${d.il > 0 ? 'text-rose-400 animate-pulse' : 'text-gray-400'}`;
+                document.getElementById('txt-il-desc').innerText = ilDecoded.shortText;
+                document.getElementById('txt-il-desc').className = `text-[10px] mt-0.5 truncate ${d.il > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}`;
+                document.getElementById('tooltip-il').innerHTML = ilDecoded.fullHtml;
             }
 
-            const csDecoded = decodeCS(d.cs);
-            const csEl = document.getElementById('val-cs');
-            csEl.innerText = d.cs;
-            document.getElementById('txt-cs-desc').innerText = csDecoded.desc;
-            document.getElementById('txt-cs-desc').className = `text-[10px] mt-0.5 font-semibold ${csDecoded.color}`;
+            if (d.dom !== undefined) {
+                const domDecoded = decodeDOM(d.dom);
+                const domEl = document.getElementById('val-dom');
+                domEl.innerText = `0x${Number(d.dom).toString(16).toUpperCase()}`;
+                domEl.className = `text-base font-bold mt-1 font-mono ${d.dom > 0 ? 'text-purple-400 animate-pulse' : 'text-gray-400'}`;
+                document.getElementById('txt-dom-desc').innerText = domDecoded.shortText;
+                document.getElementById('txt-dom-desc').className = `text-[10px] mt-0.5 truncate ${d.dom > 0 ? 'text-purple-400 font-bold' : 'text-emerald-400'}`;
+                document.getElementById('tooltip-dom').innerHTML = domDecoded.fullHtml;
+            }
 
-            const bannerCs = document.getElementById('banner-cs-pending');
-            if (d.cs === 1) bannerCs.classList.remove('hidden');
-            else bannerCs.classList.add('hidden');
+            if (d.surv !== undefined) {
+                const survEl = document.getElementById('val-surv');
+                const survTxt = document.getElementById('txt-surv-desc');
+                if (d.surv == 1) {
+                    survEl.innerText = "CƯỠNG BỨC";
+                    survEl.className = "text-base font-bold mt-1 font-mono text-red-500 animate-pulse";
+                    survTxt.innerText = "MPU Sinh tồn: Bật quạt";
+                    survTxt.className = "text-[10px] text-red-400 font-bold mt-0.5";
+                } else {
+                    survEl.innerText = "OFF";
+                    survEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
+                    survTxt.innerText = "Bình thường";
+                    survTxt.className = "text-[10px] text-gray-400 mt-0.5";
+                }
+            }
 
+            if (d.adapt_acc !== undefined) {
+                const adaptEl = document.getElementById('val-adapt');
+                const adaptTxt = document.getElementById('txt-adapt-desc');
+                if (d.adapt_acc == 1) {
+                    adaptEl.innerText = "MỚI (1)";
+                    adaptEl.className = "text-base font-bold mt-1 font-mono text-emerald-400";
+                    adaptTxt.innerText = "Đã nạp trọng số mới";
+                    adaptTxt.className = "text-[10px] text-emerald-400 font-bold mt-0.5";
+                } else {
+                    adaptEl.innerText = "0";
+                    adaptEl.className = "text-base font-bold mt-1 font-mono text-gray-400";
+                    adaptTxt.innerText = "Chưa có trọng số";
+                    adaptTxt.className = "text-[10px] text-gray-400 mt-0.5";
+                }
+            }
+
+            if (d.cs !== undefined) {
+                const csDecoded = decodeCS(d.cs);
+                const csEl = document.getElementById('val-cs');
+                csEl.innerText = d.cs;
+                document.getElementById('txt-cs-desc').innerText = csDecoded.desc;
+                document.getElementById('txt-cs-desc').className = `text-[10px] mt-0.5 font-semibold ${csDecoded.color}`;
+
+                const bannerCs = document.getElementById('banner-cs-pending');
+                if (d.cs === 1) bannerCs.classList.remove('hidden');
+                else bannerCs.classList.add('hidden');
+            }
+
+            // Cập nhật các trường mở rộng
             if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
             if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
             if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
@@ -1202,7 +1222,7 @@
             if (d.iqrdo !== undefined) document.getElementById('val-iqrdo').innerText = Number(d.iqrdo).toFixed(3);
             
             const il8El = document.getElementById('val-il8');
-            if (d.il8 !== undefined) {
+            if (d.il8 !== undefined && il8El) {
                 il8El.innerText = d.il8 > 0 ? `0x${Number(d.il8).toString(16).toUpperCase()} (BẨN)` : `0x00 (Sạch)`;
                 il8El.className = d.il8 > 0 ? "font-bold text-rose-400 animate-pulse" : "font-bold text-emerald-400";
             }
@@ -1221,13 +1241,33 @@
             if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
             if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = d.wcet;
 
+            // Đổi màu vạch sóng 4G thông minh
             if (d.csq !== undefined) {
-                const csqTxt = d.csq === 99 ? '99 (N/A)' : `${d.csq}/31`;
-                document.getElementById('txt-csq').innerText = csqTxt;
+                const csqVal = parseInt(d.csq);
+                const txtEl = document.getElementById('txt-csq');
+                const badgeEl = document.getElementById('badge-csq');
+                if (csqVal === 99 || isNaN(csqVal)) {
+                    txtEl.innerText = "99 (Mất sóng)";
+                    badgeEl.className = "flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-red-800 text-xs text-red-400 font-mono";
+                } else {
+                    txtEl.innerText = `${csqVal}/31`;
+                    if (csqVal >= 20) {
+                        badgeEl.className = "flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-emerald-400 font-mono";
+                    } else if (csqVal >= 12) {
+                        badgeEl.className = "flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-cyan-400 font-mono";
+                    } else {
+                        badgeEl.className = "flex items-center space-x-1.5 bg-[#0b1329] px-3 py-1.5 rounded-lg border border-amber-800 text-xs text-amber-400 font-mono";
+                    }
+                }
             }
+
             if (d.boot !== undefined) document.getElementById('val-boot').innerText = d.boot;
             if (d.rstr !== undefined) document.getElementById('val-rstr').innerText = `0x${Number(d.rstr).toString(16).toUpperCase()}`;
-            if (d.flfail !== undefined) document.getElementById('val-flfail').innerText = d.flfail;
+            if (d.flfail !== undefined) {
+                const flEl = document.getElementById('val-flfail');
+                flEl.innerText = d.flfail;
+                flEl.className = d.flfail > 0 ? "text-rose-400 font-bold animate-pulse" : "text-gray-300";
+            }
             if (d.up !== undefined) {
                 const s = Number(d.up);
                 const hrs = Math.floor(s / 3600);
@@ -1235,6 +1275,7 @@
                 document.getElementById('val-uptime').innerText = `${hrs}h ${m}m`;
             }
 
+            // Trường AI & PINN
             if (d.dopred !== undefined) document.getElementById('val-dopred').innerText = `${Number(d.dopred).toFixed(3)} mg/L`;
             if (d.dosat !== undefined) document.getElementById('val-dosat').innerText = `${Number(d.dosat).toFixed(3)} mg/L`;
             if (d.aisig !== undefined) document.getElementById('val-aisig').innerText = Number(d.aisig).toFixed(4);
@@ -1277,6 +1318,7 @@
             renderTelemetryUI(packet, true);
         });
 
+        // ================= BIỂU ĐỒ =================
         function initCharts() {
             const chartConfigs = [
                 { id: 'chartT', label: 'Nhiệt độ T', unit: '°C', color: '#f97316' },
@@ -1471,6 +1513,7 @@
             }, 300);
         }
 
+        // Bảng Database 49 cột
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -1495,12 +1538,12 @@
                     return;
                 }
 
+                // TỰ ĐỘNG ĐỔ NGAY BẢN GHI MỚI NHẤT LÊN MÀN HÌNH TỨC THỜI (TRÁNH HIỆN -- KHI MỚI VÀO)
                 if (currentPage === 1 && !filterFromTime && !filterToTime && result.data[0]) {
                     const topRow = result.data[0];
                     const topRowTime = formatDbTime(topRow.created_at);
-                    if (document.getElementById('telemetry-db-id').innerText === 'ID: --') {
-                        document.getElementById('telemetry-db-id').innerText = `ID: #${topRow.id}`;
-                        document.getElementById('telemetry-db-time').innerText = topRowTime;
+                    if (document.getElementById('val-t').innerText === '-- °C') {
+                        renderTelemetryUI({ db_id: topRow.id, db_time: topRowTime, data: topRow }, false);
                     }
                 }
 
@@ -1508,22 +1551,22 @@
                     <tr>
                         <td class="py-2 px-2 text-gray-400">${item.id}</td>
                         <td class="py-2 px-2 text-emerald-400 font-mono">${formatDbTime(item.created_at)}</td>
-                        <td class="py-2 px-2 text-orange-400 font-bold">${Number(item.T).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-cyan-400 font-bold">${Number(item.S).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-emerald-400 font-bold">${Number(item.pH).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-blue-400 font-bold">${Number(item.DO).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-white font-bold">${Number(item.alk).toFixed(2)}</td>
-                        <td class="py-2 px-2 text-amber-400">${Number(item.btri).toFixed(1)}</td>
-                        <td class="py-2 px-2 text-amber-300">${item.rate ? Number(item.rate).toFixed(3) : '0.000'}</td>
-                        <td class="py-2 px-2 text-rose-300">${item.eta ? Math.round(item.eta) : '0'}</td>
-                        <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan}</td>
-                        <td class="py-2 px-2 text-rose-400 font-mono">0x${Number(item.il).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 text-orange-400 font-bold">${item.T !== undefined && item.T !== null ? Number(item.T).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-cyan-400 font-bold">${item.S !== undefined && item.S !== null ? Number(item.S).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-400 font-bold">${item.pH !== undefined && item.pH !== null ? Number(item.pH).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-blue-400 font-bold">${item.DO !== undefined && item.DO !== null ? Number(item.DO).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-white font-bold">${item.alk !== undefined && item.alk !== null ? Number(item.alk).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-amber-400">${item.btri !== undefined && item.btri !== null ? Number(item.btri).toFixed(1) : '--'}</td>
+                        <td class="py-2 px-2 text-amber-300">${item.rate !== undefined && item.rate !== null ? Number(item.rate).toFixed(3) : '0.000'}</td>
+                        <td class="py-2 px-2 text-rose-300">${item.eta !== undefined && item.eta !== null ? Math.round(item.eta) : '0'}</td>
+                        <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan ?? 0}</td>
+                        <td class="py-2 px-2 text-rose-400 font-mono">0x${Number(item.il || 0).toString(16).toUpperCase()}</td>
                         <td class="py-2 px-2 ${item.il8 > 0 ? 'text-rose-400 font-bold' : 'text-gray-400'}">0x${Number(item.il8 || 0).toString(16).toUpperCase()}</td>
                         <td class="py-2 px-2 ${item.il8cal == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.il8cal ?? 0}</td>
                         <td class="py-2 px-2 ${item.il8rdy == 1 ? 'text-emerald-400 font-bold' : 'text-amber-400'}">${item.il8rdy ?? 0}</td>
-                        <td class="py-2 px-2 text-purple-400 font-mono">0x${Number(item.dom).toString(16).toUpperCase()}</td>
-                        <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv}</td>
-                        <td class="py-2 px-2 text-blue-300 font-bold">${item.cs}</td>
+                        <td class="py-2 px-2 text-purple-400 font-mono">0x${Number(item.dom || 0).toString(16).toUpperCase()}</td>
+                        <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv ?? 0}</td>
+                        <td class="py-2 px-2 text-blue-300 font-bold">${item.cs ?? 0}</td>
                         <td class="py-2 px-2 text-indigo-300">${item.wcet || 0}</td>
 
                         <td class="py-2 px-2 text-gray-300">${item.braw !== undefined && item.braw !== null ? Number(item.braw).toFixed(1) : '--'}</td>
@@ -1654,6 +1697,7 @@
             window.open(exportUrl, '_blank');
         }
 
+        // ================= TRUNG TÂM SỰ CỐ 72 GIỜ =================
         async function fetchDismissedCloud() {
             try {
                 const res = await fetch('/api/dismissed-incidents');
@@ -1826,6 +1870,7 @@
             pendingDismissIncidentId = null;
         }
 
+        // TỐI ƯU HÓA: GỬI SONG SONG QUA PROMISE.ALL CHỐNG NGHẼN TRÌNH DUYỆT
         async function verifyAndExecuteDismiss() {
             const enteredPin = document.getElementById('input-owner-pin').value.trim();
             const pinBox = document.getElementById('pin-box');
@@ -1839,14 +1884,18 @@
             }
 
             try {
-                let idsToSave = pendingDismissIncidentId ? [pendingDismissIncidentId] : allIncidents.map(i => i.id);
-                for (let id of idsToSave) {
-                    await fetch('/api/dismiss-incident', {
+                let idsToSave = pendingDismissIncidentId 
+                    ? [pendingDismissIncidentId] 
+                    : allIncidents.filter(i => !dismissedIncidentIdsOnCloud.includes(i.id)).map(i => i.id);
+
+                await Promise.all(idsToSave.map(id => 
+                    fetch('/api/dismiss-incident', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ incident_id: id })
-                    });
-                }
+                    })
+                ));
+
                 closePinModal();
                 fetchIncidentAudit();
             } catch (err) {
@@ -1889,6 +1938,7 @@
             }
         }
 
+        // ĐÃ BỔ SUNG HÀM SENDRESET CHỐNG LỖI LIỆT NÚT BẤM
         function sendReset() {
             if (!verifyPassword()) return;
             if (confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn khởi động lại vi điều khiển STM32 từ xa?\n(Dữ liệu Flash cấu hình và neo kiềm vẫn được bảo toàn an toàn)')) {
