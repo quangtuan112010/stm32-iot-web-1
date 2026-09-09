@@ -34,7 +34,8 @@ let currentRainStatus = {
     hasRainedToday: false, 
     todayRainCount: 0,
     currentMm: 0,
-    text: 'Đang kiểm tra thời tiết hôm nay tại Xuân Định...' 
+    text: 'Đang kiểm tra thời tiết hôm nay tại Xuân Định...',
+    events: []
 };
 
 function formatSupabaseTime(rawTime) {
@@ -60,7 +61,7 @@ function formatDurationSeconds(totalSeconds) {
     return remMin > 0 ? `${hours} giờ ${remMin} phút ${sec} giây` : `${hours} giờ ${sec} giây`;
 }
 
-// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ HÔM NAY (KHÔNG DỰ BÁO) =================
+// ================= QUAN TRẮC MƯA THỰC TẾ HÔM NAY (KHÔNG DỰ BÁO) =================
 async function checkTodayRainOnly() {
     try {
         const now = Date.now();
@@ -68,19 +69,15 @@ async function checkTodayRainOnly() {
         const pad = (n) => String(n).padStart(2, '0');
         const todayStr = `${pad(nowVN.getDate())}/${pad(nowVN.getMonth() + 1)}/${nowVN.getFullYear()}`;
 
-        // Chỉ lấy dữ liệu thời gian thực hiện tại (current) và các giờ của ngày hôm nay (forecast_days=1)
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
-        
         const res = await fetch(url, { headers: { 'User-Agent': 'STM32-Tilapia-IoT/1.0' } });
         const data = await res.json();
 
         if (data.error || !data.hourly || !data.hourly.time) return;
 
-        // 1. Kiểm tra chính xác NGAY LÚC NÀY có đang mưa không
         const currentP = parseFloat(data.current.precipitation) || 0.0;
         const isRainingNow = currentP >= 0.1;
 
-        // 2. Quét từ 00:00 sáng nay ĐẾN ĐÚNG THỜI ĐIỂM HIỆN TẠI (Loại bỏ 100% tương lai)
         const times = data.hourly.time;
         const precips = data.hourly.precipitation;
 
@@ -93,7 +90,7 @@ async function checkTodayRainOnly() {
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // CHẶN CỨNG: Nếu giờ này chưa đến -> DỪNG NGAY
+            // CHẶN CỨNG TƯƠNG LAI
             if (itemTimestamp > now) {
                 if (inRain) {
                     const durMin = Math.max(60, (i - startIdx) * 60);
@@ -137,9 +134,8 @@ async function checkTodayRainOnly() {
             }
         }
 
-        // 3. Đánh số đợt và lưu vào Database Supabase
+        // Lưu vào bảng rain_history trên Supabase (chỉ cập nhật ngày hôm nay, bảo toàn ngày cũ)
         if (todayEvents.length > 0) {
-            // Xóa dữ liệu cũ của ngày hôm nay để cập nhật danh sách đợt mới nhất
             await supabase.from('rain_history').delete().eq('rain_date', todayStr);
 
             const rowsToInsert = todayEvents.map((ev, idx) => ({
@@ -150,13 +146,12 @@ async function checkTodayRainOnly() {
                 duration_min: ev.duration_min,
                 peak_mm: ev.peak_mm,
                 total_mm: ev.total_mm,
-                gap_desc: idx === 0 ? 'Đợt đầu tiên hôm nay' : `Đợt thứ ${idx + 1}`
+                gap_desc: idx === 0 ? 'Đợt đầu tiên trong ngày' : `Đợt thứ ${idx + 1}`
             }));
 
             await supabase.from('rain_history').insert(rowsToInsert);
         }
 
-        // 4. Cập nhật thông điệp hiển thị
         const hasRainedToday = todayEvents.length > 0 || isRainingNow;
         let textMsg = '';
         if (isRainingNow) {
@@ -183,12 +178,21 @@ async function checkTodayRainOnly() {
     }
 }
 
-// Kiểm tra ngay khi bật server và tự động chạy ngầm mỗi 10 phút
 checkTodayRainOnly();
 setInterval(checkTodayRainOnly, 10 * 60 * 1000);
 
-app.get('/api/rain-today', async (req, res) => {
-    res.json(currentRainStatus);
+// API trả về toàn bộ lịch sử các ngày mưa đã lưu trong Database
+app.get('/api/rain-history', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('rain_history')
+            .select('*')
+            .order('id', { ascending: false });
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ current: currentRainStatus, history: data || [] });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // ================= KẾT NỐI MQTT HIVEMQ CLOUD =================
