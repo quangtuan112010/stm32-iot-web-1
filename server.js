@@ -20,7 +20,6 @@ const MQTT_PASS = process.env.MQTT_PASS;
 const TOPIC_UPLINK = 'stm32/sensor-data';
 const TOPIC_DOWNLINK = 'stm32/control-value';
 
-// TỌA ĐỘ DUY NHẤT: XÃ XUÂN ĐỊNH, HUYỆN XUÂN LỘC, ĐỒNG NAI
 const XUAN_DINH_LAT = 10.91;
 const XUAN_DINH_LON = 107.21;
 
@@ -69,12 +68,10 @@ function formatMinutesToHours(totalMin) {
     return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
 }
 
-// ================= QUAN TRẮC MƯA XÃ XUÂN ĐỊNH (LƯU LỊCH VĨNH VIỄN BẰNG UPSERT) =================
-// ================= QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (CHUẨN 7 NGÀY LỊCH SỬ THẬT) =================
+// ================= QUAN TRẮC MƯA XÃ XUÂN ĐỊNH (LƯU LỊCH CHUẨN THỰC TẾ) =================
 async function syncRainData() {
     try {
         const now = Date.now();
-        // Lấy đúng 7 ngày lịch sử thực tế từ trạm khí tượng uy tín Open-Meteo
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&past_days=7&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
         
         const res = await fetch(url, { headers: { 'User-Agent': 'STM32-Tilapia-IoT/1.0' } });
@@ -97,7 +94,6 @@ async function syncRainData() {
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // Chuyển sang ngày mới hoặc quá thời điểm hiện tại thì đóng đợt
             if (itemTimestamp > now) {
                 if (inRain) {
                     const actualEndIdx = i - 1;
@@ -283,7 +279,7 @@ app.get('/api/rain-history', async (req, res) => {
     }
 });
 
-// ================= KẾT NỐI MQTT HIVEMQ CLOUD =================
+// ================= KẾT NỐI MQTT =================
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     username: MQTT_USER,
     password: MQTT_PASS,
@@ -370,7 +366,7 @@ mqttClient.on('message', async (topic, message) => {
         let dbTimeFormatted = '';
 
         if (error) {
-            console.error('[SUPABASE INSERT ERROR]:', error.message);
+            console.error('\x1b[31m[SUPABASE INSERT ERROR]:\x1b[0m', error.message);
         } else if (insertedRows && insertedRows.length > 0) {
             dbId = insertedRows[0].id;
             dbTimeFormatted = formatSupabaseTime(insertedRows[0].created_at);
@@ -413,7 +409,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// ================= API RÀ SOÁT 72H SỰ CỐ: THUẬT TOÁN TÁCH ĐỢT THEO GIÁ TRỊ NGUYÊN BẢN =================
+// ================= API RÀ SOÁT 72H SỰ CỐ: THUẬT TOÁN CHỐNG RUNG / GIỮ CẢNH BÁO LIÊN TỤC =================
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -464,13 +460,13 @@ app.get('/api/audit-incidents', async (req, res) => {
 
         const incidents = [];
 
-        // 1. Gián đoạn kết nối / Nghẽn dữ liệu 4G
+        // 1. Gián đoạn kết nối / Nghẽn dữ liệu 4G (chỉ báo khi mất liên tục >= 45s)
         for (let i = 1; i < logs.length; i++) {
             const tPrev = new Date(logs[i - 1].created_at).getTime();
             const tCurr = new Date(logs[i].created_at).getTime();
             const gapSec = (tCurr - tPrev) / 1000;
 
-            if (gapSec >= 35) {
+            if (gapSec >= 45) {
                 incidents.push({
                     id: `outage_${logs[i - 1].id}_${logs[i].id}`,
                     type: 'OFFLINE_GAP',
@@ -481,42 +477,78 @@ app.get('/api/audit-incidents', async (req, res) => {
                     end_time: formatSupabaseTime(logs[i].created_at),
                     duration: formatDurationSeconds(gapSec),
                     start_raw: logs[i - 1].created_at,
-                    details: `Thiết bị không gửi dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}. Nguyên nhân có thể do mất nguồn thiết bị hoặc mất sóng 4G.`
+                    details: `Thiết bị không gửi dữ liệu từ ${formatSupabaseTime(logs[i - 1].created_at)} đến ${formatSupabaseTime(logs[i].created_at)}.`
                 });
             }
         }
 
-        // THUẬT TOÁN EXACT-VALUE STATE-RUN SEGMENTATION (TÁCH ĐỢT THEO GIÁ TRỊ)
-        function analyzeExactValueRuns(keyFn, validFn, createIncidentFn) {
-            let active = null;
+        // THUẬT TOÁN EXACT-VALUE STATE-RUN KÈM BỘ LỌC TRỄ CHỐNG RUNG (DEBOUNCE 180s)
+        // Cùng 1 giá trị: DUY TRÌ LIÊN TỤC. Chỉ đóng đợt khi:
+        // 1. Có giá trị lỗi MỚI xuất hiện -> Đóng đợt cũ, mở đợt mới ngay.
+        // 2. Nước bình thường (0) liên tục TRÊN 3 PHÚT (180s) -> Đóng đợt cũ vì ao đã hết lỗi thật sự.
+        function analyzeExactValueDebounced(keyFn, validFn, createIncidentFn, debounceSec = 180) {
+            let active = null; // { val, start_row, end_row, last_seen_row, rows }
+
             for (let i = 0; i < logs.length; i++) {
                 const row = logs[i];
                 const isValid = validFn(row);
                 const keyVal = isValid ? keyFn(row) : null;
+                const tCurr = new Date(row.created_at).getTime();
 
-                if (isValid) {
-                    if (!active) {
-                        active = { val: keyVal, start_row: row, end_row: row, rows: [row] };
-                    } else if (active.val === keyVal) {
-                        active.end_row = row;
-                        active.rows.push(row);
+                if (active !== null) {
+                    const tLastSeen = new Date(active.last_seen_row.created_at).getTime();
+                    const secSinceLastSeen = (tCurr - tLastSeen) / 1000;
+
+                    if (isValid) {
+                        if (keyVal === active.val) {
+                            // Cùng mã lỗi đang tiếp diễn -> tiếp tục kéo dài đợt này!
+                            active.end_row = row;
+                            active.last_seen_row = row;
+                            active.rows.push(row);
+                        } else {
+                            // CÓ GIÁ TRỊ LỖI MỚI -> Chốt đợt cũ tại mốc cuối nó xuất hiện, và mở ngay đợt mới!
+                            active.end_row = active.last_seen_row;
+                            incidents.push(createIncidentFn(active));
+                            active = {
+                                val: keyVal,
+                                start_row: row,
+                                end_row: row,
+                                last_seen_row: row,
+                                rows: [row]
+                            };
+                        }
                     } else {
-                        // Giá trị thay đổi -> Chốt kết thúc đợt trước và tạo ngay đợt mới!
-                        incidents.push(createIncidentFn(active));
-                        active = { val: keyVal, start_row: row, end_row: row, rows: [row] };
+                        // Nước tạm thời về 0: kiểm tra xem đã bình thường liên tục quá 3 phút chưa?
+                        if (secSinceLastSeen > debounceSec) {
+                            // Đã an toàn liên tục > 3 phút -> Chốt đóng đợt sự cố này!
+                            active.end_row = active.last_seen_row;
+                            incidents.push(createIncidentFn(active));
+                            active = null;
+                        } else {
+                            // Chưa đủ 3 phút an toàn -> Vẫn giữ đợt này mở, chờ xem lỗi có quay lại không!
+                        }
                     }
                 } else {
-                    if (active) {
-                        incidents.push(createIncidentFn(active));
-                        active = null;
+                    if (isValid) {
+                        active = {
+                            val: keyVal,
+                            start_row: row,
+                            end_row: row,
+                            last_seen_row: row,
+                            rows: [row]
+                        };
                     }
                 }
             }
-            if (active) incidents.push(createIncidentFn(active));
+
+            if (active !== null) {
+                active.end_row = active.last_seen_row;
+                incidents.push(createIncidentFn(active));
+            }
         }
 
-        // 2. Cờ liên động il (Tách riêng từng giá trị il chính xác)
-        analyzeExactValueRuns(
+        // 2. Cờ liên động il (Tách đợt theo mã bitmask, duy trì liên tục qua các nhịp chập chờn)
+        analyzeExactValueDebounced(
             (r) => parseInt(r.il) || 0,
             (r) => (parseInt(r.il) || 0) > 0,
             (act) => {
@@ -546,11 +578,12 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Chi tiết các lỗi trong đợt này: ${bitDescs.join("; ")}.`
                 };
-            }
+            },
+            180 // Chờ 3 phút bình thường mới chốt đóng đợt
         );
 
-        // 3. Cờ vi phạm sinh thái dom (Tách riêng từng giá trị dom)
-        analyzeExactValueRuns(
+        // 3. Cờ vi phạm sinh thái dom (Tách đợt theo mã dom)
+        analyzeExactValueDebounced(
             (r) => parseInt(r.dom) || 0,
             (r) => (parseInt(r.dom) || 0) > 0,
             (act) => {
@@ -577,7 +610,8 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Các vi phạm trong đợt này: ${domDescs.join("; ")}.`
                 };
-            }
+            },
+            180
         );
 
         // 4. Rủi ro sinh hóa BTRI (Tách riêng mức Rủi ro Cao và Nguy kịch)
@@ -588,7 +622,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             return 'NORMAL';
         }
 
-        analyzeExactValueRuns(
+        analyzeExactValueDebounced(
             getBtriLevel,
             (r) => getBtriLevel(r) !== 'NORMAL',
             (act) => {
@@ -612,11 +646,12 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Chỉ số BTRI duy trì mức ${isCrit ? 'NGUY KỊCH' : 'CAO'} (Đạt đỉnh ${maxBtri.toFixed(1)} điểm) trong khoảng thời gian này.`
                 };
-            }
+            },
+            180
         );
 
-        // 5. Cờ bám bẩn đầu dò IL8 (Tách theo giá trị il8)
-        analyzeExactValueRuns(
+        // 5. Cờ bám bẩn đầu dò IL8
+        analyzeExactValueDebounced(
             (r) => parseInt(r.il8) || 0,
             (r) => (parseInt(r.il8) || 0) > 0,
             (act) => {
@@ -636,11 +671,12 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Thuật toán phát hiện bám bẩn kích hoạt cờ il8 = 0x${mask.toString(16).toUpperCase()} liên tục trong ${formatDurationSeconds(durSec)}. Cần vệ sinh đầu dò.`
                 };
-            }
+            },
+            180
         );
 
         // 6. Quạt sục khí khẩn cấp (fan == 1)
-        analyzeExactValueRuns(
+        analyzeExactValueDebounced(
             () => 1,
             (r) => parseInt(r.fan) === 1,
             (act) => {
@@ -659,11 +695,12 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Relay quạt sục khí đã đóng và vận hành trong ${formatDurationSeconds(durSec)} để cấp cứu oxy.`
                 };
-            }
+            },
+            60 // Quạt ngắt quá 1 phút mới tính là dừng
         );
 
         // 7. Chế độ sinh tồn vi điều khiển (surv == 1)
-        analyzeExactValueRuns(
+        analyzeExactValueDebounced(
             () => 1,
             (r) => parseInt(r.surv) === 1,
             (act) => {
@@ -682,11 +719,12 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Cảm biến hỏng hoặc ngoài biên, firmware STM32 cưỡng bức bật quạt khẩn cấp.`
                 };
-            }
+            },
+            60
         );
 
         // 8. Chờ nạp kiềm khởi động lạnh (cs == 1)
-        analyzeExactValueRuns(
+        analyzeExactValueDebounced(
             () => 1,
             (r) => parseInt(r.cs) === 1,
             (act) => {
@@ -705,7 +743,8 @@ app.get('/api/audit-incidents', async (req, res) => {
                     start_raw: act.start_row.created_at,
                     details: `Hệ thống kết thúc 72h ổn định ban đầu và đang chờ kỹ thuật viên nạp giá trị độ kiềm thực tế.`
                 };
-            }
+            },
+            60
         );
 
         // 9. Sự kiện thích nghi PINN (adapt_acc == 1)
