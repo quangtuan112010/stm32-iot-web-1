@@ -70,10 +70,12 @@ function formatMinutesToHours(totalMin) {
 }
 
 // ================= QUAN TRẮC MƯA XÃ XUÂN ĐỊNH (LƯU LỊCH VĨNH VIỄN BẰNG UPSERT) =================
+// ================= QUAN TRẮC MƯA THỰC TẾ XÃ XUÂN ĐỊNH (CHUẨN 7 NGÀY LỊCH SỬ THẬT) =================
 async function syncRainData() {
     try {
         const now = Date.now();
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
+        // Lấy đúng 7 ngày lịch sử thực tế từ trạm khí tượng uy tín Open-Meteo
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&past_days=7&forecast_days=0&timezone=Asia%2FHo_Chi_Minh`;
         
         const res = await fetch(url, { headers: { 'User-Agent': 'STM32-Tilapia-IoT/1.0' } });
         const data = await res.json();
@@ -95,7 +97,7 @@ async function syncRainData() {
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // Chặn dữ liệu dự báo tương lai
+            // Chuyển sang ngày mới hoặc quá thời điểm hiện tại thì đóng đợt
             if (itemTimestamp > now) {
                 if (inRain) {
                     const actualEndIdx = i - 1;
@@ -126,7 +128,6 @@ async function syncRainData() {
             const p = parseFloat(precips[i]) || 0.0;
             const isRaining = p >= 0.5;
 
-            // Cắt đợt khi chuyển sang ngày mới (23:00)
             const curDateStr = times[i].split('T')[0];
             const prevDateStr = i > 0 ? times[i - 1].split('T')[0] : curDateStr;
             const isNewDay = (curDateStr !== prevDateStr);
@@ -192,7 +193,6 @@ async function syncRainData() {
             }
         }
 
-        // Gom nhóm theo ngày và tính khoảng cách giữa các đợt
         const eventsByDate = {};
         allParsedEvents.forEach(ev => {
             if (!eventsByDate[ev.rain_date]) eventsByDate[ev.rain_date] = [];
@@ -217,7 +217,6 @@ async function syncRainData() {
                     cur.gap_desc = formatMinutesToHours(diffMin);
                 }
 
-                // Khóa event_key độc nhất để upsert không xóa mất lịch sử ngày cũ
                 const eventKey = `${cur.rain_date.replace(/\//g, '-')}_ep_${cur.episode_no}`;
 
                 rowsToSave.push({
@@ -234,7 +233,6 @@ async function syncRainData() {
             }
         });
 
-        // Ghi vào Supabase bằng UPSERT (bảo tồn toàn bộ lịch sử)
         if (rowsToSave.length > 0) {
             await supabase.from('rain_history').upsert(rowsToSave, { onConflict: 'event_key' });
         }
