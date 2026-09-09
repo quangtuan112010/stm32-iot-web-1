@@ -50,17 +50,6 @@ function formatSupabaseTime(rawTime) {
     }
 }
 
-function formatDurationSeconds(totalSeconds) {
-    totalSeconds = Math.max(0, Math.floor(totalSeconds));
-    if (totalSeconds < 60) return `${totalSeconds} giây`;
-    const mins = Math.floor(totalSeconds / 60);
-    const sec = totalSeconds % 60;
-    if (mins < 60) return sec > 0 ? `${mins} phút ${sec} giây` : `${mins} phút`;
-    const hours = Math.floor(mins / 60);
-    const remMin = mins % 60;
-    return remMin > 0 ? `${hours} giờ ${remMin} phút ${sec} giây` : `${hours} giờ ${sec} giây`;
-}
-
 function formatMinutesToHours(totalMin) {
     if (totalMin <= 0) return 'Đợt đầu tiên trong ngày';
     const hrs = Math.floor(totalMin / 60);
@@ -69,11 +58,10 @@ function formatMinutesToHours(totalMin) {
     return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
 }
 
-// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ (TÍNH KHOẢNG CÁCH CHUẨN) =================
+// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ (ĐÃ LỌC NHIỄU & CẮT GIỜ ẢO) =================
 async function syncRainData() {
     try {
         const now = Date.now();
-        // Quét 7 ngày qua và ngày hôm nay
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
         
         const res = await fetch(url, { headers: { 'User-Agent': 'STM32-Tilapia-IoT/1.0' } });
@@ -81,8 +69,9 @@ async function syncRainData() {
 
         if (data.error || !data.hourly || !data.hourly.time) return;
 
+        // Ngưỡng thực tế: Hiện tại mưa thật phải >= 0.5 mm
         const currentP = parseFloat(data.current?.precipitation) || 0.0;
-        const isRainingNow = currentP >= 0.1;
+        const isRainingNow = currentP >= 0.5;
 
         const times = data.hourly.time;
         const precips = data.hourly.precipitation;
@@ -96,35 +85,69 @@ async function syncRainData() {
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
 
-            // CHẶN CỨNG TƯƠNG LAI
+            // CHẶN TƯƠNG LAI
             if (itemTimestamp > now) {
                 if (inRain) {
                     const actualEndIdx = i - 1;
                     const startIso = times[startIdx];
                     const endIso = times[actualEndIdx];
                     const durMin = Math.max(60, (actualEndIdx - startIdx + 1) * 60);
-                    const datePart = startIso.split('T')[0];
-                    const [y, m, d] = datePart.split('-');
+                    const [y, m, d] = startIso.split('T')[0].split('-');
 
-                    allParsedEvents.push({
-                        rain_date: `${d}/${m}/${y}`,
-                        start_time: times[startIdx].split('T')[1],
-                        end_time: 'Đang mưa',
-                        start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
-                        end_full: `Đang mưa ${d}/${m}/${y}`,
-                        start_timestamp: new Date(startIso + ":00+07:00").getTime(),
-                        end_timestamp: new Date(endIso + ":00+07:00").getTime(),
-                        duration_min: durMin,
-                        peak_mm: parseFloat(peakVal.toFixed(2)),
-                        total_mm: parseFloat(totalVal.toFixed(2))
-                    });
+                    if (totalVal >= 0.3) {
+                        allParsedEvents.push({
+                            rain_date: `${d}/${m}/${y}`,
+                            start_time: times[startIdx].split('T')[1],
+                            end_time: 'Đang mưa',
+                            start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
+                            end_full: `Đang mưa ${d}/${m}/${y}`,
+                            start_timestamp: new Date(startIso + ":00+07:00").getTime(),
+                            end_timestamp: new Date(endIso + ":00+07:00").getTime(),
+                            duration_min: durMin,
+                            peak_mm: parseFloat(peakVal.toFixed(2)),
+                            total_mm: parseFloat(totalVal.toFixed(2))
+                        });
+                    }
                     inRain = false;
                 }
                 break;
             }
 
             const p = parseFloat(precips[i]) || 0.0;
-            if (p >= 0.1) {
+            // NÂNG NGƯỠNG LỌC NHIỄU: Phải >= 0.5 mm mới tính là mưa
+            const isRaining = p >= 0.5;
+
+            // KIỂM TRA CHUYỂN NGÀY (CẮT ĐỢT LÚC 23:00, KHÔNG CHO TRÀN QUA ĐÊM)
+            const curDateStr = times[i].split('T')[0];
+            const prevDateStr = i > 0 ? times[i - 1].split('T')[0] : curDateStr;
+            const isNewDay = (curDateStr !== prevDateStr);
+
+            if (isNewDay && inRain) {
+                // Đóng đợt mưa của ngày cũ tại 23:00
+                const actualEndIdx = i - 1;
+                const startIso = times[startIdx];
+                const endIso = times[actualEndIdx];
+                const durMin = Math.max(60, (actualEndIdx - startIdx + 1) * 60);
+                const [y, m, d] = startIso.split('T')[0].split('-');
+
+                if (totalVal >= 0.3) {
+                    allParsedEvents.push({
+                        rain_date: `${d}/${m}/${y}`,
+                        start_time: times[startIdx].split('T')[1],
+                        end_time: '23:00',
+                        start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
+                        end_full: `23:00 ${d}/${m}/${y}`,
+                        start_timestamp: new Date(startIso + ":00+07:00").getTime(),
+                        end_timestamp: new Date(endIso + ":00+07:00").getTime(),
+                        duration_min: durMin,
+                        peak_mm: parseFloat(peakVal.toFixed(2)),
+                        total_mm: parseFloat(totalVal.toFixed(2))
+                    });
+                }
+                inRain = false;
+            }
+
+            if (isRaining) {
                 if (!inRain) {
                     inRain = true;
                     startIdx = i;
@@ -141,26 +164,28 @@ async function syncRainData() {
                     const startIso = times[startIdx];
                     const endIso = times[actualEndIdx];
                     const durMin = Math.max(60, (actualEndIdx - startIdx) * 60);
-                    const datePart = startIso.split('T')[0];
-                    const [y, m, d] = datePart.split('-');
+                    const [y, m, d] = startIso.split('T')[0].split('-');
 
-                    allParsedEvents.push({
-                        rain_date: `${d}/${m}/${y}`,
-                        start_time: times[startIdx].split('T')[1],
-                        end_time: times[actualEndIdx].split('T')[1],
-                        start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
-                        end_full: `${times[actualEndIdx].split('T')[1]} ${d}/${m}/${y}`,
-                        start_timestamp: new Date(startIso + ":00+07:00").getTime(),
-                        end_timestamp: new Date(endIso + ":00+07:00").getTime(),
-                        duration_min: durMin,
-                        peak_mm: parseFloat(peakVal.toFixed(2)),
-                        total_mm: parseFloat(totalVal.toFixed(2))
-                    });
+                    // Chỉ lưu đợt mưa nếu tổng lượng nước >= 0.3 mm (lọc bỏ vệt ẩm giả lập)
+                    if (totalVal >= 0.3) {
+                        allParsedEvents.push({
+                            rain_date: `${d}/${m}/${y}`,
+                            start_time: times[startIdx].split('T')[1],
+                            end_time: times[actualEndIdx].split('T')[1],
+                            start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
+                            end_full: `${times[actualEndIdx].split('T')[1]} ${d}/${m}/${y}`,
+                            start_timestamp: new Date(startIso + ":00+07:00").getTime(),
+                            end_timestamp: new Date(endIso + ":00+07:00").getTime(),
+                            duration_min: durMin,
+                            peak_mm: parseFloat(peakVal.toFixed(2)),
+                            total_mm: parseFloat(totalVal.toFixed(2))
+                        });
+                    }
                 }
             }
         }
 
-        // TÍNH KHOẢNG CÁCH NGHỈ CHÍNH XÁC THEO TỪNG NGÀY
+        // PHÂN LOẠI VÀ TÍNH KHOẢNG NGHỈ GIỮA CÁC ĐỢT TRONG NGÀY
         const eventsByDate = {};
         allParsedEvents.forEach(ev => {
             if (!eventsByDate[ev.rain_date]) eventsByDate[ev.rain_date] = [];
@@ -180,7 +205,6 @@ async function syncRainData() {
                     cur.gap_desc = 'Đợt đầu tiên trong ngày';
                 } else {
                     const prev = dayList[idx - 1];
-                    // Khoảng cách từ lúc đợt trước TẠNH đến lúc đợt này BẮT ĐẦU
                     const diffMs = cur.start_timestamp - prev.end_timestamp;
                     const diffMin = Math.max(0, Math.floor(diffMs / (60 * 1000)));
                     cur.gap_desc = formatMinutesToHours(diffMin);
@@ -199,13 +223,12 @@ async function syncRainData() {
             }
         });
 
-        // Lưu vào Supabase
+        // GHI VÀO SUPABASE
         if (rowsToSave.length > 0) {
             await supabase.from('rain_history').delete().neq('id', 0);
             await supabase.from('rain_history').insert(rowsToSave);
         }
 
-        // Trạng thái ngày hôm nay
         const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
         const pad = (n) => String(n).padStart(2, '0');
         const todayStr = `${pad(nowVN.getDate())}/${pad(nowVN.getMonth() + 1)}/${nowVN.getFullYear()}`;
@@ -213,10 +236,10 @@ async function syncRainData() {
 
         let textMsg = '';
         if (isRainingNow) {
-            textMsg = `🌧️ HIỆN TẠI ĐANG CÓ MƯA (Lượng mưa: ${currentP.toFixed(1)} mm)`;
+            textMsg = `🌧️ HIỆN TẠI ĐANG CÓ MƯA THỰC TẾ (Lượng mưa: ${currentP.toFixed(1)} mm)`;
         } else if (todayEvs.length > 0) {
             const last = todayEvs[todayEvs.length - 1];
-            textMsg = `☀️ Hiện tại tạnh ráo. Hôm nay đã có ${todayEvs.length} đợt mưa (gần nhất: ${last.start_time} - ${last.end_time})`;
+            textMsg = `☀️ Hiện tại tạnh ráo. Hôm nay đã có ${todayEvs.length} đợt mưa (gần nhất: ${last.start_time.split(' ')[0]} - ${last.end_time.split(' ')[0]})`;
         } else {
             textMsg = `☀️ Hôm nay chưa có mưa tại xã Xuân Định.`;
         }
