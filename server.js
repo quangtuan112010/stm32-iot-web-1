@@ -61,21 +61,27 @@ function formatDurationSeconds(totalSeconds) {
     return remMin > 0 ? `${hours} giờ ${remMin} phút ${sec} giây` : `${hours} giờ ${sec} giây`;
 }
 
-// ================= QUAN TRẮC MƯA THỰC TẾ HÔM NAY (KHÔNG DỰ BÁO) =================
-async function checkTodayRainOnly() {
+function formatMinutesToHours(totalMin) {
+    if (totalMin <= 0) return 'Đợt đầu tiên trong ngày';
+    const hrs = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (hrs === 0) return `Cách đợt trước ${m} phút`;
+    return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
+}
+
+// ================= THUẬT TOÁN QUAN TRẮC MƯA THỰC TẾ (TÍNH KHOẢNG CÁCH CHUẨN) =================
+async function syncRainData() {
     try {
         const now = Date.now();
-        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-        const pad = (n) => String(n).padStart(2, '0');
-        const todayStr = `${pad(nowVN.getDate())}/${pad(nowVN.getMonth() + 1)}/${nowVN.getFullYear()}`;
-
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
+        // Quét 7 ngày qua và ngày hôm nay
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${XUAN_DINH_LAT}&longitude=${XUAN_DINH_LON}&current=precipitation,rain&hourly=precipitation,rain&past_days=7&forecast_days=1&timezone=Asia%2FHo_Chi_Minh`;
+        
         const res = await fetch(url, { headers: { 'User-Agent': 'STM32-Tilapia-IoT/1.0' } });
         const data = await res.json();
 
         if (data.error || !data.hourly || !data.hourly.time) return;
 
-        const currentP = parseFloat(data.current.precipitation) || 0.0;
+        const currentP = parseFloat(data.current?.precipitation) || 0.0;
         const isRainingNow = currentP >= 0.1;
 
         const times = data.hourly.time;
@@ -85,7 +91,7 @@ async function checkTodayRainOnly() {
         let startIdx = 0;
         let peakVal = 0.0;
         let totalVal = 0.0;
-        const todayEvents = [];
+        const allParsedEvents = [];
 
         for (let i = 0; i < times.length; i++) {
             const itemTimestamp = new Date(times[i] + ":00+07:00").getTime();
@@ -93,11 +99,21 @@ async function checkTodayRainOnly() {
             // CHẶN CỨNG TƯƠNG LAI
             if (itemTimestamp > now) {
                 if (inRain) {
-                    const durMin = Math.max(60, (i - startIdx) * 60);
-                    todayEvents.push({
-                        rain_date: todayStr,
+                    const actualEndIdx = i - 1;
+                    const startIso = times[startIdx];
+                    const endIso = times[actualEndIdx];
+                    const durMin = Math.max(60, (actualEndIdx - startIdx + 1) * 60);
+                    const datePart = startIso.split('T')[0];
+                    const [y, m, d] = datePart.split('-');
+
+                    allParsedEvents.push({
+                        rain_date: `${d}/${m}/${y}`,
                         start_time: times[startIdx].split('T')[1],
                         end_time: 'Đang mưa',
+                        start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
+                        end_full: `Đang mưa ${d}/${m}/${y}`,
+                        start_timestamp: new Date(startIso + ":00+07:00").getTime(),
+                        end_timestamp: new Date(endIso + ":00+07:00").getTime(),
                         duration_min: durMin,
                         peak_mm: parseFloat(peakVal.toFixed(2)),
                         total_mm: parseFloat(totalVal.toFixed(2))
@@ -121,11 +137,21 @@ async function checkTodayRainOnly() {
             } else {
                 if (inRain) {
                     inRain = false;
-                    const durMin = Math.max(60, (i - startIdx) * 60);
-                    todayEvents.push({
-                        rain_date: todayStr,
+                    const actualEndIdx = i;
+                    const startIso = times[startIdx];
+                    const endIso = times[actualEndIdx];
+                    const durMin = Math.max(60, (actualEndIdx - startIdx) * 60);
+                    const datePart = startIso.split('T')[0];
+                    const [y, m, d] = datePart.split('-');
+
+                    allParsedEvents.push({
+                        rain_date: `${d}/${m}/${y}`,
                         start_time: times[startIdx].split('T')[1],
-                        end_time: times[i].split('T')[1],
+                        end_time: times[actualEndIdx].split('T')[1],
+                        start_full: `${times[startIdx].split('T')[1]} ${d}/${m}/${y}`,
+                        end_full: `${times[actualEndIdx].split('T')[1]} ${d}/${m}/${y}`,
+                        start_timestamp: new Date(startIso + ":00+07:00").getTime(),
+                        end_timestamp: new Date(endIso + ":00+07:00").getTime(),
                         duration_min: durMin,
                         peak_mm: parseFloat(peakVal.toFixed(2)),
                         total_mm: parseFloat(totalVal.toFixed(2))
@@ -134,42 +160,74 @@ async function checkTodayRainOnly() {
             }
         }
 
-        // Lưu vào bảng rain_history trên Supabase (chỉ cập nhật ngày hôm nay, bảo toàn ngày cũ)
-        if (todayEvents.length > 0) {
-            await supabase.from('rain_history').delete().eq('rain_date', todayStr);
+        // TÍNH KHOẢNG CÁCH NGHỈ CHÍNH XÁC THEO TỪNG NGÀY
+        const eventsByDate = {};
+        allParsedEvents.forEach(ev => {
+            if (!eventsByDate[ev.rain_date]) eventsByDate[ev.rain_date] = [];
+            eventsByDate[ev.rain_date].push(ev);
+        });
 
-            const rowsToInsert = todayEvents.map((ev, idx) => ({
-                rain_date: todayStr,
-                episode_no: idx + 1,
-                start_time: `${ev.start_time} ${todayStr}`,
-                end_time: ev.end_time === 'Đang mưa' ? 'Đang mưa' : `${ev.end_time} ${todayStr}`,
-                duration_min: ev.duration_min,
-                peak_mm: ev.peak_mm,
-                total_mm: ev.total_mm,
-                gap_desc: idx === 0 ? 'Đợt đầu tiên trong ngày' : `Đợt thứ ${idx + 1}`
-            }));
+        const rowsToSave = [];
+        Object.keys(eventsByDate).forEach(dateKey => {
+            const dayList = eventsByDate[dateKey];
+            dayList.sort((a, b) => a.start_timestamp - b.start_timestamp);
 
-            await supabase.from('rain_history').insert(rowsToInsert);
+            for (let idx = 0; idx < dayList.length; idx++) {
+                const cur = dayList[idx];
+                cur.episode_no = idx + 1;
+
+                if (idx === 0) {
+                    cur.gap_desc = 'Đợt đầu tiên trong ngày';
+                } else {
+                    const prev = dayList[idx - 1];
+                    // Khoảng cách từ lúc đợt trước TẠNH đến lúc đợt này BẮT ĐẦU
+                    const diffMs = cur.start_timestamp - prev.end_timestamp;
+                    const diffMin = Math.max(0, Math.floor(diffMs / (60 * 1000)));
+                    cur.gap_desc = formatMinutesToHours(diffMin);
+                }
+
+                rowsToSave.push({
+                    rain_date: cur.rain_date,
+                    episode_no: cur.episode_no,
+                    start_time: cur.start_full,
+                    end_time: cur.end_full,
+                    duration_min: cur.duration_min,
+                    peak_mm: cur.peak_mm,
+                    total_mm: cur.total_mm,
+                    gap_desc: cur.gap_desc
+                });
+            }
+        });
+
+        // Lưu vào Supabase
+        if (rowsToSave.length > 0) {
+            await supabase.from('rain_history').delete().neq('id', 0);
+            await supabase.from('rain_history').insert(rowsToSave);
         }
 
-        const hasRainedToday = todayEvents.length > 0 || isRainingNow;
+        // Trạng thái ngày hôm nay
+        const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+        const pad = (n) => String(n).padStart(2, '0');
+        const todayStr = `${pad(nowVN.getDate())}/${pad(nowVN.getMonth() + 1)}/${nowVN.getFullYear()}`;
+        const todayEvs = eventsByDate[todayStr] || [];
+
         let textMsg = '';
         if (isRainingNow) {
             textMsg = `🌧️ HIỆN TẠI ĐANG CÓ MƯA (Lượng mưa: ${currentP.toFixed(1)} mm)`;
-        } else if (hasRainedToday) {
-            const last = todayEvents[todayEvents.length - 1];
-            textMsg = `☀️ Hiện tại tạnh ráo. Hôm nay đã có ${todayEvents.length} đợt mưa (gần nhất: ${last.start_time} - ${last.end_time})`;
+        } else if (todayEvs.length > 0) {
+            const last = todayEvs[todayEvs.length - 1];
+            textMsg = `☀️ Hiện tại tạnh ráo. Hôm nay đã có ${todayEvs.length} đợt mưa (gần nhất: ${last.start_time} - ${last.end_time})`;
         } else {
             textMsg = `☀️ Hôm nay chưa có mưa tại xã Xuân Định.`;
         }
 
         currentRainStatus = {
             isRainingNow: isRainingNow,
-            hasRainedToday: hasRainedToday,
-            todayRainCount: todayEvents.length,
+            hasRainedToday: todayEvs.length > 0 || isRainingNow,
+            todayRainCount: todayEvs.length,
             currentMm: currentP,
             text: textMsg,
-            events: todayEvents
+            events: todayEvs
         };
 
         io.emit('rain_status_update', currentRainStatus);
@@ -178,16 +236,15 @@ async function checkTodayRainOnly() {
     }
 }
 
-checkTodayRainOnly();
-setInterval(checkTodayRainOnly, 10 * 60 * 1000);
+syncRainData();
+setInterval(syncRainData, 10 * 60 * 1000);
 
-// API trả về toàn bộ lịch sử các ngày mưa đã lưu trong Database
 app.get('/api/rain-history', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('rain_history')
             .select('*')
-            .order('id', { ascending: false });
+            .order('id', { ascending: true });
         if (error) return res.status(500).json({ error: error.message });
         res.json({ current: currentRainStatus, history: data || [] });
     } catch (e) {
