@@ -1709,6 +1709,9 @@
         }
 
         // ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ: TÁCH BIỆT 3 CỬA SỔ =================
+// ================= XỬ LÝ SỰ CỐ: KHÓA TAB CỐ ĐỊNH, KHÔNG TỰ NHẢY =================
+        let isModalFirstOpen = true;
+
         async function fetchDismissedCloud() {
             try {
                 const res = await fetch('/api/dismissed-incidents');
@@ -1732,11 +1735,8 @@
         }
 
         function updateIncidentUI() {
-            // 1. Phân loại sự cố ĐANG DIỄN RA
             const ongoingList = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
-            // 2. Phân loại sự cố LỊCH SỬ 72H ĐÃ KẾT THÚC
             const historyList = allIncidents.filter(inc => !inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
-            // 3. Phân loại sự cố ĐÃ TẮT
             const dismissedList = allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
 
             document.getElementById('count-tab-ongoing').innerText = ongoingList.length;
@@ -1751,35 +1751,44 @@
             const bIcon = document.getElementById('banner-incident-icon');
 
             if (ongoingList.length > 0) {
-                // ƯU TIÊN SỐ 1: BÁO ĐỎ RỰC KHI CÓ SỰ CỐ TRỰC TIẾP
-                badgeBtn.className = "flex items-center gap-2 bg-red-600 hover:bg-red-500 text-xs px-3.5 py-1.5 rounded-lg border border-red-400 text-white transition shadow animate-bounce";
-                countTxt.innerText = `🚨 ${ongoingList.length} SỰ CỐ ĐANG XẢY RA!`;
+                badgeBtn.className = "flex items-center gap-2 bg-red-600 hover:bg-red-500 text-xs px-3.5 py-1.5 rounded-lg border border-red-400 text-white transition shadow animate-pulse";
+                countTxt.innerText = `🚨 ${ongoingList.length} sự cố ĐANG XẢY RA`;
                 
                 banner.className = "bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500 text-white p-4 rounded-xl shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-pulse";
                 bIcon.innerText = "🚨";
-                bTitle.innerText = `CẢNH BÁO KHẨN: CÓ ${ongoingList.length} SỰ CỐ ĐANG DIỄN RA TRỰC TIẾP!`;
-                bDesc.innerText = "Hệ thống phát hiện ao đang có sự cố ngay tại thời điểm này. Nhấn để kiểm tra và xử lý ngay!";
+                bTitle.innerText = `CẢNH BÁO: CÓ ${ongoingList.length} SỰ CỐ ĐANG DIỄN RA TRỰC TIẾP!`;
+                bDesc.innerText = "Ao cá đang có thông số bất thường ngay thời điểm này. Nhấn để kiểm tra!";
                 banner.classList.remove('hidden');
 
-                // Tự động chuyển người dùng sang xem Tab Đang diễn ra
-                currentIncTab = 'ongoing';
+                // CHỈ tự chọn tab 'ongoing' khi người dùng vừa mới bấm mở Modal lần đầu tiên
+                if (isModalFirstOpen) {
+                    currentIncTab = 'ongoing';
+                }
             } else if (historyList.length > 0) {
-                // ƯU TIÊN SỐ 2: BÁO VÀNG CHO LỊCH SỬ ĐÃ XONG
                 badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-amber-300 transition shadow";
-                countTxt.innerText = `${historyList.length} đợt trong 72h`;
+                countTxt.innerText = `${historyList.length} sự cố 72h (Đã xong)`;
 
                 banner.className = "bg-gradient-to-r from-slate-900 via-amber-950/60 to-slate-900 border border-amber-500/60 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3";
                 bIcon.innerText = "📜";
-                bTitle.innerText = `NHẬT KÝ 72H: CÓ ${historyList.length} ĐỢT SỰ CỐ ĐÃ QUA`;
-                bDesc.innerText = "Hiện tại nước ao đã tạm ổn định. Bạn có thể nhấn để xem lại lịch sử các đợt biến động vừa rồi.";
+                bTitle.innerText = `NHẬT KÝ 72H: CÓ ${historyList.length} ĐỢT BIẾN ĐỘNG ĐÃ QUA`;
+                bDesc.innerText = "Nước ao hiện tại đã ổn định. Nhấn để xem lịch sử các đợt vừa rồi.";
                 banner.classList.remove('hidden');
+
+                if (isModalFirstOpen) {
+                    currentIncTab = 'history';
+                }
             } else {
-                // AN TOÀN TUYỆT ĐỐI
                 badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-emerald-400 transition shadow";
                 countTxt.innerText = "72h qua an toàn";
                 banner.classList.add('hidden');
+                
+                if (isModalFirstOpen) {
+                    currentIncTab = 'history';
+                }
             }
 
+            // Đồng bộ giao diện nút bấm tab đúng theo tab người dùng đang chọn (ĐỨNG YÊN TẠI CHỖ)
+            setIncidentTab(currentIncTab, false);
             renderIncidentList();
         }
 
@@ -1801,7 +1810,7 @@
                         <div class="text-center py-12 text-gray-400 space-y-2">
                             <div class="text-5xl">🎉</div>
                             <div class="font-bold text-base text-emerald-400">HIỆN TẠI KHÔNG CÓ SỰ CỐ NÀO ĐANG DIỄN RA!</div>
-                            <p class="text-xs text-gray-400">Mọi thông số chất lượng nước của ao cá đang hoạt động ổn định và an toàn.</p>
+                            <p class="text-xs text-gray-400">Mọi chỉ số chất lượng nước ao cá đang ở mức an toàn ổn định.</p>
                         </div>
                     `;
                 } else if (currentIncTab === 'history') {
@@ -1809,14 +1818,14 @@
                         <div class="text-center py-12 text-gray-400 space-y-2">
                             <div class="text-5xl">✨</div>
                             <div class="font-bold text-sm text-gray-300">Không có sự cố lịch sử nào chưa xác nhận!</div>
-                            <p class="text-xs text-gray-500">Toàn bộ 72 giờ qua đã được bạn kiểm tra và xử lý sạch sẽ.</p>
+                            <p class="text-xs text-gray-500">Các đợt cảnh báo cũ trong 72 giờ qua đã được bạn dọn dẹp sạch sẽ.</p>
                         </div>
                     `;
                 } else {
                     container.innerHTML = `
                         <div class="text-center py-12 text-gray-400 space-y-2">
                             <div class="text-5xl">📁</div>
-                            <div class="font-bold text-sm text-gray-300">Chưa có sự cố nào được tắt!</div>
+                            <div class="font-bold text-sm text-gray-300">Chưa có cảnh báo nào trong mục đã tắt!</div>
                         </div>
                     `;
                 }
@@ -1881,13 +1890,12 @@
             }).join('');
         }
 
-        function setIncidentTab(tab) {
+        function setIncidentTab(tab, shouldRender = true) {
             currentIncTab = tab;
             const btnOngoing = document.getElementById('tab-inc-ongoing');
             const btnHistory = document.getElementById('tab-inc-history');
             const btnDismissed = document.getElementById('tab-inc-dismissed');
 
-            // Reset style
             btnOngoing.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5";
             btnHistory.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5";
             btnDismissed.className = "px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5";
@@ -1899,21 +1907,28 @@
             } else {
                 btnDismissed.className = "px-3 py-1.5 rounded-lg font-bold transition bg-emerald-700 text-white shadow flex items-center gap-1.5";
             }
-            renderIncidentList();
+
+            if (shouldRender) {
+                renderIncidentList();
+            }
         }
 
         function openIncidentModal() {
+            isModalFirstOpen = true; // Chỉ tính là mở lần đầu khi bấm nút xem
             document.getElementById('incident-modal').classList.remove('hidden');
-            fetchIncidentAudit();
+            fetchIncidentAudit().then(() => {
+                isModalFirstOpen = false; // Sau đó khóa lại, không bao giờ tự ý đổi tab nữa
+            });
         }
 
         function closeIncidentModal() {
             document.getElementById('incident-modal').classList.add('hidden');
+            isModalFirstOpen = true;
         }
 
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
-            document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để xác nhận và tắt cảnh báo sự cố này:";
+            document.getElementById('pin-modal-desc').innerText = "Nhập mã PIN bảo mật để tắt cảnh báo này vĩnh viễn:";
             document.getElementById('input-owner-pin').value = '';
             document.getElementById('pin-error-msg').innerText = '';
             document.getElementById('pin-modal').classList.remove('hidden');
@@ -1921,14 +1936,15 @@
         }
 
         function promptDismissAll() {
-            const activeList = allIncidents.filter(inc => !dismissedIncidentIdsOnCloud.includes(inc.id));
-            if (activeList.length === 0) {
+            // Lọc danh sách cảnh báo chưa tắt
+            const unDismissed = allIncidents.filter(i => !dismissedIncidentIdsOnCloud.includes(i.id));
+            if (unDismissed.length === 0) {
                 alert('Không có cảnh báo nào cần tắt!');
                 return;
             }
 
             pendingDismissIncidentId = null;
-            document.getElementById('pin-modal-desc').innerText = `Nhập mã PIN bảo mật để xác nhận và TẮT TOÀN BỘ ${activeList.length} CẢNH BÁO:`;
+            document.getElementById('pin-modal-desc').innerText = `Nhập mã PIN bảo mật để TẮT TOÀN BỘ ${unDismissed.length} CẢNH BÁO:`;
             document.getElementById('input-owner-pin').value = '';
             document.getElementById('pin-error-msg').innerText = '';
             document.getElementById('pin-modal').classList.remove('hidden');
@@ -1940,6 +1956,7 @@
             pendingDismissIncidentId = null;
         }
 
+        // TẮT BẢO MẬT & ĐỒNG BỘ 100% LÊN DATABASE
         async function verifyAndExecuteDismiss() {
             const enteredPin = document.getElementById('input-owner-pin').value.trim();
             const pinBox = document.getElementById('pin-box');
@@ -1957,6 +1974,10 @@
                     ? [pendingDismissIncidentId] 
                     : allIncidents.filter(i => !dismissedIncidentIdsOnCloud.includes(i.id)).map(i => i.id);
 
+                errorMsg.className = "text-xs text-emerald-400 min-h-[16px] font-medium";
+                errorMsg.innerText = "Đang lưu trạng thái lên Database...";
+
+                // Lưu song song toàn bộ ID lên Supabase
                 await Promise.all(idsToSave.map(id => 
                     fetch('/api/dismiss-incident', {
                         method: 'POST',
@@ -1966,7 +1987,8 @@
                 ));
 
                 closePinModal();
-                fetchIncidentAudit();
+                // Tải lại danh sách sự cố nhưng GIỮ NGUYÊN TAB NGƯỜI DÙNG ĐANG XEM
+                await fetchIncidentAudit();
             } catch (err) {
                 alert('Lỗi kết nối lưu trạng thái lên đám mây!');
             }
