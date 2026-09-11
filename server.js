@@ -409,7 +409,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// ================= RÀ SOÁT SỰ CỐ 72H: PHÂN BIỆT RÕ RÀNG "ĐANG DIỄN RA" VÀ "ĐÃ KẾT THÚC" =================
+// ================= API RÀ SOÁT 72H SỰ CỐ: ID BẤT BIẾN + CHỐNG NHẢY CẢNH BÁO =================
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -461,7 +461,7 @@ app.get('/api/audit-incidents', async (req, res) => {
         const incidents = [];
         const maxLogTime = new Date(logs[logs.length - 1].created_at).getTime();
 
-        // 1. Mất kết nối trong quá khứ và hiện tại
+        // 1. Mất kết nối quá khứ (ID cố định theo log bắt đầu mất)
         for (let i = 1; i < logs.length; i++) {
             const tPrev = new Date(logs[i - 1].created_at).getTime();
             const tCurr = new Date(logs[i].created_at).getTime();
@@ -469,7 +469,7 @@ app.get('/api/audit-incidents', async (req, res) => {
 
             if (gapSec >= 45) {
                 incidents.push({
-                    id: `outage_${logs[i - 1].id}_${logs[i].id}`,
+                    id: `outage_${logs[i - 1].id}`,
                     type: 'OFFLINE_GAP',
                     severity: 'critical',
                     category: 'Mất kết nối / Nghẽn dữ liệu 4G',
@@ -484,11 +484,11 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         }
 
-        // Kiểm tra xem hiện tại thiết bị có đang bị mất kết nối không
+        // Mất kết nối hiện tại
         const secSinceLastPacket = (nowVN.getTime() - maxLogTime) / 1000;
         if (secSinceLastPacket >= 45) {
             incidents.push({
-                id: `outage_current_active`,
+                id: `outage_live_${logs[logs.length - 1].id}`,
                 type: 'OFFLINE_GAP',
                 severity: 'critical',
                 category: 'Mất kết nối / Nghẽn dữ liệu 4G',
@@ -502,7 +502,7 @@ app.get('/api/audit-incidents', async (req, res) => {
             });
         }
 
-        // THUẬT TOÁN EXACT-VALUE STATE-RUN (NHẬN DIỆN CHÍNH XÁC IS_ONGOING)
+        // Thuật toán tách đợt: ID CỐ ĐỊNH THEO START_ROW.ID (KHÔNG ĐỔI THEO THỜI GIAN)
         function analyzeExactValueDebounced(keyFn, validFn, createIncidentFn, debounceSec = 180) {
             let active = null;
 
@@ -524,13 +524,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                         } else {
                             active.end_row = active.last_seen_row;
                             incidents.push(createIncidentFn(active, false));
-                            active = {
-                                val: keyVal,
-                                start_row: row,
-                                end_row: row,
-                                last_seen_row: row,
-                                rows: [row]
-                            };
+                            active = { val: keyVal, start_row: row, end_row: row, last_seen_row: row, rows: [row] };
                         }
                     } else {
                         if (secSinceLastSeen > debounceSec) {
@@ -541,13 +535,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                     }
                 } else {
                     if (isValid) {
-                        active = {
-                            val: keyVal,
-                            start_row: row,
-                            end_row: row,
-                            last_seen_row: row,
-                            rows: [row]
-                        };
+                        active = { val: keyVal, start_row: row, end_row: row, last_seen_row: row, rows: [row] };
                     }
                 }
             }
@@ -555,13 +543,12 @@ app.get('/api/audit-incidents', async (req, res) => {
             if (active !== null) {
                 active.end_row = active.last_seen_row;
                 const tLastSeen = new Date(active.last_seen_row.created_at).getTime();
-                // Nếu lần thấy cuối cùng nằm trong vòng 60 giây của bản ghi mới nhất -> ĐANG DIỄN RA!
                 const isOngoing = (maxLogTime - tLastSeen) <= 60000;
                 incidents.push(createIncidentFn(active, isOngoing));
             }
         }
 
-        // 2. Khóa liên động il
+        // 2. Khóa liên động il (ID khóa cứng theo start_row.id)
         analyzeExactValueDebounced(
             (r) => parseInt(r.il) || 0,
             (r) => (parseInt(r.il) || 0) > 0,
@@ -581,7 +568,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 if (mask & 0x40) bitDescs.push("Lỗi cảm biến / Mất gói liên tiếp");
 
                 return {
-                    id: `il_${mask}_${act.start_row.id}_${act.end_row.id}`,
+                    id: `il_${mask}_${act.start_row.id}`, // <-- ID BẤT BIẾN TUYỆT ĐỐI
                     type: 'INTERLOCK',
                     severity: (mask & 0x28) ? 'critical' : 'warning',
                     category: 'Khóa liên động sự cố (il)',
@@ -611,10 +598,10 @@ app.get('/api/audit-incidents', async (req, res) => {
                 if (mask & 0x01) domDescs.push("Độ mặn ngoài dải (S > 5.0‰)");
                 if (mask & 0x02) domDescs.push("Nhiệt độ ngoài dải (< 20°C hoặc > 35°C)");
                 if (mask & 0x04) domDescs.push("pH ngoài dải sinh thái (< 6.5 hoặc > 9.5)");
-                if (mask & 0x08) domDescs.push("Cảm biến trả về NaN hoặc đứt dây tín hiệu");
+                if (mask & 0x08) domDescs.push("Cảm biến trả về NaN hoặc đứt dây");
 
                 return {
-                    id: `dom_${mask}_${act.start_row.id}_${act.end_row.id}`,
+                    id: `dom_${mask}_${act.start_row.id}`, // <-- ID BẤT BIẾN
                     type: 'DOMAIN_GUARD',
                     severity: 'warning',
                     category: 'Miền sinh học cá rô phi (dom)',
@@ -649,7 +636,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const isCrit = act.val === 'CRITICAL';
 
                 return {
-                    id: `btri_${act.val}_${act.start_row.id}_${act.end_row.id}`,
+                    id: `btri_${act.val}_${act.start_row.id}`, // <-- ID BẤT BIẾN
                     type: 'BTRI_HIGH',
                     severity: isCrit ? 'critical' : 'warning',
                     category: 'Rủi ro độc chất sinh hóa (btri)',
@@ -677,7 +664,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 const mask = act.val;
                 return {
-                    id: `il8_${mask}_${act.start_row.id}_${act.end_row.id}`,
+                    id: `il8_${mask}_${act.start_row.id}`, // <-- ID BẤT BIẾN
                     type: 'PROBE_DIRT',
                     severity: 'warning',
                     category: 'Cảnh báo bám bẩn đầu dò (il8)',
@@ -702,7 +689,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 return {
-                    id: `fan_${act.start_row.id}_${act.end_row.id}`,
+                    id: `fan_${act.start_row.id}`, // <-- ID BẤT BIẾN
                     type: 'FAN_RUN',
                     severity: 'warning',
                     category: 'Quạt sục khí khẩn cấp (fan)',
@@ -727,7 +714,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 return {
-                    id: `surv_${act.start_row.id}_${act.end_row.id}`,
+                    id: `surv_${act.start_row.id}`, // <-- ID BẤT BIẾN
                     type: 'SURVIVAL',
                     severity: 'critical',
                     category: 'Chế độ sinh tồn vi điều khiển (surv)',
@@ -752,7 +739,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 return {
-                    id: `cs1_${act.start_row.id}_${act.end_row.id}`,
+                    id: `cs1_${act.start_row.id}`, // <-- ID BẤT BIẾN
                     type: 'COLD_START_PENDING',
                     severity: 'warning',
                     category: 'Chu trình khởi động lạnh (cs)',
@@ -768,7 +755,25 @@ app.get('/api/audit-incidents', async (req, res) => {
             60
         );
 
-        // Sắp xếp: sự cố đang diễn ra lên trước, sau đó theo mốc giờ mới nhất
+        // 9. Thích nghi PINN
+        for (let i = 0; i < logs.length; i++) {
+            if (parseInt(logs[i].adapt_acc) === 1 && (i === 0 || parseInt(logs[i - 1].adapt_acc) === 0)) {
+                incidents.push({
+                    id: `adapt_${logs[i].id}`,
+                    type: 'PINN_ADAPT',
+                    severity: 'info',
+                    category: 'Học máy thích nghi PINN (adapt)',
+                    title: `Mạng PINN nạp thành công bộ trọng số thích nghi mới`,
+                    start_time: formatSupabaseTime(logs[i].created_at),
+                    end_time: formatSupabaseTime(logs[i].created_at),
+                    duration: 'Sự kiện tức thời',
+                    start_raw: logs[i].created_at,
+                    is_ongoing: false,
+                    details: `Mạng PINN trên STM32 đã cập nhật trọng số mới vào Flash.`
+                });
+            }
+        }
+
         incidents.sort((a, b) => {
             if (a.is_ongoing && !b.is_ongoing) return -1;
             if (!a.is_ongoing && b.is_ongoing) return 1;
