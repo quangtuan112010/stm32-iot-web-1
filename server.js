@@ -68,7 +68,7 @@ function formatMinutesToHours(totalMin) {
     return m > 0 ? `Cách đợt trước ${hrs} giờ ${m} phút` : `Cách đợt trước ${hrs} giờ`;
 }
 
-// Quan trắc mưa Xã Xuân Định (Open-Meteo chuẩn 7 ngày thực tế)
+// Quan trắc mưa Xã Xuân Định
 async function syncRainData() {
     try {
         const now = Date.now();
@@ -385,7 +385,6 @@ mqttClient.on('message', async (topic, message) => {
 
 // ================= API QUẢN LÝ TẮT CẢNH BÁO SỰ CỐ =================
 
-// Lấy danh sách ID các sự cố đã tắt
 app.get('/api/dismissed-incidents', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -403,7 +402,6 @@ app.get('/api/dismissed-incidents', async (req, res) => {
     }
 });
 
-// Lưu ID sự cố đã tắt (Hỗ trợ cả đơn lẻ và mảng nhiều ID)
 app.post('/api/dismiss-incident', async (req, res) => {
     try {
         const { incident_id, incident_ids } = req.body;
@@ -438,7 +436,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
     }
 });
 
-// ================= API RÀ SOÁT 72H SỰ CỐ: ID BẤT BIẾN + CHỐNG NHẢY CẢNH BÁO =================
+// ================= API RÀ SOÁT 72H SỰ CỐ =================
 app.get('/api/audit-incidents', async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 72;
@@ -490,7 +488,6 @@ app.get('/api/audit-incidents', async (req, res) => {
         const incidents = [];
         const maxLogTime = new Date(logs[logs.length - 1].created_at).getTime();
 
-        // 1. Mất kết nối quá khứ (ID cố định theo log bắt đầu mất)
         for (let i = 1; i < logs.length; i++) {
             const tPrev = new Date(logs[i - 1].created_at).getTime();
             const tCurr = new Date(logs[i].created_at).getTime();
@@ -513,7 +510,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         }
 
-        // Mất kết nối hiện tại
         const secSinceLastPacket = (nowVN.getTime() - maxLogTime) / 1000;
         if (secSinceLastPacket >= 45) {
             incidents.push({
@@ -531,7 +527,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             });
         }
 
-        // Thuật toán tách đợt: ID CỐ ĐỊNH THEO START_ROW.ID (KHÔNG ĐỔI THEO THỜI GIAN)
         function analyzeExactValueDebounced(keyFn, validFn, createIncidentFn, debounceSec = 180) {
             let active = null;
 
@@ -577,7 +572,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             }
         }
 
-        // 2. Khóa liên động il (ID khóa cứng theo start_row.id)
         analyzeExactValueDebounced(
             (r) => parseInt(r.il) || 0,
             (r) => (parseInt(r.il) || 0) > 0,
@@ -597,7 +591,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 if (mask & 0x40) bitDescs.push("Lỗi cảm biến / Mất gói liên tiếp");
 
                 return {
-                    id: `il_${mask}_${act.start_row.id}`, // <-- ID BẤT BIẾN TUYỆT ĐỐI
+                    id: `il_${mask}_${act.start_row.id}`,
                     type: 'INTERLOCK',
                     severity: (mask & 0x28) ? 'critical' : 'warning',
                     category: 'Khóa liên động sự cố (il)',
@@ -613,7 +607,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             180
         );
 
-        // 3. Miền sinh học dom
         analyzeExactValueDebounced(
             (r) => parseInt(r.dom) || 0,
             (r) => (parseInt(r.dom) || 0) > 0,
@@ -630,7 +623,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 if (mask & 0x08) domDescs.push("Cảm biến trả về NaN hoặc đứt dây");
 
                 return {
-                    id: `dom_${mask}_${act.start_row.id}`, // <-- ID BẤT BIẾN
+                    id: `dom_${mask}_${act.start_row.id}`,
                     type: 'DOMAIN_GUARD',
                     severity: 'warning',
                     category: 'Miền sinh học cá rô phi (dom)',
@@ -646,7 +639,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             180
         );
 
-        // 4. Rủi ro sinh hóa BTRI
         function getBtriLevel(r) {
             const b = parseFloat(r.btri) || 0.0;
             if (b >= 75.0) return 'CRITICAL';
@@ -665,7 +657,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const isCrit = act.val === 'CRITICAL';
 
                 return {
-                    id: `btri_${act.val}_${act.start_row.id}`, // <-- ID BẤT BIẾN
+                    id: `btri_${act.val}_${act.start_row.id}`,
                     type: 'BTRI_HIGH',
                     severity: isCrit ? 'critical' : 'warning',
                     category: 'Rủi ro độc chất sinh hóa (btri)',
@@ -683,7 +675,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             180
         );
 
-        // 5. Cờ bám bẩn đầu dò IL8
         analyzeExactValueDebounced(
             (r) => parseInt(r.il8) || 0,
             (r) => (parseInt(r.il8) || 0) > 0,
@@ -693,7 +684,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 const mask = act.val;
                 return {
-                    id: `il8_${mask}_${act.start_row.id}`, // <-- ID BẤT BIẾN
+                    id: `il8_${mask}_${act.start_row.id}`,
                     type: 'PROBE_DIRT',
                     severity: 'warning',
                     category: 'Cảnh báo bám bẩn đầu dò (il8)',
@@ -709,7 +700,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             180
         );
 
-        // 6. Quạt sục khí khẩn cấp
         analyzeExactValueDebounced(
             () => 1,
             (r) => parseInt(r.fan) === 1,
@@ -718,7 +708,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 return {
-                    id: `fan_${act.start_row.id}`, // <-- ID BẤT BIẾN
+                    id: `fan_${act.start_row.id}`,
                     type: 'FAN_RUN',
                     severity: 'warning',
                     category: 'Quạt sục khí khẩn cấp (fan)',
@@ -734,7 +724,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             60
         );
 
-        // 7. Chế độ sinh tồn
         analyzeExactValueDebounced(
             () => 1,
             (r) => parseInt(r.surv) === 1,
@@ -743,7 +732,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 return {
-                    id: `surv_${act.start_row.id}`, // <-- ID BẤT BIẾN
+                    id: `surv_${act.start_row.id}`,
                     type: 'SURVIVAL',
                     severity: 'critical',
                     category: 'Chế độ sinh tồn vi điều khiển (surv)',
@@ -759,7 +748,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             60
         );
 
-        // 8. Chờ nạp kiềm CS=1
         analyzeExactValueDebounced(
             () => 1,
             (r) => parseInt(r.cs) === 1,
@@ -768,7 +756,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
                 return {
-                    id: `cs1_${act.start_row.id}`, // <-- ID BẤT BIẾN
+                    id: `cs1_${act.start_row.id}`,
                     type: 'COLD_START_PENDING',
                     severity: 'warning',
                     category: 'Chu trình khởi động lạnh (cs)',
@@ -784,7 +772,6 @@ app.get('/api/audit-incidents', async (req, res) => {
             60
         );
 
-        // 9. Thích nghi PINN
         for (let i = 0; i < logs.length; i++) {
             if (parseInt(logs[i].adapt_acc) === 1 && (i === 0 || parseInt(logs[i - 1].adapt_acc) === 0)) {
                 incidents.push({
