@@ -383,29 +383,58 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
+// ================= API QUẢN LÝ TẮT CẢNH BÁO SỰ CỐ =================
+
+// Lấy danh sách ID các sự cố đã tắt
 app.get('/api/dismissed-incidents', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('incident_dismissals').select('incident_id');
-        if (error) return res.json([]);
-        res.json(data.map(d => d.incident_id));
+        const { data, error } = await supabase
+            .from('incident_dismissals')
+            .select('incident_id');
+            
+        if (error) {
+            console.error('[SUPABASE GET DISMISSED ERROR]:', error.message);
+            return res.status(200).json([]);
+        }
+        res.json((data || []).map(d => d.incident_id));
     } catch (err) {
-        res.json([]);
+        console.error('[SERVER GET DISMISSED ERROR]:', err.message);
+        res.status(200).json([]);
     }
 });
 
+// Lưu ID sự cố đã tắt (Hỗ trợ cả đơn lẻ và mảng nhiều ID)
 app.post('/api/dismiss-incident', async (req, res) => {
     try {
-        const { incident_id } = req.body;
-        if (!incident_id) return res.status(400).json({ error: 'Missing incident_id' });
+        const { incident_id, incident_ids } = req.body;
+        
+        let idsToInsert = [];
+        if (Array.isArray(incident_ids) && incident_ids.length > 0) {
+            idsToInsert = incident_ids;
+        } else if (incident_id) {
+            idsToInsert = [incident_id];
+        }
+
+        if (idsToInsert.length === 0) {
+            return res.status(400).json({ error: 'Không tìm thấy incident_id hợp lệ để tắt' });
+        }
+
+        const rows = idsToInsert.map(id => ({ incident_id: String(id).trim() }));
 
         const { error } = await supabase
             .from('incident_dismissals')
-            .upsert([{ incident_id }], { onConflict: 'incident_id' });
+            .upsert(rows, { onConflict: 'incident_id' });
 
-        if (error) return res.status(500).json({ error: error.message });
-        res.json({ success: true });
+        if (error) {
+            console.error('[SUPABASE INSERT DISMISSED ERROR]:', error.message);
+            return res.status(500).json({ error: 'Lỗi Supabase: ' + error.message });
+        }
+
+        console.log(`[DISMISS SUCCESS] Đã tắt thành công ${rows.length} sự cố:`, idsToInsert);
+        res.json({ success: true, count: rows.length });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('[SERVER POST DISMISS ERROR]:', err.message);
+        res.status(500).json({ error: 'Lỗi server nội bộ: ' + err.message });
     }
 });
 
