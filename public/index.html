@@ -1712,13 +1712,26 @@
 // ================= XỬ LÝ SỰ CỐ: KHÓA TAB CỐ ĐỊNH, KHÔNG TỰ NHẢY =================
         let isModalFirstOpen = true;
 
+// Đồng bộ danh sách đã tắt từ Cloud + LocalStorage
         async function fetchDismissedCloud() {
             try {
+                // 1. Đọc nhanh từ LocalStorage trước
+                const localSaved = JSON.parse(localStorage.getItem('dismissed_incidents_cache') || '[]');
+                
+                // 2. Đồng bộ từ Server Supabase
                 const res = await fetch('/api/dismissed-incidents');
-                const data = await res.json();
-                dismissedIncidentIdsOnCloud = data || [];
+                if (res.ok) {
+                    const cloudData = await res.json();
+                    // Hợp nhất cả Cloud và LocalStorage để không bao giờ bị sót
+                    const merged = Array.from(new Set([...localSaved, ...(cloudData || [])]));
+                    dismissedIncidentIdsOnCloud = merged;
+                    localStorage.setItem('dismissed_incidents_cache', JSON.stringify(merged));
+                } else {
+                    dismissedIncidentIdsOnCloud = localSaved;
+                }
             } catch (e) {
-                dismissedIncidentIdsOnCloud = [];
+                console.warn("Dùng cache LocalStorage:", e);
+                dismissedIncidentIdsOnCloud = JSON.parse(localStorage.getItem('dismissed_incidents_cache') || '[]');
             }
         }
 
@@ -1956,41 +1969,70 @@
             pendingDismissIncidentId = null;
         }
 
-        // TẮT BẢO MẬT & ĐỒNG BỘ 100% LÊN DATABASE
+// Xác thực PIN và thực thi tắt cảnh báo
         async function verifyAndExecuteDismiss() {
             const enteredPin = document.getElementById('input-owner-pin').value.trim();
             const pinBox = document.getElementById('pin-box');
             const errorMsg = document.getElementById('pin-error-msg');
 
+            // Kiểm tra mã PIN Chủ Ao
             if (enteredPin !== OWNER_DISMISS_PIN) {
                 pinBox.classList.add('shake-animation');
-                errorMsg.innerText = "❌ Mật khẩu PIN không đúng! Chỉ chủ ao mới có quyền tắt.";
+                errorMsg.className = "text-xs text-red-400 min-h-[16px] font-medium";
+                errorMsg.innerText = "❌ Mật khẩu PIN không đúng! (Mặc định: 7492)";
                 setTimeout(() => pinBox.classList.remove('shake-animation'), 400);
                 return;
             }
 
             try {
-                let idsToSave = pendingDismissIncidentId 
-                    ? [pendingDismissIncidentId] 
-                    : allIncidents.filter(i => !dismissedIncidentIdsOnCloud.includes(i.id)).map(i => i.id);
+                // Lấy danh sách ID cần tắt
+                let idsToSave = [];
+                if (pendingDismissIncidentId) {
+                    idsToSave = [pendingDismissIncidentId];
+                } else {
+                    idsToSave = allIncidents
+                        .filter(i => !dismissedIncidentIdsOnCloud.includes(i.id))
+                        .map(i => i.id);
+                }
+
+                if (idsToSave.length === 0) {
+                    closePinModal();
+                    return;
+                }
 
                 errorMsg.className = "text-xs text-emerald-400 min-h-[16px] font-medium";
-                errorMsg.innerText = "Đang lưu trạng thái lên Database...";
+                errorMsg.innerText = "Đang lưu và đồng bộ trạng thái...";
 
-                // Lưu song song toàn bộ ID lên Supabase
-                await Promise.all(idsToSave.map(id => 
-                    fetch('/api/dismiss-incident', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ incident_id: id })
-                    })
-                ));
+                // 1. Cập nhật ngay lập tức vào Bộ nhớ cục bộ (Hiển thị mượt mà không độ trễ)
+                const updatedCache = Array.from(new Set([...dismissedIncidentIdsOnCloud, ...idsToSave]));
+                dismissedIncidentIdsOnCloud = updatedCache;
+                localStorage.setItem('dismissed_incidents_cache', JSON.stringify(updatedCache));
 
+                // 2. Gửi đồng bộ lên Server Supabase trong 1 request duy nhất
+                const response = await fetch('/api/dismiss-incident', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ incident_ids: idsToSave })
+                });
+
+                const resData = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(resData.error || 'Máy chủ từ chối lưu trạng thái');
+                }
+
+                // 3. Đóng popup và vẽ lại danh sách
                 closePinModal();
-                // Tải lại danh sách sự cố nhưng GIỮ NGUYÊN TAB NGƯỜI DÙNG ĐANG XEM
+                updateIncidentUI();
                 await fetchIncidentAudit();
+
             } catch (err) {
-                alert('Lỗi kết nối lưu trạng thái lên đám mây!');
+                console.error("Lỗi khi tắt sự cố:", err);
+                errorMsg.className = "text-xs text-rose-400 min-h-[16px] font-bold";
+                errorMsg.innerText = `⚠️ Lỗi: ${err.message}`;
+                alert(`Không thể lưu lên đám mây: ${err.message}\n(Hệ thống đã tạm ẩn cảnh báo trên trình duyệt của bạn)`);
+                closePinModal();
+                updateIncidentUI();
             }
         }
 
