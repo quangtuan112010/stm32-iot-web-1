@@ -1709,20 +1709,16 @@
         }
 
         // ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ: TÁCH BIỆT 3 CỬA SỔ =================
-// ================= XỬ LÝ SỰ CỐ: KHÓA TAB CỐ ĐỊNH, KHÔNG TỰ NHẢY =================
-        let isModalFirstOpen = true;
+// ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ: KHÓA TAB CHỐNG GIẬT =================
+        let userSelectedTab = null; // Ghi nhớ tab do bạn bấm chọn
 
-// Đồng bộ danh sách đã tắt từ Cloud + LocalStorage
+        // Đồng bộ danh sách đã tắt từ Cloud + LocalStorage
         async function fetchDismissedCloud() {
             try {
-                // 1. Đọc nhanh từ LocalStorage trước
                 const localSaved = JSON.parse(localStorage.getItem('dismissed_incidents_cache') || '[]');
-                
-                // 2. Đồng bộ từ Server Supabase
                 const res = await fetch('/api/dismissed-incidents');
                 if (res.ok) {
                     const cloudData = await res.json();
-                    // Hợp nhất cả Cloud và LocalStorage để không bao giờ bị sót
                     const merged = Array.from(new Set([...localSaved, ...(cloudData || [])]));
                     dismissedIncidentIdsOnCloud = merged;
                     localStorage.setItem('dismissed_incidents_cache', JSON.stringify(merged));
@@ -1730,7 +1726,6 @@
                     dismissedIncidentIdsOnCloud = localSaved;
                 }
             } catch (e) {
-                console.warn("Dùng cache LocalStorage:", e);
                 dismissedIncidentIdsOnCloud = JSON.parse(localStorage.getItem('dismissed_incidents_cache') || '[]');
             }
         }
@@ -1752,6 +1747,7 @@
             const historyList = allIncidents.filter(inc => !inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
             const dismissedList = allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
 
+            // Cập nhật số đếm trên 3 Tab
             document.getElementById('count-tab-ongoing').innerText = ongoingList.length;
             document.getElementById('count-tab-history').innerText = historyList.length;
             document.getElementById('count-tab-dismissed').innerText = dismissedList.length;
@@ -1772,11 +1768,6 @@
                 bTitle.innerText = `CẢNH BÁO: CÓ ${ongoingList.length} SỰ CỐ ĐANG DIỄN RA TRỰC TIẾP!`;
                 bDesc.innerText = "Ao cá đang có thông số bất thường ngay thời điểm này. Nhấn để kiểm tra!";
                 banner.classList.remove('hidden');
-
-                // CHỈ tự chọn tab 'ongoing' khi người dùng vừa mới bấm mở Modal lần đầu tiên
-                if (isModalFirstOpen) {
-                    currentIncTab = 'ongoing';
-                }
             } else if (historyList.length > 0) {
                 badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-amber-300 transition shadow";
                 countTxt.innerText = `${historyList.length} sự cố 72h (Đã xong)`;
@@ -1786,27 +1777,27 @@
                 bTitle.innerText = `NHẬT KÝ 72H: CÓ ${historyList.length} ĐỢT BIẾN ĐỘNG ĐÃ QUA`;
                 bDesc.innerText = "Nước ao hiện tại đã ổn định. Nhấn để xem lịch sử các đợt vừa rồi.";
                 banner.classList.remove('hidden');
-
-                if (isModalFirstOpen) {
-                    currentIncTab = 'history';
-                }
             } else {
                 badgeBtn.className = "flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-xs px-3.5 py-1.5 rounded-lg border border-slate-600 text-emerald-400 transition shadow";
                 countTxt.innerText = "72h qua an toàn";
                 banner.classList.add('hidden');
-                
-                if (isModalFirstOpen) {
-                    currentIncTab = 'history';
-                }
             }
 
-            // Đồng bộ giao diện nút bấm tab đúng theo tab người dùng đang chọn (ĐỨNG YÊN TẠI CHỖ)
+            // NẾU BẠN ĐÃ BẤM CHỌN TAB NÀO -> GIỮ NGUYÊN TAB ĐÓ, CẤM GIẬT LÙI
+            if (userSelectedTab !== null) {
+                currentIncTab = userSelectedTab;
+            } else {
+                currentIncTab = (ongoingList.length > 0) ? 'ongoing' : 'history';
+            }
+
             setIncidentTab(currentIncTab, false);
             renderIncidentList();
         }
 
+        // HÀM RENDER GIAO DIỆN DANH SÁCH SỰ CỐ (ĐÃ BỔ SUNG LẠI)
         function renderIncidentList() {
             const container = document.getElementById('incident-list-container');
+            if (!container) return;
             
             let listToShow = [];
             if (currentIncTab === 'ongoing') {
@@ -1831,7 +1822,7 @@
                         <div class="text-center py-12 text-gray-400 space-y-2">
                             <div class="text-5xl">✨</div>
                             <div class="font-bold text-sm text-gray-300">Không có sự cố lịch sử nào chưa xác nhận!</div>
-                            <p class="text-xs text-gray-500">Các đợt cảnh báo cũ trong 72 giờ qua đã được bạn dọn dẹp sạch sẽ.</p>
+                            <p class="text-xs text-gray-500">Các đợt cảnh báo cũ trong 72 giờ qua đã được dọn dẹp sạch sẽ.</p>
                         </div>
                     `;
                 } else {
@@ -1903,8 +1894,14 @@
             }).join('');
         }
 
-        function setIncidentTab(tab, shouldRender = true) {
+        function setIncidentTab(tab, isManualClick = true) {
             currentIncTab = tab;
+            
+            // Khi bạn chủ động bấm chuột vào tab -> Khóa tab đó vĩnh viễn
+            if (isManualClick) {
+                userSelectedTab = tab;
+            }
+
             const btnOngoing = document.getElementById('tab-inc-ongoing');
             const btnHistory = document.getElementById('tab-inc-history');
             const btnDismissed = document.getElementById('tab-inc-dismissed');
@@ -1921,23 +1918,29 @@
                 btnDismissed.className = "px-3 py-1.5 rounded-lg font-bold transition bg-emerald-700 text-white shadow flex items-center gap-1.5";
             }
 
-            if (shouldRender) {
+            if (isManualClick) {
                 renderIncidentList();
             }
         }
 
         function openIncidentModal() {
-            isModalFirstOpen = true; // Chỉ tính là mở lần đầu khi bấm nút xem
+            userSelectedTab = null;
+            
+            const ongoingCount = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id)).length;
+            currentIncTab = (ongoingCount > 0) ? 'ongoing' : 'history';
+            
+            setIncidentTab(currentIncTab, false);
+            renderIncidentList();
+
             document.getElementById('incident-modal').classList.remove('hidden');
-            fetchIncidentAudit().then(() => {
-                isModalFirstOpen = false; // Sau đó khóa lại, không bao giờ tự ý đổi tab nữa
-            });
+            fetchIncidentAudit();
         }
 
         function closeIncidentModal() {
             document.getElementById('incident-modal').classList.add('hidden');
-            isModalFirstOpen = true;
+            userSelectedTab = null;
         }
+
 
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
