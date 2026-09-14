@@ -515,9 +515,31 @@
                     <h3 class="text-xs font-bold text-emerald-400 mb-2">3. Độ pH Nước</h3>
                     <div class="h-48"><canvas id="chartPH"></canvas></div>
                 </div>
-                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+<div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <h3 class="text-xs font-bold text-blue-400 mb-2">4. Oxy Hòa Tan DO (mg/L)</h3>
                     <div class="h-48"><canvas id="chartDO"></canvas></div>
+                </div>
+
+                <!-- 5. ĐỒ THỊ ĐỐI CHIẾU DO THỰC TẾ vs DO_PRED (PINN AI) -->
+                <div class="bg-[#0b1329] p-4 rounded-xl border border-slate-700 col-span-1 md:col-span-2 shadow-lg">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🎯</span>
+                            <div>
+                                <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wide">5. Đối Chiếu DO Đo Thực Tế vs DO_Pred (AI PINN Dự Báo)</h3>
+                                <p class="text-[11px] text-gray-400">Đồng bộ theo bộ lọc thời gian (30 phút, 5 giờ, 1 ngày, tùy chọn...)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs font-mono bg-[#152238] px-3 py-1.5 rounded-lg border border-slate-700">
+                            <span class="flex items-center gap-1.5 text-sky-400 font-bold">
+                                <span class="w-3 h-1 bg-[#38bdf8] rounded-full inline-block"></span> DO Thực Tế (Cảm biến)
+                            </span>
+                            <span class="flex items-center gap-1.5 text-rose-400 font-bold">
+                                <span class="w-3 h-1 bg-[#ef4444] rounded-full inline-block"></span> DO_Pred (AI dự báo)
+                            </span>
+                        </div>
+                    </div>
+                    <div class="h-64 md:h-72"><canvas id="chartDOPred"></canvas></div>
                 </div>
             </div>
         </div>
@@ -1338,6 +1360,7 @@
                 { id: 'chartDO', label: 'Oxy hòa tan DO', unit: 'mg/L', color: '#3b82f6' }
             ];
 
+            // 4 Biểu đồ cơ bản
             chartConfigs.forEach(cfg => {
                 const ctx = document.getElementById(cfg.id).getContext('2d');
                 charts[cfg.id] = new Chart(ctx, {
@@ -1397,6 +1420,81 @@
                     }
                 });
             });
+
+            // Biểu đồ đối chiếu DO Thực Tế vs DO_Pred AI
+            const ctxPred = document.getElementById('chartDOPred').getContext('2d');
+            charts['chartDOPred'] = new Chart(ctxPred, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'DO đo thực tế (cảm biến)',
+                            data: [],
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'DO_Pred (AI dự báo)',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            stepped: 'before', // Vẽ đường bậc thang chuẩn thực nghiệm
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { 
+                            grid: { color: '#1e293b' }, 
+                            ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 9 } 
+                        },
+                        y: { 
+                            grid: { color: '#1e293b' }, 
+                            ticks: { 
+                                color: '#94a3b8', 
+                                font: { size: 10 },
+                                callback: (v) => `${v} mg/L`
+                            } 
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: '#0f172a',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                title: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    const raw = lastChartRawData[idx];
+                                    return raw && raw.created_at ? `Thời gian: ${formatDbTime(raw.created_at)}` : context[0].label;
+                                },
+                                label: function(context) {
+                                    const val = Number(context.parsed.y).toFixed(3);
+                                    if (context.datasetIndex === 0) {
+                                        return `🔹 DO Thực tế : ${val} mg/L`;
+                                    } else {
+                                        return `🔻 DO_Pred (AI): ${val} mg/L`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         async function fetchChartData() {
@@ -1425,6 +1523,7 @@
                     } else return tPart;
                 });
                 
+                // Cập nhật 4 đồ thị hiện tại
                 charts['chartT'].data.labels = labels;
                 charts['chartT'].data.datasets[0].data = data.map(d => d.T);
                 charts['chartT'].update();
@@ -1440,6 +1539,14 @@
                 charts['chartDO'].data.labels = labels;
                 charts['chartDO'].data.datasets[0].data = data.map(d => d.DO);
                 charts['chartDO'].update();
+
+                // Cập nhật đồ thị đối chiếu DO vs DO_PRED
+                if (charts['chartDOPred']) {
+                    charts['chartDOPred'].data.labels = labels;
+                    charts['chartDOPred'].data.datasets[0].data = data.map(d => d.DO);
+                    charts['chartDOPred'].data.datasets[1].data = data.map(d => d.dopred);
+                    charts['chartDOPred'].update();
+                }
             } catch (err) {
                 console.error("Lỗi chart:", err);
             }
