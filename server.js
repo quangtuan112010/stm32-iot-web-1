@@ -807,6 +807,7 @@ app.get('/api/audit-incidents', async (req, res) => {
 });
 
 // API Biểu đồ Full-Span ID Sampling
+// API Biểu đồ Full-Span ID Sampling (Đã thêm dopred)
 app.get('/api/chart-data', async (req, res) => {
     try {
         const { mode = 'recent', value = 30, unit = 'minute', from_time, to_time } = req.query;
@@ -843,7 +844,7 @@ app.get('/api/chart-data', async (req, res) => {
         if (!minRes.data || minRes.data.length === 0 || !maxRes.data || maxRes.data.length === 0) {
             const fallback = await supabase
                 .from('telemetry_logs')
-                .select('T, S, pH, DO, created_at')
+                .select('T, S, pH, DO, dopred, created_at')
                 .order('id', { ascending: false })
                 .limit(100);
             return res.json(fallback.data ? fallback.data.reverse() : []);
@@ -856,7 +857,7 @@ app.get('/api/chart-data', async (req, res) => {
         if (idSpan <= 1000) {
             let q = supabase
                 .from('telemetry_logs')
-                .select('T, S, pH, DO, created_at')
+                .select('T, S, pH, DO, dopred, created_at')
                 .gte('id', minId)
                 .lte('id', maxId)
                 .order('id', { ascending: true })
@@ -875,14 +876,14 @@ app.get('/api/chart-data', async (req, res) => {
 
         const { data, error } = await supabase
             .from('telemetry_logs')
-            .select('T, S, pH, DO, created_at')
+            .select('T, S, pH, DO, dopred, created_at')
             .in('id', targetIds)
             .order('id', { ascending: true });
 
         if (error || !data || data.length === 0) {
             const fallback = await supabase
                 .from('telemetry_logs')
-                .select('T, S, pH, DO, created_at')
+                .select('T, S, pH, DO, dopred, created_at')
                 .order('id', { ascending: false })
                 .limit(300);
             return res.json(fallback.data ? fallback.data.reverse() : []);
