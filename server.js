@@ -305,6 +305,7 @@ mqttClient.on('message', async (topic, message) => {
         }
 
         const insertPayload = {
+            // --- 47 TRƯỜNG DỮ LIỆU CŨ ---
             T: parseFloat(data.T) || 0.0,
             S: parseFloat(data.S) || 0.0,
             pH: parseFloat(data.pH) || 0.0,
@@ -354,7 +355,30 @@ mqttClient.on('message', async (topic, message) => {
             admsea: parseFloat(data.admsea) || 0.0,
             adlast: parseInt(data.adlast) || 0,
             nvlog: parseInt(data.nvlog) || 0,
-            stackmin: parseInt(data.stackmin) || 0
+            stackmin: parseInt(data.stackmin) || 0,
+
+            // --- 21 TRƯỜNG MỞ RỘNG MỚI THEO CODE C (ĐÃ BỔ SUNG) ---
+            tph: parseFloat(data.tph) || 0.0,
+            tec: parseFloat(data.tec) || 0.0,
+            tdo: parseFloat(data.tdo) || 0.0,
+            tdis: parseInt(data.tdis) || 0,
+            sacyc: parseInt(data.sacyc) || 0,
+            spub: parseInt(data.spub) || 0,
+            doobs: parseFloat(data.doobs) || 0.0,
+            adwcet: parseInt(data.adwcet) || 0,
+            adb: parseFloat(data.adb) || 0.0,
+            phraw: parseFloat(data.phraw) || 0.0,
+            epoch: parseInt(data.epoch) || 0,
+            svalid: parseInt(data.svalid) || 0,
+            dday: parseInt(data.dday) || 0,
+            phmed: parseFloat(data.phmed) || 0.0,
+            il8th: parseFloat(data.il8th) || 0.0,
+            scyc: parseInt(data.scyc) || 0,
+            rnh3: parseFloat(data.rnh3) || 0.0,
+            rh2s: parseFloat(data.rh2s) || 0.0,
+            rdo: parseFloat(data.rdo) || 0.0,
+            phmedp: parseFloat(data.phmedp) || 0.0,
+            adpass: parseInt(data.adpass) || 0
         };
 
         const { data: insertedRows, error } = await supabase
@@ -928,6 +952,7 @@ app.get('/api/logs-paged', async (req, res) => {
 });
 
 // API Xuất CSV 49 cột
+// API Xuất CSV chuẩn 70 cột (ID, Thời Gian + 68 thông số firmware C)
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
@@ -962,14 +987,15 @@ app.get('/api/export-csv', async (req, res) => {
             if (data.length < CHUNK_SIZE) break;
         }
 
-        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail,DO_Pred,DO_Sat,AI_Sigma,AI_Valid,AI_Struct,AI_Step,Adapt_Week,Adapt_Acc,Adapt_Rej,MSE_Before,MSE_After,Adapt_Last,NV_Log,Stack_Min_Pct\n";
+        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail,DO_Pred,DO_Sat,AI_Sigma,AI_Valid,AI_Struct,AI_Step,Adapt_Week,Adapt_Acc,Adapt_Rej,MSE_Before,MSE_After,Adapt_Last,NV_Log,Stack_Min_Pct,T_pH,T_EC,T_DO,T_Disagree,SA_Cycles,SA_Published,DO_Obs,Ad_WCET,Ad_Bias_b,pH_Raw,Epoch,Sample_Valid,Drift_Days,pH_Median_Today,IL8_Threshold,Safety_Cycles,R_NH3,R_H2S,R_DO,pH_Median_Prev,Ad_Pass_Cycles\n";
+        
         allData.forEach(r => {
             const timeFormatted = formatSupabaseTime(r.created_at);
-            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0},${r.csq ?? 99},${r.rstr || 0},${r.boot || 0},${r.up || 0},${r.flfail || 0},${r.dopred || 0},${r.dosat || 0},${r.aisig || 0},${r.aivalid || 0},${r.aistruct || 0},${r.aistep || 0},${r.adwk || 0},${r.adacc || 0},${r.adrej || 0},${r.admseb || 0},${r.admsea || 0},${r.adlast || 0},${r.nvlog || 0},${r.stackmin || 0}\n`;
+            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0},${r.csq ?? 99},${r.rstr || 0},${r.boot || 0},${r.up || 0},${r.flfail || 0},${r.dopred || 0},${r.dosat || 0},${r.aisig || 0},${r.aivalid || 0},${r.aistruct || 0},${r.aistep || 0},${r.adwk || 0},${r.adacc || 0},${r.adrej || 0},${r.admseb || 0},${r.admsea || 0},${r.adlast || 0},${r.nvlog || 0},${r.stackmin || 0},${r.tph || 0},${r.tec || 0},${r.tdo || 0},${r.tdis || 0},${r.sacyc || 0},${r.spub || 0},${r.doobs || 0},${r.adwcet || 0},${r.adb || 0},${r.phraw || 0},${r.epoch || 0},${r.svalid || 0},${r.dday || 0},${r.phmed || 0},${r.il8th || 0},${r.scyc || 0},${r.rnh3 || 0},${r.rh2s || 0},${r.rdo || 0},${r.phmedp || 0},${r.adpass || 0}\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_49fields_${Date.now()}.csv"`);
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_70fields_${Date.now()}.csv"`);
         res.status(200).send('\uFEFF' + csv);
     } catch (err) {
         res.status(500).send("Lỗi xuất file: " + err.message);
