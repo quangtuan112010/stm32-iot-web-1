@@ -23,7 +23,7 @@
         <header class="flex flex-wrap justify-between items-center bg-[#152238] p-5 rounded-xl border border-slate-700 shadow-md gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-blue-400">Hệ Thống Giám Sát Ao Nuôi Cá Rô Phi Thông Minh</h1>
-                <p class="text-xs md:text-sm text-gray-400">Chu kỳ cập nhật: 10 giây/lần | MQTT TLS 4G LTE</p>
+                <p class="text-xs md:text-sm text-gray-400">Chu kỳ cập nhật: 10 giây/lần | MQTT TLS 4G LTE | 68 Thông Số Firmware C</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
@@ -71,7 +71,7 @@
             </div>
         </div>
 
-        <!-- Banner cảnh báo thông minh: ƯU TIÊN SỰ CỐ ĐANG XẢY RA -->
+        <!-- Banner cảnh báo sự cố -->
         <div id="banner-active-incidents" class="hidden bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/80 border border-red-500/70 text-gray-200 p-4 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span class="text-2xl animate-bounce" id="banner-incident-icon">🚨</span>
@@ -142,7 +142,7 @@
                     </span>
                     <span class="text-xs font-bold text-gray-200 tracking-wider uppercase">Chất Lượng Nước Tức Thời</span>
                     <span class="text-gray-600 text-xs">|</span>
-                    <span class="text-xs text-gray-400">Khớp chuẩn Database lịch sử</span>
+                    <span class="text-xs text-gray-400">Khớp chuẩn Database 68 thông số C</span>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
@@ -225,6 +225,50 @@
                     <div class="text-[11px] text-gray-400">Khởi động lạnh (cs)</div>
                     <div id="val-cs" class="text-base font-bold text-blue-300 mt-1 font-mono">2</div>
                     <div id="txt-cs-desc" class="text-[10px] text-emerald-400 mt-0.5 font-semibold">CS_NORMAL</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= KHỐI MỚI: 21 THÔNG SỐ MỞ RỘNG (ĐẦU DÒ & ĐỘC CHẤT KHÍ ĐỘC) ================= -->
+        <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">🧪</span>
+                    <h2 class="text-sm font-bold text-cyan-300 uppercase tracking-wide">Chẩn Đoán Độc Chất Hóa Học ($R_{NH3}, R_{H2S}, R_{DO}$) & Nhiệt Độ 3 Đầu Dò</h2>
+                </div>
+                <span class="text-[11px] text-cyan-400 font-mono">Chuẩn hóa 1:1 safety_core.c & sensor_acq.c</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs font-mono">
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Độc tố NH3 (rnh3)</div>
+                    <div id="val-rnh3" class="text-base font-bold text-rose-400 mt-1">--</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">Ngưỡng: &lt; 1.48</div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Độc tố H2S (rh2s)</div>
+                    <div id="val-rh2s" class="text-base font-bold text-amber-400 mt-1">--</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">Ngưỡng: &lt; 1.05</div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Thiếu Oxy (rdo)</div>
+                    <div id="val-rdo" class="text-base font-bold text-blue-400 mt-1">--</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">Ngưỡng: &lt; 1.44</div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Nhiệt độ pH (tph)</div>
+                    <div id="val-tph" class="text-base font-bold text-orange-300 mt-1">-- °C</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">Đầu dò SEN0708</div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Nhiệt độ EC (tec)</div>
+                    <div id="val-tec" class="text-base font-bold text-cyan-300 mt-1">-- °C</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">Đầu dò SEN0707</div>
+                </div>
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[11px] text-gray-400">Nhiệt độ DO (tdo)</div>
+                    <div id="val-tdo" class="text-base font-bold text-sky-300 mt-1">-- °C</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">Đầu dò SEN0681</div>
                 </div>
             </div>
         </div>
@@ -515,7 +559,7 @@
                     <h3 class="text-xs font-bold text-emerald-400 mb-2">3. Độ pH Nước</h3>
                     <div class="h-48"><canvas id="chartPH"></canvas></div>
                 </div>
-<div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
+                <div class="bg-[#0b1329] p-3 rounded-lg border border-slate-700">
                     <h3 class="text-xs font-bold text-blue-400 mb-2">4. Oxy Hòa Tan DO (mg/L)</h3>
                     <div class="h-48"><canvas id="chartDO"></canvas></div>
                 </div>
@@ -544,12 +588,12 @@
             </div>
         </div>
 
-        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE (49 CỘT) ================= -->
+        <!-- ================= TRÌNH DUYỆT & TÌM KIẾM DATABASE (70 CỘT ĐẦY ĐỦ) ================= -->
         <div class="bg-[#152238] p-5 rounded-xl border border-slate-700 shadow space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3">
                 <div>
                     <div class="flex items-center gap-2.5">
-                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Trọn Vẹn 49 Cột AI & Cảm Biến)</h2>
+                        <h2 class="text-base font-bold text-gray-200">Trình Duyệt Lịch Sử Database (Trọn Vẹn 70 Cột Chuẩn Firmware C)</h2>
                         <button onclick="refreshDbOnly()" id="btn-refresh-db" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-emerald-400 px-2.5 py-1 rounded border border-slate-700 transition">
                             <svg id="spinner-db" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span id="txt-refresh-db">Làm mới dữ liệu</span>
@@ -571,7 +615,7 @@
 
                     <button onclick="openCsvModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-emerald-600 shadow">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Tải CSV (Excel 49 Cột)
+                        Tải CSV (Excel 70 Cột)
                     </button>
                 </div>
             </div>
@@ -593,7 +637,7 @@
                 <button onclick="resetDateFilter()" class="bg-slate-700 hover:bg-slate-600 text-gray-200 px-3 py-1 rounded transition">Xóa lọc</button>
             </div>
 
-            <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-700 rounded-lg">
+            <div class="overflow-x-auto max-h-[550px] overflow-y-auto border border-slate-700 rounded-lg">
                 <table class="w-full text-left text-xs font-mono whitespace-nowrap">
                     <thead class="bg-[#0b1329] text-gray-400 uppercase sticky top-0 z-10 border-b border-slate-700">
                         <tr>
@@ -646,6 +690,28 @@
                             <th class="py-2.5 px-2 text-indigo-300 font-bold">Ad.Last</th>
                             <th class="py-2.5 px-2 text-cyan-300 font-bold">NV.Log</th>
                             <th class="py-2.5 px-2 text-emerald-400 font-bold">Stack%</th>
+                            <!-- 21 CỘT MỚI TỪ TELEMETRY_TASK.C -->
+                            <th class="py-2.5 px-2 text-orange-300">T.pH</th>
+                            <th class="py-2.5 px-2 text-cyan-300">T.EC</th>
+                            <th class="py-2.5 px-2 text-sky-300">T.DO</th>
+                            <th class="py-2.5 px-2 text-rose-400">T.Dis</th>
+                            <th class="py-2.5 px-2 text-gray-400">SA.Cyc</th>
+                            <th class="py-2.5 px-2 text-gray-400">SA.Pub</th>
+                            <th class="py-2.5 px-2 text-blue-300 font-bold">DO.Obs</th>
+                            <th class="py-2.5 px-2 text-indigo-300">Ad.WCET</th>
+                            <th class="py-2.5 px-2 text-indigo-300">Ad.b</th>
+                            <th class="py-2.5 px-2 text-emerald-300">pH.Raw</th>
+                            <th class="py-2.5 px-2 text-gray-500">Epoch</th>
+                            <th class="py-2.5 px-2 text-emerald-400">S.Val</th>
+                            <th class="py-2.5 px-2 text-white">D.Day</th>
+                            <th class="py-2.5 px-2 text-emerald-300">pH.Med</th>
+                            <th class="py-2.5 px-2 text-amber-300">IL8.Th</th>
+                            <th class="py-2.5 px-2 text-gray-400">S.Cyc</th>
+                            <th class="py-2.5 px-2 text-rose-400 font-bold">R.NH3</th>
+                            <th class="py-2.5 px-2 text-amber-400 font-bold">R.H2S</th>
+                            <th class="py-2.5 px-2 text-blue-400 font-bold">R.DO</th>
+                            <th class="py-2.5 px-2 text-emerald-300">pH.MedP</th>
+                            <th class="py-2.5 px-2 text-indigo-300">Ad.Pass</th>
                         </tr>
                     </thead>
                     <tbody id="db-table-body" class="divide-y border-slate-700 bg-[#152238]/60 text-gray-300"></tbody>
@@ -692,7 +758,7 @@
         </div>
     </div>
 
-    <!-- ================= MODAL SỰ CỐ: ĐÃ TÁCH BIỆT 3 CỬA SỔ/TAB RIÊNG BIỆT ================= -->
+    <!-- ================= MODAL SỰ CỐ: 3 TAB TÁCH BIỆT ================= -->
     <div id="incident-modal" onclick="if(event.target===this) closeIncidentModal()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 md:p-6">
         <div class="bg-[#152238] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center bg-[#0b1329] px-6 py-4 border-b border-slate-700">
@@ -706,23 +772,19 @@
                 <button onclick="closeIncidentModal()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
             </div>
 
-            <!-- THANH ĐIỀU HƯỚNG 3 TAB: TÁCH BẠCH ĐANG DIỄN RA VÀ QUÁ KHỨ -->
             <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-[#111c30] border-b border-slate-700 text-xs">
                 <div class="flex flex-wrap items-center gap-2">
-                    <!-- Tab 1: Đang diễn ra -->
                     <button onclick="setIncidentTab('ongoing')" id="tab-inc-ongoing" class="px-3 py-1.5 rounded-lg font-bold transition bg-red-600 text-white shadow flex items-center gap-1.5">
                         <span class="w-2 h-2 bg-white rounded-full animate-ping"></span>
                         <span>🚨 Đang diễn ra</span>
                         <span class="bg-red-950 px-1.5 py-0.2 rounded text-[10px]" id="count-tab-ongoing">0</span>
                     </button>
 
-                    <!-- Tab 2: Lịch sử 72h đã kết thúc -->
                     <button onclick="setIncidentTab('history')" id="tab-inc-history" class="px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5">
                         <span>📜 Lịch sử 72h (Đã xong)</span>
                         <span class="bg-slate-800 px-1.5 py-0.2 rounded text-[10px]" id="count-tab-history">0</span>
                     </button>
 
-                    <!-- Tab 3: Đã xác nhận / Đã tắt -->
                     <button onclick="setIncidentTab('dismissed')" id="tab-inc-dismissed" class="px-3 py-1.5 rounded-lg font-medium transition text-gray-400 hover:text-gray-200 flex items-center gap-1.5">
                         <span>✅ Đã tắt</span>
                         <span class="bg-slate-800 px-1.5 py-0.2 rounded text-[10px]" id="count-tab-dismissed">0</span>
@@ -761,13 +823,13 @@
         </div>
     </div>
 
-    <!-- Modal tải CSV -->
+    <!-- Modal tải CSV 70 Cột -->
     <div id="csv-modal" onclick="if(event.target===this) closeCsvModal()" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-[#152238] border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5 text-gray-200">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Tùy Chọn Tải File CSV (Excel 49 Cột)
+                    Tùy Chọn Tải File CSV (Excel 70 Cột)
                 </h3>
                 <button onclick="closeCsvModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
             </div>
@@ -777,7 +839,7 @@
                     <input type="radio" name="export_type" value="all" checked class="mt-0.5 text-emerald-500 focus:ring-0">
                     <div>
                         <div class="font-bold text-gray-100">1. Tải tất cả dữ liệu (Toàn bộ Database)</div>
-                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 49 trường lịch sử đo từ trước đến nay.</div>
+                        <div class="text-gray-400 mt-0.5">Tải trọn vẹn toàn bộ 70 trường lịch sử đo từ trước đến nay.</div>
                     </div>
                 </label>
 
@@ -843,9 +905,10 @@
         let pendingExpectedAlk = null;
 
         let allIncidents = [];
-        let currentIncTab = 'ongoing'; // Mặc định mở Tab Đang diễn ra
+        let currentIncTab = 'ongoing';
         let pendingDismissIncidentId = null;
         let dismissedIncidentIdsOnCloud = [];
+        let userSelectedTab = null;
 
         function formatDbTime(rawTime) {
             if (!rawTime) return '';
@@ -1243,14 +1306,14 @@
                 else bannerCs.classList.add('hidden');
             }
 
-            // Cập nhật các trường chẩn đoán
-            if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(3)} /s`;
+            // Chẩn đoán xu hướng & trôi
+            if (d.rate !== undefined) document.getElementById('val-rate').innerText = `${Number(d.rate).toFixed(6)} /s`;
             if (d.eta !== undefined) document.getElementById('val-eta').innerText = `${Math.round(d.eta)} phút`;
             if (d.braw !== undefined) document.getElementById('val-braw').innerText = Number(d.braw).toFixed(1);
             if (d.hleft !== undefined) document.getElementById('val-hleft').innerText = `${d.hleft} h`;
 
-            if (d.phoff !== undefined) document.getElementById('val-phoff').innerText = Number(d.phoff).toFixed(3);
-            if (d.slope !== undefined) document.getElementById('val-slope').innerText = `${Number(d.slope).toFixed(4)} /ngày`;
+            if (d.phoff !== undefined) document.getElementById('val-phoff').innerText = Number(d.phoff).toFixed(6);
+            if (d.slope !== undefined) document.getElementById('val-slope').innerText = `${Number(d.slope).toFixed(6)} /ngày`;
             if (d.iqrph !== undefined) document.getElementById('val-iqrph').innerText = Number(d.iqrph).toFixed(3);
             if (d.iqrdo !== undefined) document.getElementById('val-iqrdo').innerText = Number(d.iqrdo).toFixed(3);
             
@@ -1274,7 +1337,7 @@
             if (d.fdo !== undefined) document.getElementById('val-fdo').innerText = d.fdo;
             if (d.wcet !== undefined) document.getElementById('val-wcet').innerText = d.wcet;
 
-            // Vạch sóng 4G
+            // CSQ 4G
             if (d.csq !== undefined) {
                 const csqVal = parseInt(d.csq);
                 const txtEl = document.getElementById('txt-csq');
@@ -1324,8 +1387,8 @@
             }
             if (d.aistep !== undefined) document.getElementById('val-aistep').innerText = d.aistep;
 
-            if (d.admseb !== undefined) document.getElementById('val-admseb').innerText = Number(d.admseb).toFixed(4);
-            if (d.admsea !== undefined) document.getElementById('val-admsea').innerText = Number(d.admsea).toFixed(4);
+            if (d.admseb !== undefined) document.getElementById('val-admseb').innerText = Number(d.admseb).toFixed(6);
+            if (d.admsea !== undefined) document.getElementById('val-admsea').innerText = Number(d.admsea).toFixed(6);
             if (d.adwk !== undefined) document.getElementById('val-adwk').innerText = d.adwk;
             if (d.adacc !== undefined) document.getElementById('val-adacc').innerText = d.adacc;
             if (d.adrej !== undefined) document.getElementById('val-adrej').innerText = d.adrej;
@@ -1341,6 +1404,14 @@
                 stEl.innerText = `${d.stackmin} %`;
                 stEl.className = d.stackmin < 15 ? "text-sm font-bold text-rose-400 animate-pulse" : "text-sm font-bold text-emerald-400";
             }
+
+            // Realtime 6 thông số hóa học & đầu dò mở rộng:
+            if (d.rnh3 !== undefined) document.getElementById('val-rnh3').innerText = Number(d.rnh3).toFixed(3);
+            if (d.rh2s !== undefined) document.getElementById('val-rh2s').innerText = Number(d.rh2s).toFixed(3);
+            if (d.rdo !== undefined) document.getElementById('val-rdo').innerText = Number(d.rdo).toFixed(3);
+            if (d.tph !== undefined) document.getElementById('val-tph').innerText = `${Number(d.tph).toFixed(2)} °C`;
+            if (d.tec !== undefined) document.getElementById('val-tec').innerText = `${Number(d.tec).toFixed(2)} °C`;
+            if (d.tdo !== undefined) document.getElementById('val-tdo').innerText = `${Number(d.tdo).toFixed(2)} °C`;
 
             if (currentPage === 1 && !filterFromTime && !filterToTime) {
                 fetchPagedLogs();
@@ -1360,7 +1431,6 @@
                 { id: 'chartDO', label: 'Oxy hòa tan DO', unit: 'mg/L', color: '#3b82f6' }
             ];
 
-            // 4 Biểu đồ cơ bản
             chartConfigs.forEach(cfg => {
                 const ctx = document.getElementById(cfg.id).getContext('2d');
                 charts[cfg.id] = new Chart(ctx, {
@@ -1421,7 +1491,7 @@
                 });
             });
 
-            // Biểu đồ đối chiếu DO Thực Tế vs DO_Pred AI
+            // Biểu đồ đối chiếu DO vs DO_Pred
             const ctxPred = document.getElementById('chartDOPred').getContext('2d');
             charts['chartDOPred'] = new Chart(ctxPred, {
                 type: 'line',
@@ -1444,7 +1514,7 @@
                             borderColor: '#ef4444',
                             backgroundColor: 'transparent',
                             borderWidth: 2,
-                            stepped: 'before', // Vẽ đường bậc thang chuẩn thực nghiệm
+                            stepped: 'before',
                             pointRadius: 0,
                             pointHoverRadius: 5
                         }
@@ -1523,7 +1593,6 @@
                     } else return tPart;
                 });
                 
-                // Cập nhật 4 đồ thị hiện tại
                 charts['chartT'].data.labels = labels;
                 charts['chartT'].data.datasets[0].data = data.map(d => d.T);
                 charts['chartT'].update();
@@ -1540,7 +1609,6 @@
                 charts['chartDO'].data.datasets[0].data = data.map(d => d.DO);
                 charts['chartDO'].update();
 
-                // Cập nhật đồ thị đối chiếu DO vs DO_PRED
                 if (charts['chartDOPred']) {
                     charts['chartDOPred'].data.labels = labels;
                     charts['chartDOPred'].data.datasets[0].data = data.map(d => d.DO);
@@ -1631,7 +1699,7 @@
             }, 300);
         }
 
-        // Bảng Database 49 cột
+        // Bảng Database 70 cột
         async function fetchPagedLogs() {
             try {
                 let url = `/api/logs-paged?page=${currentPage}&limit=${currentLimit}`;
@@ -1652,11 +1720,10 @@
 
                 const tbody = document.getElementById('db-table-body');
                 if (result.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="49" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="70" class="py-6 text-center text-gray-400">Không tìm thấy bản ghi nào trong khoảng thời gian đã chọn.</td></tr>`;
                     return;
                 }
 
-                // TỰ ĐỘNG ĐỔ DỮ LIỆU TỨC THÌ NẾU MÀN HÌNH ĐANG LÀ --
                 if (currentPage === 1 && !filterFromTime && !filterToTime && result.data[0]) {
                     const topRow = result.data[0];
                     const topRowTime = formatDbTime(topRow.created_at);
@@ -1675,7 +1742,7 @@
                         <td class="py-2 px-2 text-blue-400 font-bold">${item.DO !== undefined && item.DO !== null ? Number(item.DO).toFixed(2) : '--'}</td>
                         <td class="py-2 px-2 text-white font-bold">${item.alk !== undefined && item.alk !== null ? Number(item.alk).toFixed(2) : '--'}</td>
                         <td class="py-2 px-2 text-amber-400">${item.btri !== undefined && item.btri !== null ? Number(item.btri).toFixed(1) : '--'}</td>
-                        <td class="py-2 px-2 text-amber-300">${item.rate !== undefined && item.rate !== null ? Number(item.rate).toFixed(3) : '0.000'}</td>
+                        <td class="py-2 px-2 text-amber-300">${item.rate !== undefined && item.rate !== null ? Number(item.rate).toFixed(6) : '0.000'}</td>
                         <td class="py-2 px-2 text-rose-300">${item.eta !== undefined && item.eta !== null ? Math.round(item.eta) : '0'}</td>
                         <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan ?? 0}</td>
                         <td class="py-2 px-2 text-rose-400 font-mono">0x${Number(item.il || 0).toString(16).toUpperCase()}</td>
@@ -1689,8 +1756,8 @@
 
                         <td class="py-2 px-2 text-gray-300">${item.braw !== undefined && item.braw !== null ? Number(item.braw).toFixed(1) : '--'}</td>
                         <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.adapt_acc ?? 0}</td>
-                        <td class="py-2 px-2 text-emerald-300">${item.phoff !== undefined && item.phoff !== null ? Number(item.phoff).toFixed(3) : '--'}</td>
-                        <td class="py-2 px-2 text-emerald-300">${item.slope !== undefined && item.slope !== null ? Number(item.slope).toFixed(4) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.phoff !== undefined && item.phoff !== null ? Number(item.phoff).toFixed(6) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.slope !== undefined && item.slope !== null ? Number(item.slope).toFixed(6) : '--'}</td>
                         <td class="py-2 px-2 text-cyan-300">${item.iqrph !== undefined && item.iqrph !== null ? Number(item.iqrph).toFixed(3) : '--'}</td>
                         <td class="py-2 px-2 text-blue-300">${item.iqrdo !== undefined && item.iqrdo !== null ? Number(item.iqrdo).toFixed(3) : '--'}</td>
                         <td class="py-2 px-2 text-orange-400">${item.tspr !== undefined && item.tspr !== null ? Number(item.tspr).toFixed(2) : '--'}</td>
@@ -1714,11 +1781,34 @@
                         <td class="py-2 px-2 text-white">${item.adwk ?? 0}</td>
                         <td class="py-2 px-2 text-emerald-400 font-bold">${item.adacc ?? 0}</td>
                         <td class="py-2 px-2 text-rose-400">${item.adrej ?? 0}</td>
-                        <td class="py-2 px-2 text-rose-300">${item.admseb !== undefined && item.admseb !== null ? Number(item.admseb).toFixed(4) : '--'}</td>
-                        <td class="py-2 px-2 text-emerald-300">${item.admsea !== undefined && item.admsea !== null ? Number(item.admsea).toFixed(4) : '--'}</td>
+                        <td class="py-2 px-2 text-rose-300">${item.admseb !== undefined && item.admseb !== null ? Number(item.admseb).toFixed(6) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.admsea !== undefined && item.admsea !== null ? Number(item.admsea).toFixed(6) : '--'}</td>
                         <td class="py-2 px-2 ${item.adlast == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.adlast ?? 0}</td>
                         <td class="py-2 px-2 text-cyan-300 font-bold">${item.nvlog ?? 0}</td>
                         <td class="py-2 px-2 font-bold ${item.stackmin < 15 ? 'text-rose-400' : 'text-emerald-400'}">${item.stackmin !== undefined && item.stackmin !== null ? `${item.stackmin}%` : '--'}</td>
+
+                        <!-- 21 CỘT MỞ RỘNG MỚI -->
+                        <td class="py-2 px-2 text-orange-300">${item.tph !== undefined && item.tph !== null ? Number(item.tph).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-cyan-300">${item.tec !== undefined && item.tec !== null ? Number(item.tec).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-sky-300">${item.tdo !== undefined && item.tdo !== null ? Number(item.tdo).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 ${item.tdis == 1 ? 'text-rose-400 font-bold' : 'text-gray-500'}">${item.tdis ?? 0}</td>
+                        <td class="py-2 px-2 text-gray-400">${item.sacyc ?? 0}</td>
+                        <td class="py-2 px-2 text-gray-400">${item.spub ?? 0}</td>
+                        <td class="py-2 px-2 text-blue-300 font-bold">${item.doobs !== undefined && item.doobs !== null ? Number(item.doobs).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-indigo-300">${item.adwcet ?? 0}</td>
+                        <td class="py-2 px-2 text-indigo-300">${item.adb !== undefined && item.adb !== null ? Number(item.adb).toFixed(6) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.phraw !== undefined && item.phraw !== null ? Number(item.phraw).toFixed(2) : '--'}</td>
+                        <td class="py-2 px-2 text-gray-500 font-mono">${item.epoch ?? 0}</td>
+                        <td class="py-2 px-2 ${item.svalid == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.svalid ?? 0}</td>
+                        <td class="py-2 px-2 text-white">${item.dday ?? 0}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.phmed !== undefined && item.phmed !== null ? Number(item.phmed).toFixed(4) : '--'}</td>
+                        <td class="py-2 px-2 text-amber-300">${item.il8th !== undefined && item.il8th !== null ? Number(item.il8th).toFixed(4) : '--'}</td>
+                        <td class="py-2 px-2 text-gray-400">${item.scyc ?? 0}</td>
+                        <td class="py-2 px-2 text-rose-400 font-bold">${item.rnh3 !== undefined && item.rnh3 !== null ? Number(item.rnh3).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-amber-400 font-bold">${item.rh2s !== undefined && item.rh2s !== null ? Number(item.rh2s).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-blue-400 font-bold">${item.rdo !== undefined && item.rdo !== null ? Number(item.rdo).toFixed(3) : '--'}</td>
+                        <td class="py-2 px-2 text-emerald-300">${item.phmedp !== undefined && item.phmedp !== null ? Number(item.phmedp).toFixed(4) : '--'}</td>
+                        <td class="py-2 px-2 text-indigo-300">${item.adpass ?? 0}</td>
                     </tr>
                 `).join('');
             } catch (err) {
@@ -1815,11 +1905,7 @@
             window.open(exportUrl, '_blank');
         }
 
-        // ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ: TÁCH BIỆT 3 CỬA SỔ =================
-// ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ: KHÓA TAB CHỐNG GIẬT =================
-        let userSelectedTab = null; // Ghi nhớ tab do bạn bấm chọn
-
-        // Đồng bộ danh sách đã tắt từ Cloud + LocalStorage
+        // ================= TRUNG TÂM PHÂN LOẠI SỰ CỐ =================
         async function fetchDismissedCloud() {
             try {
                 const localSaved = JSON.parse(localStorage.getItem('dismissed_incidents_cache') || '[]');
@@ -1854,7 +1940,6 @@
             const historyList = allIncidents.filter(inc => !inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
             const dismissedList = allIncidents.filter(inc => dismissedIncidentIdsOnCloud.includes(inc.id));
 
-            // Cập nhật số đếm trên 3 Tab
             document.getElementById('count-tab-ongoing').innerText = ongoingList.length;
             document.getElementById('count-tab-history').innerText = historyList.length;
             document.getElementById('count-tab-dismissed').innerText = dismissedList.length;
@@ -1890,7 +1975,6 @@
                 banner.classList.add('hidden');
             }
 
-            // NẾU BẠN ĐÃ BẤM CHỌN TAB NÀO -> GIỮ NGUYÊN TAB ĐÓ, CẤM GIẬT LÙI
             if (userSelectedTab !== null) {
                 currentIncTab = userSelectedTab;
             } else {
@@ -1901,7 +1985,6 @@
             renderIncidentList();
         }
 
-        // HÀM RENDER GIAO DIỆN DANH SÁCH SỰ CỐ (ĐÃ BỔ SUNG LẠI)
         function renderIncidentList() {
             const container = document.getElementById('incident-list-container');
             if (!container) return;
@@ -2003,11 +2086,7 @@
 
         function setIncidentTab(tab, isManualClick = true) {
             currentIncTab = tab;
-            
-            // Khi bạn chủ động bấm chuột vào tab -> Khóa tab đó vĩnh viễn
-            if (isManualClick) {
-                userSelectedTab = tab;
-            }
+            if (isManualClick) userSelectedTab = tab;
 
             const btnOngoing = document.getElementById('tab-inc-ongoing');
             const btnHistory = document.getElementById('tab-inc-history');
@@ -2025,20 +2104,15 @@
                 btnDismissed.className = "px-3 py-1.5 rounded-lg font-bold transition bg-emerald-700 text-white shadow flex items-center gap-1.5";
             }
 
-            if (isManualClick) {
-                renderIncidentList();
-            }
+            if (isManualClick) renderIncidentList();
         }
 
         function openIncidentModal() {
             userSelectedTab = null;
-            
             const ongoingCount = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id)).length;
             currentIncTab = (ongoingCount > 0) ? 'ongoing' : 'history';
-            
             setIncidentTab(currentIncTab, false);
             renderIncidentList();
-
             document.getElementById('incident-modal').classList.remove('hidden');
             fetchIncidentAudit();
         }
@@ -2047,7 +2121,6 @@
             document.getElementById('incident-modal').classList.add('hidden');
             userSelectedTab = null;
         }
-
 
         function promptDismissSingle(incidentId) {
             pendingDismissIncidentId = incidentId;
@@ -2059,7 +2132,6 @@
         }
 
         function promptDismissAll() {
-            // Lọc danh sách cảnh báo chưa tắt
             const unDismissed = allIncidents.filter(i => !dismissedIncidentIdsOnCloud.includes(i.id));
             if (unDismissed.length === 0) {
                 alert('Không có cảnh báo nào cần tắt!');
@@ -2079,13 +2151,11 @@
             pendingDismissIncidentId = null;
         }
 
-// Xác thực PIN và thực thi tắt cảnh báo
         async function verifyAndExecuteDismiss() {
             const enteredPin = document.getElementById('input-owner-pin').value.trim();
             const pinBox = document.getElementById('pin-box');
             const errorMsg = document.getElementById('pin-error-msg');
 
-            // Kiểm tra mã PIN Chủ Ao
             if (enteredPin !== OWNER_DISMISS_PIN) {
                 pinBox.classList.add('shake-animation');
                 errorMsg.className = "text-xs text-red-400 min-h-[16px] font-medium";
@@ -2095,7 +2165,6 @@
             }
 
             try {
-                // Lấy danh sách ID cần tắt
                 let idsToSave = [];
                 if (pendingDismissIncidentId) {
                     idsToSave = [pendingDismissIncidentId];
@@ -2113,12 +2182,10 @@
                 errorMsg.className = "text-xs text-emerald-400 min-h-[16px] font-medium";
                 errorMsg.innerText = "Đang lưu và đồng bộ trạng thái...";
 
-                // 1. Cập nhật ngay lập tức vào Bộ nhớ cục bộ (Hiển thị mượt mà không độ trễ)
                 const updatedCache = Array.from(new Set([...dismissedIncidentIdsOnCloud, ...idsToSave]));
                 dismissedIncidentIdsOnCloud = updatedCache;
                 localStorage.setItem('dismissed_incidents_cache', JSON.stringify(updatedCache));
 
-                // 2. Gửi đồng bộ lên Server Supabase trong 1 request duy nhất
                 const response = await fetch('/api/dismiss-incident', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2126,16 +2193,13 @@
                 });
 
                 const resData = await response.json();
-
                 if (!response.ok) {
                     throw new Error(resData.error || 'Máy chủ từ chối lưu trạng thái');
                 }
 
-                // 3. Đóng popup và vẽ lại danh sách
                 closePinModal();
                 updateIncidentUI();
                 await fetchIncidentAudit();
-
             } catch (err) {
                 console.error("Lỗi khi tắt sự cố:", err);
                 errorMsg.className = "text-xs text-rose-400 min-h-[16px] font-bold";
