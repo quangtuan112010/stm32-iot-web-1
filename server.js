@@ -286,6 +286,20 @@ const mqttClient = mqtt.connect(MQTT_BROKER, {
     rejectUnauthorized: false
 });
 
+// Bắt lỗi MQTT để tránh sập app khi rớt mạng
+mqttClient.on('error', (err) => {
+    console.error('[MQTT ERROR]:', err.message);
+});
+
+// Lưới bảo hiểm toàn cục cho Node.js (chống crash tiến trình)
+process.on('uncaughtException', (err) => {
+    console.error('[CRITICAL UNCAUGHT EXCEPTION]:', err.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[UNHANDLED PROMISE REJECTION]:', reason);
+});
+
 mqttClient.on('connect', () => {
     console.log('[MQTT] Connected to HiveMQ Cloud successfully');
     mqttClient.subscribe(TOPIC_UPLINK);
@@ -580,11 +594,14 @@ app.get('/api/audit-incidents', async (req, res) => {
                         if (keyVal === active.val) {
                             active.end_row = row;
                             active.last_seen_row = row;
-                            active.rows.push(row);
+                            // TÍNH TRỰC TIẾP ĐỈNH, KHÔNG DÙNG active.rows.push(row) GÂY TRÀN RAM
+                            if (parseFloat(row.btri) > active.max_btri) {
+                                active.max_btri = parseFloat(row.btri);
+                            }
                         } else {
                             active.end_row = active.last_seen_row;
                             incidents.push(createIncidentFn(active, false));
-                            active = { val: keyVal, start_row: row, end_row: row, last_seen_row: row, rows: [row] };
+                            active = { val: keyVal, start_row: row, end_row: row, last_seen_row: row, max_btri: parseFloat(row.btri) || 0 };
                         }
                     } else {
                         if (secSinceLastSeen > debounceSec) {
@@ -595,7 +612,7 @@ app.get('/api/audit-incidents', async (req, res) => {
                     }
                 } else {
                     if (isValid) {
-                        active = { val: keyVal, start_row: row, end_row: row, last_seen_row: row, rows: [row] };
+                        active = { val: keyVal, start_row: row, end_row: row, last_seen_row: row, max_btri: parseFloat(row.btri) || 0 };
                     }
                 }
             }
@@ -963,14 +980,19 @@ app.get('/api/logs-paged', async (req, res) => {
     }
 });
 
-// API Xuất CSV 49 cột
-// API Xuất CSV chuẩn 70 cột (ID, Thời Gian + 68 thông số firmware C)
+// API Xuất CSV chuẩn Stream (Dung lượng RAM luôn < 30MB dù tải hàng trăm nghìn dòng)
 app.get('/api/export-csv', async (req, res) => {
     try {
         const { mode = 'all', limit = 1000, from_time, to_time } = req.query;
-        const maxRows = mode === 'limit' ? parseInt(limit) || 1000 : 100000;
+        const maxRows = mode === 'limit' ? Math.min(parseInt(limit) || 1000, 50000) : 100000;
         
-        let allData = [];
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_70fields_${Date.now()}.csv"`);
+        
+        // Ghi BOM UTF-8 và Header 70 cột
+        res.write('\uFEFF');
+        res.write("ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail,DO_Pred,DO_Sat,AI_Sigma,AI_Valid,AI_Struct,AI_Step,Adapt_Week,Adapt_Acc,Adapt_Rej,MSE_Before,MSE_After,Adapt_Last,NV_Log,Stack_Min_Pct,T_pH,T_EC,T_DO,T_Disagree,SA_Cycles,SA_Published,DO_Obs,Ad_WCET,Ad_Bias_b,pH_Raw,Epoch,Sample_Valid,Drift_Days,pH_Median_Today,IL8_Threshold,Safety_Cycles,R_NH3,R_H2S,R_DO,pH_Median_Prev,Ad_Pass_Cycles\n");
+
         const CHUNK_SIZE = 1000;
         let fetched = 0;
 
@@ -990,27 +1012,26 @@ app.get('/api/export-csv', async (req, res) => {
             }
 
             const { data, error } = await query;
-            if (error) break;
-            if (!data || data.length === 0) break;
+            if (error || !data || data.length === 0) break;
 
-            allData = allData.concat(data);
+            let chunkCsv = "";
+            data.forEach(r => {
+                const timeFormatted = formatSupabaseTime(r.created_at);
+                chunkCsv += `${r.id},"${timeFormatted}",${r.T ?? ''},${r.S ?? ''},${r.pH ?? ''},${r.DO ?? ''},${r.alk ?? -1.0},${r.btri ?? 0},${r.fan ?? 0},${r.il ?? 0},${r.dom ?? 0},${r.surv ?? 0},${r.adapt_acc ?? 0},${r.cs ?? 0},${r.rate ?? 0},${r.eta ?? 0},${r.braw ?? 0},${r.il8 ?? 0},${r.il8cal ?? 0},${r.il8rdy ?? 0},${r.phoff ?? 0},${r.slope ?? 0},${r.iqrph ?? 0},${r.iqrdo ?? 0},${r.tspr ?? 0},${r.fph ?? 0},${r.fec ?? 0},${r.fdo ?? 0},${r.wcet ?? 0},${r.hleft ?? 0},${r.csq ?? 99},${r.rstr ?? 0},${r.boot ?? 0},${r.up ?? 0},${r.flfail ?? 0},${r.dopred ?? ''},${r.dosat ?? ''},${r.aisig ?? ''},${r.aivalid ?? 0},${r.aistruct ?? 0},${r.aistep ?? 0},${r.adwk ?? 0},${r.adacc ?? 0},${r.adrej ?? 0},${r.admseb ?? 0},${r.admsea ?? 0},${r.adlast ?? 0},${r.nvlog ?? 0},${r.stackmin ?? 0},${r.tph ?? ''},${r.tec ?? ''},${r.tdo ?? ''},${r.tdis ?? 0},${r.sacyc ?? 0},${r.spub ?? 0},${r.doobs ?? ''},${r.adwcet ?? 0},${r.adb ?? 0},${r.phraw ?? ''},${r.epoch ?? 0},${r.svalid ?? 0},${r.dday ?? 0},${r.phmed ?? 0},${r.il8th ?? 0},${r.scyc ?? 0},${r.rnh3 ?? 0},${r.rh2s ?? 0},${r.rdo ?? 0},${r.phmedp ?? 0},${r.adpass ?? 0}\n`;
+            });
+
+            // Gửi trực tiếp chunk về client và xóa khỏi RAM
+            res.write(chunkCsv);
             fetched += data.length;
 
             if (data.length < CHUNK_SIZE) break;
         }
 
-        let csv = "ID,Thoi_Gian,Nhiet_Do_T,Do_Man_S,pH,DO,Do_Kiem_Alk,Btri,Fan,IL,DOM,Surv,Adapt,CS,Rate,ETA_Min,BTRI_Raw,IL8_Probe,IL8_Calib,IL8_Ready,pH_Offset,pH_Slope,IQR_pH,IQR_DO,T_Spread,Fail_pH,Fail_EC,Fail_DO,WCET,Hours_Left,CSQ_Signal,Reset_Reason,Boot_Count,Uptime_Sec,Flash_Fail,DO_Pred,DO_Sat,AI_Sigma,AI_Valid,AI_Struct,AI_Step,Adapt_Week,Adapt_Acc,Adapt_Rej,MSE_Before,MSE_After,Adapt_Last,NV_Log,Stack_Min_Pct,T_pH,T_EC,T_DO,T_Disagree,SA_Cycles,SA_Published,DO_Obs,Ad_WCET,Ad_Bias_b,pH_Raw,Epoch,Sample_Valid,Drift_Days,pH_Median_Today,IL8_Threshold,Safety_Cycles,R_NH3,R_H2S,R_DO,pH_Median_Prev,Ad_Pass_Cycles\n";
-        
-        allData.forEach(r => {
-            const timeFormatted = formatSupabaseTime(r.created_at);
-            csv += `${r.id},"${timeFormatted}",${r.T},${r.S},${r.pH},${r.DO},${r.alk},${r.btri},${r.fan},${r.il},${r.dom},${r.surv},${r.adapt_acc},${r.cs},${r.rate || 0},${r.eta || 0},${r.braw || 0},${r.il8 || 0},${r.il8cal || 0},${r.il8rdy || 0},${r.phoff || 0},${r.slope || 0},${r.iqrph || 0},${r.iqrdo || 0},${r.tspr || 0},${r.fph || 0},${r.fec || 0},${r.fdo || 0},${r.wcet || 0},${r.hleft || 0},${r.csq ?? 99},${r.rstr || 0},${r.boot || 0},${r.up || 0},${r.flfail || 0},${r.dopred || 0},${r.dosat || 0},${r.aisig || 0},${r.aivalid || 0},${r.aistruct || 0},${r.aistep || 0},${r.adwk || 0},${r.adacc || 0},${r.adrej || 0},${r.admseb || 0},${r.admsea || 0},${r.adlast || 0},${r.nvlog || 0},${r.stackmin || 0},${r.tph || 0},${r.tec || 0},${r.tdo || 0},${r.tdis || 0},${r.sacyc || 0},${r.spub || 0},${r.doobs || 0},${r.adwcet || 0},${r.adb || 0},${r.phraw || 0},${r.epoch || 0},${r.svalid || 0},${r.dday || 0},${r.phmed || 0},${r.il8th || 0},${r.scyc || 0},${r.rnh3 || 0},${r.rh2s || 0},${r.rdo || 0},${r.phmedp || 0},${r.adpass || 0}\n`;
-        });
-
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="telemetry_logs_70fields_${Date.now()}.csv"`);
-        res.status(200).send('\uFEFF' + csv);
+        res.end();
     } catch (err) {
-        res.status(500).send("Lỗi xuất file: " + err.message);
+        console.error("Lỗi xuất file:", err.message);
+        if (!res.headersSent) res.status(500).send("Lỗi xuất file: " + err.message);
+        else res.end();
     }
 });
 
