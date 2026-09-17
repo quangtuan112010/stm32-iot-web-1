@@ -304,20 +304,32 @@ mqttClient.on('message', async (topic, message) => {
             return;
         }
 
+        // 1. Hàm bọc an toàn tránh lỗi NaN và giữ nguyên giá trị null khi cảm biến lỗi
+        const parseF = (v, defaultVal = null) => 
+            (v !== null && v !== undefined && !isNaN(parseFloat(v))) ? parseFloat(v) : defaultVal;
+
+        const parseI = (v, defaultVal = 0) => 
+            (v !== null && v !== undefined && !isNaN(parseInt(v, 10))) ? parseInt(v, 10) : defaultVal;
+
+        // 2. Cập nhật trong mqttClient.on('message', ...)
         const insertPayload = {
-            // --- 47 TRƯỜNG DỮ LIỆU CŨ ---
-            T: parseFloat(data.T) || 0.0,
-            S: parseFloat(data.S) || 0.0,
-            pH: parseFloat(data.pH) || 0.0,
-            DO: parseFloat(data.DO) || 0.0,
-            alk: parseFloat(data.alk) !== undefined ? parseFloat(data.alk) : -1.0,
-            btri: parseFloat(data.btri) || 0.0,
-            fan: parseInt(data.fan) || 0,
-            il: parseInt(data.il) || 0,
-            dom: parseInt(data.dom) || 0,
-            surv: parseInt(data.surv) || 0,
-            adapt_acc: parseInt(data.adapt_acc) || 0,
-            cs: parseInt(data.cs) || 0,
+            // Nếu cảm biến đứt dây/lỗi -> Database sẽ lưu đúng giá trị NULL
+            T: parseF(data.T, null),
+            S: parseF(data.S, null),
+            pH: parseF(data.pH, null),
+            DO: parseF(data.DO, null),
+
+            // Độ kiềm: Nếu có số -> lấy số; nếu thiếu/null -> về mốc an toàn -1.0
+            alk: parseF(data.alk, -1.0),
+            btri: parseF(data.btri, 0.0),
+
+            // Các cờ và thông số còn lại giữ giá trị mặc định nguyên vẹn
+            fan: parseI(data.fan, 0),
+            il: parseI(data.il, 0),
+            dom: parseI(data.dom, 0),
+            surv: parseI(data.surv, 0),
+            adapt_acc: parseI(data.adapt_acc, 0),
+            cs: parseI(data.cs, 0),
 
             rate: parseFloat(data.rate) || 0.0,
             eta: parseFloat(data.eta) || 0.0,
