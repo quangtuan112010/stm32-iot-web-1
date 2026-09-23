@@ -1496,27 +1496,27 @@
                 data: {
                     labels: [],
                     datasets: [
-                        {
-                            label: 'DO Thực Tế (Đo sau 15 phút)',
-                            data: [],
-                            borderColor: '#38bdf8',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            tension: 0.1,
-                            pointRadius: 0,
-                            pointHoverRadius: 5
-                        },
-                        // Đổi stepped: 'before' thành stepped: 'after'
-                        {
-                            label: 'DO_Pred (AI dự báo tại mốc đó)',
-                            data: [],
-                            borderColor: '#ef4444',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            stepped: 'after', // <-- ĐỔI TỪ 'before' THÀNH 'after' ĐỂ GIỮ NẰM Ở MỨC TRÊN ĐẾN HẾT MỐC
-                            pointRadius: 0,
-                            pointHoverRadius: 5
-                        }
+                    // Trong initCharts(), tại chartDOPred:
+                    {
+                        label: 'DO Thực Tế Hiện Tại',
+                        data: [],
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: 'DO_Pred (AI đã dự báo trước 15 phút)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        stepped: false, // Để nét liền mượt mà theo mốc thời gian đối chiếu
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }
                     ]
                 },
                 options: {
@@ -1546,34 +1546,32 @@
                             borderWidth: 1,
                             padding: 10,
                             callbacks: {
-                                title: function(context) {
-                                    const idx = context[0].dataIndex;
-                                    const raw = lastChartRawData[idx];
-                                    return raw && raw.created_at ? `Mốc phát dự báo: ${formatDbTime(raw.created_at)}` : context[0].label;
-                                },
-                                label: function(context) {
-                                    if (context.parsed.y === null || context.parsed.y === undefined) return null;
-                                    const val = Number(context.parsed.y).toFixed(3);
-                                    if (context.datasetIndex === 1) {
-                                        return `🔻 DO_Pred (Chu kỳ đối chiếu): ${val} mg/L`;
-                                    } else {
-                                        return `🔹 DO Thực tế sau 15 phút: ${val} mg/L`;
-                                    }
-                                },
-                                afterBody: function(tooltipItems) {
-                                    const idx = tooltipItems[0].dataIndex;
-                                    const actualAfter15m = charts['chartDOPred'].data.datasets[0].data[idx];
-                                    const predVal = charts['chartDOPred'].data.datasets[1].data[idx];
-                                    
-                                    if (predVal !== null && actualAfter15m !== null && actualAfter15m !== undefined) {
-                                        const diff = Math.abs(predVal - actualAfter15m).toFixed(3);
-                                        return `⚖️ Độ lệch sai số: ${diff} mg/L`;
-                                    } else if (predVal !== null && (actualAfter15m === null || actualAfter15m === undefined)) {
-                                        return `⏳ DO Thực tế sau 15p: Đang chờ đo (chưa tới thời điểm)...`;
-                                    }
-                                    return '';
+                            title: function(context) {
+                                const idx = context[0].dataIndex;
+                                const raw = lastChartRawData[idx];
+                                return raw && raw.created_at ? `Thời điểm đối chiếu: ${formatDbTime(raw.created_at)}` : context[0].label;
+                            },
+                            label: function(context) {
+                                if (context.parsed.y === null || context.parsed.y === undefined) return null;
+                                const val = Number(context.parsed.y).toFixed(3);
+                                if (context.datasetIndex === 1) {
+                                    return `🔻 DO_Pred (AI đoán từ 15p trước): ${val} mg/L`;
+                                } else {
+                                    return `🔹 DO Thực tế hiện tại: ${val} mg/L`;
                                 }
+                            },
+                            afterBody: function(tooltipItems) {
+                                const idx = tooltipItems[0].dataIndex;
+                                const actualDO = charts['chartDOPred'].data.datasets[0].data[idx];
+                                const predVal = charts['chartDOPred'].data.datasets[1].data[idx];
+                                
+                                if (predVal !== null && actualDO !== null) {
+                                    const diff = Math.abs(predVal - actualDO).toFixed(3);
+                                    return `⚖️ Độ lệch sai số: ${diff} mg/L`;
+                                }
+                                return '';
                             }
+                        }
                         }
                     }
                 }
@@ -1626,44 +1624,37 @@
                     const FIFTEEN_MIN_MS = 15 * 60 * 1000;
                     let alignedLabels = labels;
 
-                    // 1. Giữ giá trị dự báo cũ tại điểm giao thoa để chấm đỏ nằm ở trên
-                    let alignedPredDO = [];
-                    for (let i = 0; i < data.length; i++) {
-                        let curPred = data[i].dopred;
-                        // Nếu tại mốc này AI vừa cập nhật giá trị mới, giữ giá trị cũ cho mốc hiện tại để đo chu kỳ vừa tròn 15p
-                        if (i > 0 && curPred !== data[i - 1].dopred && data[i - 1].dopred > 0) {
-                            alignedPredDO.push(data[i - 1].dopred); // Chấm đỏ sẽ nằm ở trên đỉnh dự báo cũ
-                        } else {
-                            alignedPredDO.push((curPred !== null && curPred !== undefined && curPred > 0) ? curPred : null);
-                        }
-                    }
+                    // 1. ĐƯỜNG XANH: DO thực tế đo được tại đúng mốc thời gian T (chạy đầy đủ 100% đến hiện tại)
+                    let alignedActualDO = data.map(d => (d.DO !== null && d.DO !== undefined) ? d.DO : null);
 
-                    // 2. Lấy DO thực tế đo được sau 15 phút của dự báo đó
-                    let alignedActualAfter15m = data.map((d, idx) => {
+                    // 2. ĐƯỜNG ĐỎ: Lấy giá trị AI đã phát ra cách đây 15 phút (T - 15 phút) để đối chiếu trực tiếp
+                    let alignedPredFrom15mAgo = data.map((d, idx) => {
                         const curTime = new Date(d.created_at).getTime();
-                        const targetFutureTime = curTime + FIFTEEN_MIN_MS;
+                        const targetPastTime = curTime - FIFTEEN_MIN_MS;
                         
                         let bestMatch = null;
                         let minDiff = Infinity;
                         
-                        for (let j = idx; j < data.length; j++) {
+                        // Tìm bản ghi dự báo phát ra cách đây khoảng 15 phút
+                        for (let j = 0; j <= idx; j++) {
                             const t = new Date(data[j].created_at).getTime();
-                            const diff = Math.abs(t - targetFutureTime);
+                            const diff = Math.abs(t - targetPastTime);
                             if (diff < minDiff) {
                                 minDiff = diff;
                                 bestMatch = data[j];
                             }
                         }
                         
-                        if (bestMatch && minDiff <= 90 * 1000 && bestMatch.DO !== null && bestMatch.DO !== undefined) {
-                            return bestMatch.DO;
+                        // Chấp nhận độ lệch thời gian ±90 giây
+                        if (bestMatch && minDiff <= 90 * 1000 && bestMatch.dopred !== null && bestMatch.dopred !== undefined && bestMatch.dopred > 0) {
+                            return bestMatch.dopred;
                         }
                         return null;
                     });
 
                     charts['chartDOPred'].data.labels = alignedLabels;
-                    charts['chartDOPred'].data.datasets[0].data = alignedActualAfter15m;
-                    charts['chartDOPred'].data.datasets[1].data = alignedPredDO;
+                    charts['chartDOPred'].data.datasets[0].data = alignedActualDO;       // Đường Xanh thực tế đầy đủ
+                    charts['chartDOPred'].data.datasets[1].data = alignedPredFrom15mAgo; // Đường Đỏ từ 15p trước
                     charts['chartDOPred'].update();
                 }
             } catch (err) {
