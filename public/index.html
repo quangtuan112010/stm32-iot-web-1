@@ -1553,11 +1553,16 @@
                                     return raw && raw.created_at ? `Thời gian: ${formatDbTime(raw.created_at)}` : context[0].label;
                                 },
                                 label: function(context) {
+                                    if (context.parsed.y === null || context.parsed.y === undefined) return null;
                                     const val = Number(context.parsed.y).toFixed(3);
                                     if (context.datasetIndex === 0) {
                                         return `🔹 DO Thực tế : ${val} mg/L`;
                                     } else {
-                                        return `🔻 DO_Pred (AI): ${val} mg/L`;
+                                        // Kiểm tra nếu là điểm dự báo tương lai ở cuối mảng
+                                        if (context.dataIndex === context.dataset.data.length - 1 && charts['chartDOPred'].data.datasets[0].data[context.dataIndex] === null) {
+                                            return `🔮 DO_Pred (Dự báo 15p tới): ${val} mg/L`;
+                                        }
+                                        return `🔻 DO_Pred (AI đã đoán trước 15p): ${val} mg/L`;
                                     }
                                 }
                             }
@@ -1610,9 +1615,56 @@
                 charts['chartDO'].update();
 
                 if (charts['chartDOPred']) {
-                    charts['chartDOPred'].data.labels = labels;
-                    charts['chartDOPred'].data.datasets[0].data = data.map(d => d.DO);
-                    charts['chartDOPred'].data.datasets[1].data = data.map(d => d.dopred);
+                    const FIFTEEN_MIN_MS = 15 * 60 * 1000;
+                    
+                    // 1. Sao chép danh sách nhãn thời gian
+                    let alignedLabels = [...labels];
+                    let alignedActualDO = data.map(d => d.DO);
+                    
+                    // 2. Với mỗi mốc T_i, tìm giá trị dopred đã được sinh ra từ T_i - 15 phút
+                    let alignedPredDO = data.map(d => {
+                        const curTime = new Date(d.created_at).getTime();
+                        const targetPastTime = curTime - FIFTEEN_MIN_MS;
+                        
+                        // Tìm bản ghi trong quá khứ có thời gian gần mốc (curTime - 15p) nhất
+                        let bestMatch = null;
+                        let minDiff = Infinity;
+                        
+                        for (let i = 0; i < data.length; i++) {
+                            const t = new Date(data[i].created_at).getTime();
+                            const diff = Math.abs(t - targetPastTime);
+                            if (diff < minDiff) {
+                                minDiff = diff;
+                                bestMatch = data[i];
+                            }
+                        }
+                        
+                        // Cho phép sai số lệch chu kỳ (ví dụ trong khoảng ±90 giây)
+                        if (bestMatch && minDiff <= 90 * 1000 && bestMatch.dopred !== null && bestMatch.dopred !== undefined) {
+                            return bestMatch.dopred;
+                        }
+                        return null; // Chưa đủ 15 phút dữ liệu quá khứ để đối chiếu
+                    });
+
+                    // 3. Đưa điểm dự báo mới nhất (+15 phút tương lai) ra ngoài cùng
+                    if (data.length > 0) {
+                        const latestRecord = data[data.length - 1];
+                        if (latestRecord && latestRecord.created_at && latestRecord.dopred !== null) {
+                            const futureDate = new Date(new Date(latestRecord.created_at).getTime() + FIFTEEN_MIN_MS);
+                            
+                            // Format nhãn tương lai đồng bộ với định dạng trục X
+                            const pad = n => String(n).padStart(2, '0');
+                            const futureTimeStr = `${pad(futureDate.getHours())}:${pad(futureDate.getMinutes())}:${pad(futureDate.getSeconds())}`;
+                            
+                            alignedLabels.push(`${futureTimeStr} (Dự báo +15p)`);
+                            alignedActualDO.push(null); // Chưa xảy ra nên không có thực tế
+                            alignedPredDO.push(latestRecord.dopred);
+                        }
+                    }
+
+                    charts['chartDOPred'].data.labels = alignedLabels;
+                    charts['chartDOPred'].data.datasets[0].data = alignedActualDO;
+                    charts['chartDOPred'].data.datasets[1].data = alignedPredDO;
                     charts['chartDOPred'].update();
                 }
             } catch (err) {
