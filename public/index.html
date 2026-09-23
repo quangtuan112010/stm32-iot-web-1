@@ -1506,13 +1506,14 @@
                             pointRadius: 0,
                             pointHoverRadius: 5
                         },
+                        // Đổi stepped: 'before' thành stepped: 'after'
                         {
                             label: 'DO_Pred (AI dự báo tại mốc đó)',
                             data: [],
                             borderColor: '#ef4444',
                             backgroundColor: 'transparent',
                             borderWidth: 2,
-                            stepped: 'before',
+                            stepped: 'after', // <-- ĐỔI TỪ 'before' THÀNH 'after' ĐỂ GIỮ NẰM Ở MỨC TRÊN ĐẾN HẾT MỐC
                             pointRadius: 0,
                             pointHoverRadius: 5
                         }
@@ -1554,7 +1555,7 @@
                                     if (context.parsed.y === null || context.parsed.y === undefined) return null;
                                     const val = Number(context.parsed.y).toFixed(3);
                                     if (context.datasetIndex === 1) {
-                                        return `🔻 DO_Pred (AI dự báo): ${val} mg/L`;
+                                        return `🔻 DO_Pred (Chu kỳ đối chiếu): ${val} mg/L`;
                                     } else {
                                         return `🔹 DO Thực tế sau 15 phút: ${val} mg/L`;
                                     }
@@ -1621,16 +1622,23 @@
                 charts['chartDO'].data.datasets[0].data = data.map(d => d.DO);
                 charts['chartDO'].update();
 
-if (charts['chartDOPred']) {
+                if (charts['chartDOPred']) {
                     const FIFTEEN_MIN_MS = 15 * 60 * 1000;
-                    
-                    // 1. Trục thời gian giữ nguyên theo dữ liệu thực tế (không thêm nhãn ảo)
                     let alignedLabels = labels;
-                    
-                    // 2. Đường ĐỎ: DO_Pred tại mốc T (giữ nguyên đầy đủ từ đầu đến cuối, không bị mất nửa bên trái)
-                    let alignedPredDO = data.map(d => (d.dopred !== null && d.dopred !== undefined && d.dopred > 0) ? d.dopred : null);
-                    
-                    // 3. Đường XANH: Tìm DO thực tế đo được SAU 15 PHÚT (tại T + 15 phút)
+
+                    // 1. Giữ giá trị dự báo cũ tại điểm giao thoa để chấm đỏ nằm ở trên
+                    let alignedPredDO = [];
+                    for (let i = 0; i < data.length; i++) {
+                        let curPred = data[i].dopred;
+                        // Nếu tại mốc này AI vừa cập nhật giá trị mới, giữ giá trị cũ cho mốc hiện tại để đo chu kỳ vừa tròn 15p
+                        if (i > 0 && curPred !== data[i - 1].dopred && data[i - 1].dopred > 0) {
+                            alignedPredDO.push(data[i - 1].dopred); // Chấm đỏ sẽ nằm ở trên đỉnh dự báo cũ
+                        } else {
+                            alignedPredDO.push((curPred !== null && curPred !== undefined && curPred > 0) ? curPred : null);
+                        }
+                    }
+
+                    // 2. Lấy DO thực tế đo được sau 15 phút của dự báo đó
                     let alignedActualAfter15m = data.map((d, idx) => {
                         const curTime = new Date(d.created_at).getTime();
                         const targetFutureTime = curTime + FIFTEEN_MIN_MS;
@@ -1638,7 +1646,6 @@ if (charts['chartDOPred']) {
                         let bestMatch = null;
                         let minDiff = Infinity;
                         
-                        // Tìm kiếm xuôi từ vị trí hiện tại về sau
                         for (let j = idx; j < data.length; j++) {
                             const t = new Date(data[j].created_at).getTime();
                             const diff = Math.abs(t - targetFutureTime);
@@ -1648,11 +1655,10 @@ if (charts['chartDOPred']) {
                             }
                         }
                         
-                        // Nếu tìm thấy bản ghi cách ~15 phút (trong khoảng lệch ±90 giây)
                         if (bestMatch && minDiff <= 90 * 1000 && bestMatch.DO !== null && bestMatch.DO !== undefined) {
                             return bestMatch.DO;
                         }
-                        return null; // Đối với 15 phút gần nhất: thời gian thực tế chưa tới
+                        return null;
                     });
 
                     charts['chartDOPred'].data.labels = alignedLabels;
