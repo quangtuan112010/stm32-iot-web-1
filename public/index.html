@@ -1489,34 +1489,34 @@
                 });
             });
 
-// Biểu đồ đối chiếu DO vs DO_Pred
+            // Biểu đồ đối chiếu DO vs DO_Pred
             const ctxPred = document.getElementById('chartDOPred').getContext('2d');
             charts['chartDOPred'] = new Chart(ctxPred, {
                 type: 'line',
                 data: {
                     labels: [],
                     datasets: [
-                    // Trong initCharts(), tại chartDOPred:
-                    {
-                        label: 'DO Thực Tế Hiện Tại',
-                        data: [],
-                        borderColor: '#38bdf8',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        pointRadius: 0,
-                        pointHoverRadius: 5
-                    },
-                    {
-                        label: 'DO_Pred (AI đã dự báo trước 15 phút)',
-                        data: [],
-                        borderColor: '#ef4444',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        stepped: false, // Để nét liền mượt mà theo mốc thời gian đối chiếu
-                        pointRadius: 0,
-                        pointHoverRadius: 5
-                    }
+                        {
+                            label: 'DO Thực Tế Hiện Tại',
+                            data: [],
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'DO_Pred (AI đã dự báo trước 15 phút)',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            stepped: 'after', // <--- ĐỔI TỪ false THÀNH 'after' ĐỂ DỐC RƠI THẲNG ĐỨNG 90°
+                            tension: 0,       // Giữ góc vuông sắc nét tuyệt đối, không bo tròn
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        }
                     ]
                 },
                 options: {
