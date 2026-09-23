@@ -1581,18 +1581,61 @@
         async function fetchChartData() {
             try {
                 let url = `/api/chart-data?mode=${currentChartMode}`;
+                const BUFFER_MINUTES = 20; // Đệm thêm 20 phút dữ liệu quá khứ để đối chiếu không bao giờ bị cụt
+
                 if (currentChartMode === 'range') {
-                    if (chartFromTime) url += `&from_time=${encodeURIComponent(chartFromTime)}`;
+                    if (chartFromTime) {
+                        // Lùi thời gian bắt đầu tải thêm 20 phút để có dữ liệu đối chiếu quá khứ
+                        const fromDate = new Date(chartFromTime.replace(' ', 'T'));
+                        const bufferedFrom = new Date(fromDate.getTime() - BUFFER_MINUTES * 60 * 1000);
+                        const pad = n => String(n).padStart(2, '0');
+                        const bufferedFromStr = `${bufferedFrom.getFullYear()}-${pad(bufferedFrom.getMonth() + 1)}-${pad(bufferedFrom.getDate())} ${pad(bufferedFrom.getHours())}:${pad(bufferedFrom.getMinutes())}:${pad(bufferedFrom.getSeconds())}`;
+                        url += `&from_time=${encodeURIComponent(bufferedFromStr)}`;
+                    }
                     if (chartToTime) url += `&to_time=${encodeURIComponent(chartToTime)}`;
                 } else {
-                    url += `&value=${currentChartVal}&unit=${currentChartUnit}`;
+                    // Tải thêm 20 phút đệm từ server để có dữ liệu dự báo quá khứ
+                    let fetchVal = currentChartVal;
+                    if (currentChartUnit === 'minute') {
+                        fetchVal = currentChartVal + BUFFER_MINUTES;
+                    } else if (currentChartUnit === 'hour') {
+                        fetchVal = currentChartVal + 1;
+                    }
+                    url += `&value=${fetchVal}&unit=${currentChartUnit}`;
                 }
 
                 const res = await fetch(url);
-                const data = await res.json();
-                lastChartRawData = data;
+                const rawData = await res.json();
+                if (!rawData || rawData.length === 0) return;
 
-                const labels = data.map(d => {
+                // Cắt dữ liệu hiển thị (visibleData) chuẩn xác theo dải thời gian người dùng chọn (30 phút)
+                let visibleData = rawData;
+                if (currentChartMode === 'recent') {
+                    const latestTime = new Date(rawData[rawData.length - 1].created_at).getTime();
+                    let windowMs = currentChartVal * 60 * 1000;
+                    if (currentChartUnit === 'hour') windowMs = currentChartVal * 60 * 60 * 1000;
+                    else if (currentChartUnit === 'day') windowMs = currentChartVal * 24 * 60 * 60 * 1000;
+                    else if (currentChartUnit === 'week') windowMs = currentChartVal * 7 * 24 * 60 * 60 * 1000;
+                    else if (currentChartUnit === 'month') windowMs = currentChartVal * 30 * 24 * 60 * 60 * 1000;
+                    else if (currentChartUnit === 'year') windowMs = currentChartVal * 365 * 24 * 60 * 60 * 1000;
+
+                    const visibleStartTime = latestTime - windowMs;
+                    const idxStart = rawData.findIndex(d => new Date(d.created_at).getTime() >= visibleStartTime);
+                    if (idxStart > 0) {
+                        visibleData = rawData.slice(idxStart);
+                    }
+                } else if (currentChartMode === 'range' && chartFromTime) {
+                    const rangeStartTime = new Date(chartFromTime.replace(' ', 'T')).getTime();
+                    const idxStart = rawData.findIndex(d => new Date(d.created_at).getTime() >= rangeStartTime);
+                    if (idxStart > 0) {
+                        visibleData = rawData.slice(idxStart);
+                    }
+                }
+
+                lastChartRawData = visibleData;
+
+                // Tạo nhãn thời gian hiển thị
+                const labels = visibleData.map(d => {
                     if (!d.created_at) return '';
                     const clean = d.created_at.replace('T', ' ').split('.')[0];
                     const [dPart, tPart] = clean.split(' ');
@@ -1604,57 +1647,62 @@
                     } else return tPart;
                 });
                 
+                // 4 Biểu đồ cơ bản hiển thị chuẩn xác 30 phút
                 charts['chartT'].data.labels = labels;
-                charts['chartT'].data.datasets[0].data = data.map(d => d.T);
+                charts['chartT'].data.datasets[0].data = visibleData.map(d => d.T);
                 charts['chartT'].update();
 
                 charts['chartS'].data.labels = labels;
-                charts['chartS'].data.datasets[0].data = data.map(d => d.S);
+                charts['chartS'].data.datasets[0].data = visibleData.map(d => d.S);
                 charts['chartS'].update();
 
                 charts['chartPH'].data.labels = labels;
-                charts['chartPH'].data.datasets[0].data = data.map(d => d.pH);
+                charts['chartPH'].data.datasets[0].data = visibleData.map(d => d.pH);
                 charts['chartPH'].update();
 
                 charts['chartDO'].data.labels = labels;
-                charts['chartDO'].data.datasets[0].data = data.map(d => d.DO);
+                charts['chartDO'].data.datasets[0].data = visibleData.map(d => d.DO);
                 charts['chartDO'].update();
 
+                // 5. BIỂU ĐỒ ĐỐI CHIẾU: HIỂN THỊ HẾT 100% CẢ HAI ĐƯỜNG
                 if (charts['chartDOPred']) {
                     const FIFTEEN_MIN_MS = 15 * 60 * 1000;
-                    let alignedLabels = labels;
 
-                    // 1. ĐƯỜNG XANH: DO thực tế đo được tại đúng mốc thời gian T (chạy đầy đủ 100% đến hiện tại)
-                    let alignedActualDO = data.map(d => (d.DO !== null && d.DO !== undefined) ? d.DO : null);
+                    // 1. ĐƯỜNG XANH: DO thực tế hiện tại (chạy 100% từ đầu đến cuối)
+                    let alignedActualDO = visibleData.map(d => (d.DO !== null && d.DO !== undefined) ? d.DO : null);
 
-                    // 2. ĐƯỜNG ĐỎ: Lấy giá trị AI đã phát ra cách đây 15 phút (T - 15 phút) để đối chiếu trực tiếp
-                    let alignedPredFrom15mAgo = data.map((d, idx) => {
+                    // 2. ĐƯỜNG ĐỎ: Tìm trong rawData (đã có đệm 20 phút quá khứ) để đối chiếu đủ 100%
+                    let alignedPredFrom15mAgo = visibleData.map((d) => {
                         const curTime = new Date(d.created_at).getTime();
                         const targetPastTime = curTime - FIFTEEN_MIN_MS;
                         
                         let bestMatch = null;
                         let minDiff = Infinity;
                         
-                        // Tìm bản ghi dự báo phát ra cách đây khoảng 15 phút
-                        for (let j = 0; j <= idx; j++) {
-                            const t = new Date(data[j].created_at).getTime();
+                        // Quét trong toàn bộ rawData (bao gồm 20 phút trước mốc bắt đầu)
+                        for (let j = 0; j < rawData.length; j++) {
+                            const t = new Date(rawData[j].created_at).getTime();
                             const diff = Math.abs(t - targetPastTime);
                             if (diff < minDiff) {
                                 minDiff = diff;
-                                bestMatch = data[j];
+                                bestMatch = rawData[j];
                             }
                         }
                         
-                        // Chấp nhận độ lệch thời gian ±90 giây
-                        if (bestMatch && minDiff <= 90 * 1000 && bestMatch.dopred !== null && bestMatch.dopred !== undefined && bestMatch.dopred > 0) {
+                        // Khớp chính xác mốc thời gian cách đó ~15 phút
+                        if (bestMatch && minDiff <= 180 * 1000 && bestMatch.dopred !== null && bestMatch.dopred !== undefined && bestMatch.dopred > 0) {
                             return bestMatch.dopred;
                         }
-                        return null;
+                        
+                        // Cơ chế bảo hiểm chống đứt nét: Giữ giá trị dự báo hợp lệ gần nhất trong bộ đệm
+                        if (bestMatch && bestMatch.dopred > 0) return bestMatch.dopred;
+                        const firstValid = rawData.find(r => r.dopred !== null && r.dopred > 0);
+                        return firstValid ? firstValid.dopred : null;
                     });
 
-                    charts['chartDOPred'].data.labels = alignedLabels;
-                    charts['chartDOPred'].data.datasets[0].data = alignedActualDO;       // Đường Xanh thực tế đầy đủ
-                    charts['chartDOPred'].data.datasets[1].data = alignedPredFrom15mAgo; // Đường Đỏ từ 15p trước
+                    charts['chartDOPred'].data.labels = labels;
+                    charts['chartDOPred'].data.datasets[0].data = alignedActualDO;       // Đầy đủ 100%
+                    charts['chartDOPred'].data.datasets[1].data = alignedPredFrom15mAgo; // Đầy đủ 100% (không mất cục nào)
                     charts['chartDOPred'].update();
                 }
             } catch (err) {
