@@ -2019,6 +2019,13 @@
             try {
                 await fetchDismissedCloud();
                 const res = await fetch('/api/audit-incidents?hours=72');
+                
+                // Nếu server có lỗi, không xóa dữ liệu và không tự ý báo an toàn
+                if (!res.ok) {
+                    console.error("API audit-incidents gặp sự cố:", res.status);
+                    return;
+                }
+
                 const data = await res.json();
                 allIncidents = data.incidents || [];
                 updateIncidentUI();
@@ -2026,6 +2033,9 @@
                 console.error("Lỗi quét sự cố 72h:", err);
             }
         }
+
+        // Tự động quét lại trạng thái sự cố 30 giây một lần
+        setInterval(fetchIncidentAudit, 30000);
 
         function updateIncidentUI() {
             const ongoingList = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
