@@ -706,7 +706,9 @@ app.get('/api/audit-incidents', async (req, res) => {
                 const t1 = new Date(act.start_row.created_at).getTime();
                 const t2 = new Date(act.end_row.created_at).getTime();
                 const durSec = Math.max(10, Math.floor((t2 - t1) / 1000) + 10);
-                const maxBtri = Math.max(...act.rows.map(r => parseFloat(r.btri) || 0));
+                
+                // SỬA TẠI ĐÂY: Dùng trực tiếp act.max_btri đã tính sẵn, không gọi act.rows.map
+                const maxBtri = act.max_btri || parseFloat(act.start_row.btri) || 0;
                 const isCrit = act.val === 'CRITICAL';
 
                 return {
