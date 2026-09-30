@@ -478,6 +478,7 @@ app.post('/api/dismiss-incident', async (req, res) => {
             return res.status(500).json({ error: 'Lỗi Supabase: ' + error.message });
         }
 
+        cachedIncidents = null; // Xóa cache RAM để cập nhật danh sách sự cố mới ngay lập tức
         console.log(`[DISMISS SUCCESS] Đã tắt thành công ${rows.length} sự cố:`, idsToInsert);
         res.json({ success: true, count: rows.length });
     } catch (err) {
@@ -875,16 +876,6 @@ app.get('/api/audit-incidents', async (req, res) => {
                 res.status(500).json({ error: err.message });
             }
         });
-
-        res.json({
-            incidents: incidents,
-            scanned_records: logs.length,
-            time_window_hours: hours
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // API Biểu đồ Full-Span ID Sampling
 // API Biểu đồ Full-Span ID Sampling (Đã thêm dopred)
