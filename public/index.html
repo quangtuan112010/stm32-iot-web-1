@@ -1413,8 +1413,90 @@
             if (d.tec !== undefined) document.getElementById('val-tec').innerText = `${Number(d.tec).toFixed(2)} °C`;
             if (d.tdo !== undefined) document.getElementById('val-tdo').innerText = `${Number(d.tdo).toFixed(2)} °C`;
 
-            if (currentPage === 1 && !filterFromTime && !filterToTime) {
-                fetchPagedLogs();
+// THAY THẾ: Chỉ chèn trực tiếp 1 dòng mới vào đầu bảng (tiêu tốn 0 KB băng thông Supabase)
+            if (isLivePacket && currentPage === 1 && !filterFromTime && !filterToTime && packet.data) {
+                const tbody = document.getElementById('db-table-body');
+                if (tbody) {
+                    const item = packet.data;
+                    const newRowHtml = `
+                        <tr class="bg-blue-950/40 border-b border-slate-700/60 transition">
+                            <td class="py-2 px-2 text-gray-400">${packet.db_id}</td>
+                            <td class="py-2 px-2 text-emerald-400 font-mono">${packet.db_time}</td>
+                            <td class="py-2 px-2 text-orange-400 font-bold">${item.T !== undefined && item.T !== null ? Number(item.T).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-cyan-400 font-bold">${item.S !== undefined && item.S !== null ? Number(item.S).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-emerald-400 font-bold">${item.pH !== undefined && item.pH !== null ? Number(item.pH).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-blue-400 font-bold">${item.DO !== undefined && item.DO !== null ? Number(item.DO).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-white font-bold">${item.alk !== undefined && item.alk !== null ? Number(item.alk).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-amber-400">${item.btri !== undefined && item.btri !== null ? Number(item.btri).toFixed(1) : '--'}</td>
+                            <td class="py-2 px-2 text-amber-300">${item.rate !== undefined && item.rate !== null ? Number(item.rate).toFixed(6) : '0.000'}</td>
+                            <td class="py-2 px-2 text-rose-300">${item.eta !== undefined && item.eta !== null ? Math.round(item.eta) : '0'}</td>
+                            <td class="py-2 px-2 ${item.fan == 1 ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${item.fan ?? 0}</td>
+                            <td class="py-2 px-2 text-rose-400 font-mono">0x${Number(item.il || 0).toString(16).toUpperCase()}</td>
+                            <td class="py-2 px-2 ${item.il8 > 0 ? 'text-rose-400 font-bold' : 'text-gray-400'}">0x${Number(item.il8 || 0).toString(16).toUpperCase()}</td>
+                            <td class="py-2 px-2 ${item.il8cal == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.il8cal ?? 0}</td>
+                            <td class="py-2 px-2 ${item.il8rdy == 1 ? 'text-emerald-400 font-bold' : 'text-amber-400'}">${item.il8rdy ?? 0}</td>
+                            <td class="py-2 px-2 text-purple-400 font-mono">0x${Number(item.dom || 0).toString(16).toUpperCase()}</td>
+                            <td class="py-2 px-2 ${item.surv == 1 ? 'text-rose-400 font-bold' : 'text-gray-400'}">${item.surv ?? 0}</td>
+                            <td class="py-2 px-2 text-blue-300 font-bold">${item.cs ?? 0}</td>
+                            <td class="py-2 px-2 text-indigo-300">${item.wcet || 0}</td>
+                            <td class="py-2 px-2 text-gray-300">${item.braw !== undefined && item.braw !== null ? Number(item.braw).toFixed(1) : '--'}</td>
+                            <td class="py-2 px-2 ${item.adapt_acc == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.adapt_acc ?? 0}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.phoff !== undefined && item.phoff !== null ? Number(item.phoff).toFixed(6) : '--'}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.slope !== undefined && item.slope !== null ? Number(item.slope).toFixed(6) : '--'}</td>
+                            <td class="py-2 px-2 text-cyan-300">${item.iqrph !== undefined && item.iqrph !== null ? Number(item.iqrph).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-blue-300">${item.iqrdo !== undefined && item.iqrdo !== null ? Number(item.iqrdo).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-orange-400">${item.tspr !== undefined && item.tspr !== null ? Number(item.tspr).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-emerald-400">${item.fph ?? 0}</td>
+                            <td class="py-2 px-2 text-cyan-400">${item.fec ?? 0}</td>
+                            <td class="py-2 px-2 text-blue-400">${item.fdo ?? 0}</td>
+                            <td class="py-2 px-2 text-blue-300 font-bold">${item.hleft !== undefined && item.hleft !== null ? item.hleft : '--'}</td>
+                            <td class="py-2 px-2 text-cyan-300 font-bold">${item.csq !== undefined ? item.csq : '--'}</td>
+                            <td class="py-2 px-2 text-yellow-300 font-bold">${item.boot ?? 0}</td>
+                            <td class="py-2 px-2 text-purple-300 font-mono">0x${Number(item.rstr || 0).toString(16).toUpperCase()}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.up ? `${item.up}s` : '0s'}</td>
+                            <td class="py-2 px-2 ${item.flfail > 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-gray-400'}">${item.flfail ?? 0}</td>
+                            <td class="py-2 px-2 text-blue-400 font-bold">${item.dopred !== undefined && item.dopred !== null ? Number(item.dopred).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-cyan-300 font-bold">${item.dosat !== undefined && item.dosat !== null ? Number(item.dosat).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-amber-300">${item.aisig !== undefined && item.aisig !== null ? Number(item.aisig).toFixed(4) : '--'}</td>
+                            <td class="py-2 px-2 ${item.aivalid == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.aivalid ?? 0}</td>
+                            <td class="py-2 px-2 ${item.aistruct == 1 ? 'text-emerald-400 font-bold' : 'text-rose-400'}">${item.aistruct ?? 0}</td>
+                            <td class="py-2 px-2 text-indigo-300">${item.aistep ?? 0}</td>
+                            <td class="py-2 px-2 text-white">${item.adwk ?? 0}</td>
+                            <td class="py-2 px-2 text-emerald-400 font-bold">${item.adacc ?? 0}</td>
+                            <td class="py-2 px-2 text-rose-400">${item.adrej ?? 0}</td>
+                            <td class="py-2 px-2 text-rose-300">${item.admseb !== undefined && item.admseb !== null ? Number(item.admseb).toFixed(6) : '--'}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.admsea !== undefined && item.admsea !== null ? Number(item.admsea).toFixed(6) : '--'}</td>
+                            <td class="py-2 px-2 ${item.adlast == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.adlast ?? 0}</td>
+                            <td class="py-2 px-2 text-cyan-300 font-bold">${item.nvlog ?? 0}</td>
+                            <td class="py-2 px-2 font-bold ${item.stackmin < 15 ? 'text-rose-400' : 'text-emerald-400'}">${item.stackmin !== undefined && item.stackmin !== null ? `${item.stackmin}%` : '--'}</td>
+                            <td class="py-2 px-2 text-orange-300">${item.tph !== undefined && item.tph !== null ? Number(item.tph).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-cyan-300">${item.tec !== undefined && item.tec !== null ? Number(item.tec).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-sky-300">${item.tdo !== undefined && item.tdo !== null ? Number(item.tdo).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 ${item.tdis == 1 ? 'text-rose-400 font-bold' : 'text-gray-500'}">${item.tdis ?? 0}</td>
+                            <td class="py-2 px-2 text-gray-400">${item.sacyc ?? 0}</td>
+                            <td class="py-2 px-2 text-gray-400">${item.spub ?? 0}</td>
+                            <td class="py-2 px-2 text-blue-300 font-bold">${item.doobs !== undefined && item.doobs !== null ? Number(item.doobs).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-indigo-300">${item.adwcet ?? 0}</td>
+                            <td class="py-2 px-2 text-indigo-300">${item.adb !== undefined && item.adb !== null ? Number(item.adb).toFixed(6) : '--'}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.phraw !== undefined && item.phraw !== null ? Number(item.phraw).toFixed(2) : '--'}</td>
+                            <td class="py-2 px-2 text-gray-500 font-mono">${item.epoch ?? 0}</td>
+                            <td class="py-2 px-2 ${item.svalid == 1 ? 'text-emerald-400 font-bold' : 'text-gray-500'}">${item.svalid ?? 0}</td>
+                            <td class="py-2 px-2 text-white">${item.dday ?? 0}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.phmed !== undefined && item.phmed !== null ? Number(item.phmed).toFixed(4) : '--'}</td>
+                            <td class="py-2 px-2 text-amber-300">${item.il8th !== undefined && item.il8th !== null ? Number(item.il8th).toFixed(4) : '--'}</td>
+                            <td class="py-2 px-2 text-gray-400">${item.scyc ?? 0}</td>
+                            <td class="py-2 px-2 text-rose-400 font-bold">${item.rnh3 !== undefined && item.rnh3 !== null ? Number(item.rnh3).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-amber-400 font-bold">${item.rh2s !== undefined && item.rh2s !== null ? Number(item.rh2s).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-blue-400 font-bold">${item.rdo !== undefined && item.rdo !== null ? Number(item.rdo).toFixed(3) : '--'}</td>
+                            <td class="py-2 px-2 text-emerald-300">${item.phmedp !== undefined && item.phmedp !== null ? Number(item.phmedp).toFixed(4) : '--'}</td>
+                            <td class="py-2 px-2 text-indigo-300">${item.adpass ?? 0}</td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('afterbegin', newRowHtml);
+                    if (tbody.children.length > currentLimit) {
+                        tbody.removeChild(tbody.lastElementChild);
+                    }
+                }
             }
         }
 
@@ -2035,7 +2117,7 @@
         }
 
         // Tự động quét lại trạng thái sự cố 30 giây một lần
-        setInterval(fetchIncidentAudit, 30000);
+        // setInterval(fetchIncidentAudit, 30000);
 
         function updateIncidentUI() {
             const ongoingList = allIncidents.filter(inc => inc.is_ongoing && !dismissedIncidentIdsOnCloud.includes(inc.id));
