@@ -487,8 +487,19 @@ app.post('/api/dismiss-incident', async (req, res) => {
 });
 
 // ================= API RÀ SOÁT 72H SỰ CỐ =================
+// Bộ đệm RAM cache chống nghẽn Egress Supabase (Lưu cache trong 5 phút)
+let cachedIncidents = null;
+let lastAuditTime = 0;
+const AUDIT_CACHE_MS = 5 * 60 * 1000; // 5 phút
+
 app.get('/api/audit-incidents', async (req, res) => {
     try {
+        const nowMs = Date.now();
+        // Nếu đã có cache và chưa quá 5 phút -> Trả về ngay lập tức từ RAM
+        if (cachedIncidents && (nowMs - lastAuditTime < AUDIT_CACHE_MS)) {
+            return res.json(cachedIncidents);
+        }
+
         const hours = parseInt(req.query.hours) || 72;
         const nowVN = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
         const cutoffVN = new Date(nowVN.getTime() - hours * 60 * 60 * 1000);
@@ -846,9 +857,23 @@ app.get('/api/audit-incidents', async (req, res) => {
         }
 
         incidents.sort((a, b) => {
-            if (a.is_ongoing && !b.is_ongoing) return -1;
-            if (!a.is_ongoing && b.is_ongoing) return 1;
-            return new Date(b.start_raw).getTime() - new Date(a.start_raw).getTime();
+                    if (a.is_ongoing && !b.is_ongoing) return -1;
+                    if (!a.is_ongoing && b.is_ongoing) return 1;
+                    return new Date(b.start_raw).getTime() - new Date(a.start_raw).getTime();
+                });
+
+                // LƯU KẾT QUẢ VÀO CACHE TRƯỚC KHI TRẢ VỀ
+                cachedIncidents = {
+                    incidents: incidents,
+                    scanned_records: logs.length,
+                    time_window_hours: hours
+                };
+                lastAuditTime = Date.now();
+
+                res.json(cachedIncidents);
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            }
         });
 
         res.json({
